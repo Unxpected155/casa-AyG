@@ -46,6 +46,9 @@ public abstract class PostgresTestBase {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("db_app_password", () -> APP_PASSWORD);
         registry.add("db_owner_password", () -> OWNER_PASSWORD);
+        // Los tests no llaman a Hacienda; el emulador de passkeys usa el origen http://localhost.
+        registry.add("casaayg.exchange-rate.enabled", () -> "false");
+        registry.add("casaayg.security.origins", () -> "http://localhost");
     }
 
     /** Conexión como el rol de la aplicación (el que importa para la seguridad). */

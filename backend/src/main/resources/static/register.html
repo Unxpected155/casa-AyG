@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Casa A&amp;G — Registrar passkey</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script type="module" src="/js/register.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Registrar una passkey</h1>
+    <p>Registra al menos <strong>dos</strong>: el teléfono y la computadora. Así perder uno no te deja fuera.</p>
+    <form id="register-form">
+      <label>Nombre del dispositivo <input name="label" required maxlength="100" placeholder="Mi iPhone"></label>
+      <button type="submit">Registrar</button>
+    </form>
+    <p id="message" role="status"></p>
+    <p><a href="/login">Ir a iniciar sesión</a></p>
+  </main>
+</body>
+</html>

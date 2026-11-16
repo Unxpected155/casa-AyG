@@ -15,11 +15,48 @@ final class TestData {
 
     static UUID newUser(Connection c) throws SQLException {
         UUID id = UUID.randomUUID();
-        try (var ps = c.prepareStatement("INSERT INTO app_user (id, display_name) VALUES (?, 'Test')")) {
+        try (var ps = c.prepareStatement("INSERT INTO app_user (id, username, display_name) VALUES (?, ?, 'Test')")) {
             ps.setObject(1, id);
+            ps.setString(2, "u" + id.toString().replace("-", "").substring(0, 20));
             ps.executeUpdate();
         }
         return id;
+    }
+
+    /** Usuario completo como lo crea el administrador (V4): espacio personal, categorías y código. */
+    record AppUser(UUID id, String username, String enrollmentCode, UUID personalSpace) {}
+
+    static AppUser adminCreateUser(Connection su, String displayName) throws SQLException {
+        String username = "u" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
+        String code;
+        try (var ps = su.prepareStatement("SELECT admin_create_user(?, ?)")) {
+            ps.setString(1, username);
+            ps.setString(2, displayName);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                code = rs.getString(1);
+            }
+        }
+        try (var ps = su.prepareStatement("""
+                SELECT u.id, m.space_id FROM app_user u JOIN space_member m ON m.user_id = u.id
+                 WHERE u.username = ?""")) {
+            ps.setString(1, username);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return new AppUser(rs.getObject(1, UUID.class), username, code, rs.getObject(2, UUID.class));
+            }
+        }
+    }
+
+    static UUID categoryNamed(Connection su, UUID space, String name) throws SQLException {
+        try (var ps = su.prepareStatement("SELECT id FROM category WHERE space_id = ? AND name = ?")) {
+            ps.setObject(1, space);
+            ps.setString(2, name);
+            try (var rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getObject(1, UUID.class);
+            }
+        }
     }
 
     /** Crea un espacio con sus miembros. */

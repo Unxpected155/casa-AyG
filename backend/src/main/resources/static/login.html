@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Casa A&amp;G — Entrar</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <script type="module" src="/js/login.js"></script>
+</head>
+<body>
+  <main>
+    <h1>Casa A&amp;G</h1>
+    <button id="passkey" type="button">Entrar con passkey</button>
+
+    <details>
+      <summary>Tengo un código de inscripción o de recuperación</summary>
+      <form id="code-form">
+        <label>Usuario <input name="username" autocomplete="username" required maxlength="30"></label>
+        <label>Código <input name="code" autocomplete="one-time-code" required maxlength="40"></label>
+        <button type="submit">Continuar</button>
+      </form>
+    </details>
+    <p id="message" role="status"></p>
+  </main>
+</body>
+</html>

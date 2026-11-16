@@ -25,16 +25,47 @@ spring:
     # `flyway clean` borra TODO el esquema: deshabilitado siempre, en todo entorno.
     clean-disabled: true
 
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate
-    properties:
-      hibernate:
-        default_schema: casaayg
+  # Un JSON con campos que la API no espera se rechaza con 400 (mass assignment, Fase 4).
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: true
 
-# Los errores no revelan detalles internos (threat model 5.1-I).
+  # Cuerpos de petición pequeños: la API no recibe archivos.
+  servlet:
+    multipart:
+      enabled: false
+
+casaayg:
+  security:
+    # Producción: el nombre *.ts.net de Tailscale (ADR-003). Las passkeys quedan ligadas a él.
+    rp-id: ${CASAAYG_RP_ID:localhost}
+    origins: ${CASAAYG_ORIGINS:http://localhost:8080}
+    session-absolute: 7d
+    session-code: 10m
+  exchange-rate:
+    # Tipo de cambio de referencia del BCCR, publicado por Hacienda (sin token).
+    enabled: ${CASAAYG_EXCHANGE_RATE_ENABLED:true}
+    url: https://api.hacienda.go.cr/indicadores/tc/dolar
+
 server:
+  # Límite del tamaño de las peticiones (Tomcat): nadie manda un JSON de 100 MB.
+  max-http-request-header-size: 16KB
+  tomcat:
+    max-swallow-size: 1MB
+    max-http-form-post-size: 64KB
+  servlet:
+    session:
+      # Inactividad. El máximo absoluto (7 días) lo aplica SessionTimeoutFilter.
+      timeout: 30m
+      cookie:
+        # __Host-: el navegador exige Secure, Path=/ y prohíbe Domain (no la comparte un subdominio).
+        name: __Host-casaayg
+        http-only: true
+        secure: true
+        same-site: strict
+        path: /
+      tracking-modes: cookie
+  # Los errores no revelan detalles internos (threat model 5.1-I).
   error:
     include-stacktrace: never
     include-message: never

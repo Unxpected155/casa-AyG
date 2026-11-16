@@ -43,7 +43,6 @@ class DatabaseRolesTest extends PostgresTestBase {
         "CREATE TABLE public.robo (x text)",
         "DELETE FROM audit_log",
         "UPDATE audit_log SET event_type = 'borrado'",
-        "DELETE FROM category",
         "DELETE FROM budget",
         "SELECT * FROM flyway_schema_history",
         // Espacios y miembros solo se cambian con funciones dedicadas (ADR-005), no desde la app.
@@ -57,6 +56,17 @@ class DatabaseRolesTest extends PostgresTestBase {
         "UPDATE category SET space_id = gen_random_uuid()",
         "UPDATE budget SET space_id = gen_random_uuid()",
         "UPDATE budget_line SET space_id = gen_random_uuid()",
+        // Fase 3: la app no lee códigos, no crea usuarios WebAuthn y no ejecuta funciones de admin.
+        "SELECT * FROM auth_code",
+        "INSERT INTO user_entities (id, name) VALUES ('x', 'x')",
+        "SELECT admin_create_user('intruso', 'Intruso')",
+        "SELECT admin_new_enrollment_code('intruso')",
+        "UPDATE user_entities SET name = 'x'",
+        // Fase 4: la fusión solo pasa por sus funciones; el tipo de cambio no cambia de fecha.
+        "SELECT * FROM merge_request",
+        "UPDATE merge_request SET status = 'COMPLETADA'",
+        "UPDATE exchange_rate SET rate_date = '2000-01-01'",
+        "DELETE FROM exchange_rate",
         "COPY (SELECT 1) TO PROGRAM 'id'",
     })
     void laAppNoTienePermisoPara(String sql) throws SQLException {
