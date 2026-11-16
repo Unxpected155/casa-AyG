@@ -136,6 +136,11 @@ export function Account() {
           </div>
         ) : (
           <>
+            {me.recoveryCodesLeft === 0 && (
+              <p className="notice">
+                Todavía no tienes códigos de recuperación. Genéralos ahora: sin ellos, perder tus dispositivos te deja fuera.
+              </p>
+            )}
             <p className="hint">
               Te quedan <strong className="figure">{me.recoveryCodesLeft}</strong> códigos. Cada uno sirve una vez para
               entrar si pierdes tus dispositivos. Generar nuevos anula los anteriores.

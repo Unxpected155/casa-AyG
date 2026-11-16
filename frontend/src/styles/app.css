@@ -77,10 +77,6 @@
   margin-left: var(--s1);
 }
 
-.page {
-  will-change: transform;
-}
-
 .page-title {
   font-size: var(--t-3xl);
   margin: var(--s6) 0 var(--s1);
@@ -722,6 +718,7 @@ body.sheet-open {
   position: relative;
   width: min(100%, 560px);
   max-height: 92dvh;
+  overflow-x: hidden;
   overflow-y: auto;
   padding: var(--s4) var(--s4) max(var(--s5), env(safe-area-inset-bottom));
   background: var(--paper-raised);
@@ -829,10 +826,26 @@ body.sheet-open {
   color: var(--ink-soft);
 }
 
+/* Una fila por grupo con desplazamiento horizontal: la hoja no crece y el botón queda a la vista. */
 .chip-row {
   display: flex;
-  flex-wrap: wrap;
   gap: var(--s2);
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* Sin márgenes negativos: la hoja nunca es más ancha que la pantalla, así que enfocar un
+     chip fuera de vista solo desplaza la fila, no toda la hoja. */
+  padding: 2px 0;
+}
+
+.chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chip-row .chip {
+  flex: none;
+  scroll-snap-align: start;
+  white-space: nowrap;
 }
 
 .chip {
@@ -863,11 +876,16 @@ body.sheet-open {
 }
 
 .sheet-actions {
+  position: sticky;
+  bottom: calc(-1 * max(var(--s5), env(safe-area-inset-bottom)));
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s2);
-  margin-top: var(--s4);
+  margin: var(--s4) calc(-1 * var(--s4)) calc(-1 * max(var(--s5), env(safe-area-inset-bottom)));
+  padding: var(--s3) var(--s4) max(var(--s4), env(safe-area-inset-bottom));
+  background: var(--paper-raised);
+  border-top: 1px solid var(--rule);
 }
 
 .sheet-actions .primary {

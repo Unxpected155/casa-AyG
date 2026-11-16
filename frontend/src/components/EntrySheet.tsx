@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { api, messageOf } from "../api";
 import { GROUP_LABEL, parseAmount, todayIso } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
@@ -95,7 +96,9 @@ export function EntrySheet({ editing, onClose }: EntrySheetProps) {
     }
   };
 
-  return (
+  // Portal a <body>: un ancestro con transform (la animación de página) volvería relativo
+  // a él cualquier position: fixed, y la hoja quedaría cortada.
+  return createPortal(
     <div className="sheet-layer">
       <div className="sheet-backdrop" ref={backdrop} onClick={onClose} />
       <div className="sheet" ref={sheet} role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -202,6 +205,7 @@ export function EntrySheet({ editing, onClose }: EntrySheetProps) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
