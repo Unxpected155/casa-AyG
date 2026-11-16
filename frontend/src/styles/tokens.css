@@ -1,0 +1,71 @@
+/* Tokens de DESIGN.md. Día: papel crema. Noche: papel sepia oscuro (nunca negro puro). */
+:root {
+  color-scheme: light dark;
+
+  --paper: oklch(0.965 0.018 85);
+  --paper-raised: oklch(0.985 0.012 85);
+  --paper-sunk: oklch(0.935 0.022 82);
+  --rule: oklch(0.86 0.025 80);
+  --rule-strong: oklch(0.78 0.03 75);
+  --ink: oklch(0.25 0.02 55);
+  --ink-soft: oklch(0.45 0.025 60);
+  --accent: oklch(0.55 0.135 40);
+  --accent-hover: oklch(0.5 0.135 40);
+  --accent-wash: oklch(0.55 0.135 40 / 0.1);
+  --on-accent: oklch(0.985 0.012 85);
+  --ok: oklch(0.5 0.09 128);
+  --near: oklch(0.52 0.1 72);
+  --over: oklch(0.5 0.15 30);
+  --shadow: 0 -10px 40px oklch(0.3 0.03 55 / 0.14);
+  --grain-opacity: 0.05;
+
+  --font-serif: "Literata Variable", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Instrument Sans Variable", "Segoe UI", system-ui, sans-serif;
+
+  /* Escala fija (producto), razón 1.2 */
+  --t-xs: 0.833rem;
+  --t-sm: 0.9rem;
+  --t-md: 1rem;
+  --t-lg: 1.2rem;
+  --t-xl: 1.44rem;
+  --t-2xl: 1.728rem;
+  --t-3xl: 2.074rem;
+  --t-4xl: 2.488rem;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+
+  --radius: 6px;
+  --radius-sheet: 14px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --z-bar: 20;
+  --z-fab: 30;
+  --z-sheet: 50;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: oklch(0.215 0.014 60);
+    --paper-raised: oklch(0.255 0.016 60);
+    --paper-sunk: oklch(0.19 0.012 60);
+    --rule: oklch(0.35 0.018 60);
+    --rule-strong: oklch(0.45 0.02 60);
+    --ink: oklch(0.93 0.018 85);
+    --ink-soft: oklch(0.75 0.022 80);
+    --accent: oklch(0.73 0.12 48);
+    --accent-hover: oklch(0.78 0.12 48);
+    --accent-wash: oklch(0.73 0.12 48 / 0.14);
+    --on-accent: oklch(0.2 0.02 50);
+    --ok: oklch(0.76 0.1 125);
+    --near: oklch(0.8 0.11 80);
+    --over: oklch(0.72 0.14 35);
+    --shadow: 0 -10px 40px oklch(0.05 0.01 55 / 0.5);
+    --grain-opacity: 0.07;
+  }
+}

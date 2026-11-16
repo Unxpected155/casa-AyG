@@ -10,14 +10,20 @@ Stack: Java 25 + Spring Boot, PostgreSQL, React + TypeScript + GSAP (PWA), Docke
 
 ## Desarrollo local
 
-Requisitos: Java 25, Docker Desktop.
+Requisitos: Java 25, Node 22+, Docker Desktop.
 
 ```powershell
 ./scripts/New-DevSecrets.ps1     # 1. genera ./secrets/ (una sola vez)
 docker compose up -d --wait      # 2. Postgres en 127.0.0.1:5432
-./backend/mvnw -f backend/pom.xml spring-boot:run   # 3. la app en http://localhost:8080
-./scripts/New-User.ps1 -Username ana -DisplayName Ana   # 4. usuario + código de inscripción
+npm --prefix frontend ci         # 3. dependencias del frontend (exactas, sin scripts de instalación)
+npm --prefix frontend run build  # 4. compila el frontend (Spring lo sirve)
+./backend/mvnw -f backend/pom.xml spring-boot:run   # 5. la app en http://localhost:8080
+./scripts/New-User.ps1 -Username ana -DisplayName Ana   # 6. usuario + código de inscripción
 ```
+
+Para trabajar en el frontend con recarga en vivo: arranca Spring con `CASAAYG_ORIGINS=http://localhost:5173` y corre `npm --prefix frontend run dev` (Vite en http://localhost:5173 reenvía la API a Spring).
+
+El diseño está descrito en [PRODUCT.md](PRODUCT.md) (para quién y por qué) y [DESIGN.md](DESIGN.md) (cómo se ve).
 
 ### Acceso: solo passkeys
 

@@ -32,7 +32,7 @@ class SessionHttpTest extends PostgresTestBase {
 
     @Test
     void lasPaginasLlevanHeadersDeSeguridad() throws Exception {
-        HttpResponse<String> res = send(HttpRequest.newBuilder(uri("/login")).GET().build());
+        HttpResponse<String> res = send(HttpRequest.newBuilder(uri("/actuator/health")).GET().build());
         assertThat(res.statusCode()).isEqualTo(200);
         assertThat(res.headers().firstValue("Content-Security-Policy")).get().asString()
             .contains("default-src 'self'", "script-src 'self'", "frame-ancestors 'none'")
@@ -50,7 +50,7 @@ class SessionHttpTest extends PostgresTestBase {
         try (Connection su = asSuperuser()) {
             user = TestData.adminCreateUser(su, "Persona HTTP");
         }
-        String csrf = cookieValue(setCookie(send(HttpRequest.newBuilder(uri("/login")).GET().build()), "XSRF-TOKEN").orElseThrow());
+        String csrf = cookieValue(setCookie(send(HttpRequest.newBuilder(uri("/actuator/health")).GET().build()), "XSRF-TOKEN").orElseThrow());
 
         // 1. Una sesión ANÓNIMA (como la que un atacante intentaría "plantar").
         HttpResponse<String> options = send(post("/webauthn/authenticate/options", csrf, null, ""));
@@ -73,7 +73,7 @@ class SessionHttpTest extends PostgresTestBase {
 
     @Test
     void unCuerpoGiganteSeRechazaSinLeerlo() throws Exception {
-        String csrf = cookieValue(setCookie(send(HttpRequest.newBuilder(uri("/login")).GET().build()), "XSRF-TOKEN").orElseThrow());
+        String csrf = cookieValue(setCookie(send(HttpRequest.newBuilder(uri("/actuator/health")).GET().build()), "XSRF-TOKEN").orElseThrow());
         String huge = "username=x&code=" + "A".repeat(200_000);
         assertThat(send(post("/login/code", csrf, null, huge)).statusCode()).isEqualTo(413);
     }

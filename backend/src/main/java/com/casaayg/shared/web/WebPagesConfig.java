@@ -5,16 +5,19 @@ import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Páginas mínimas para usar las passkeys hasta que llegue el frontend (Fase 5).
- * Son HTML estático sin scripts inline (compatibles con la CSP estricta).
+ * El frontend (React, Fase 5) es una SPA: sus rutas se sirven con el mismo index.html y el
+ * enrutamiento lo hace el navegador. La lista es explícita (lista blanca), igual que la seguridad.
  */
 @Configuration
-class WebPagesConfig implements WebMvcConfigurer {
+public class WebPagesConfig implements WebMvcConfigurer {
+
+    /** Rutas de la SPA (ver frontend/src/router.ts). */
+    public static final String[] SPA_ROUTES = {"/", "/login", "/registrar", "/movimientos", "/plan", "/cuenta", "/boda"};
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
-        registry.addViewController("/").setViewName("forward:/index.html");
-        registry.addViewController("/login").setViewName("forward:/login.html");
-        registry.addViewController("/webauthn/register").setViewName("forward:/register.html");
+        for (String route : SPA_ROUTES) {
+            registry.addViewController(route).setViewName("forward:/index.html");
+        }
     }
 }

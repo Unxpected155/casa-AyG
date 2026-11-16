@@ -59,6 +59,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.casaayg.audit.AuditService;
 import com.casaayg.shared.db.AsUser;
+import com.casaayg.shared.web.WebPagesConfig;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -102,8 +103,9 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/health", "/error").permitAll()
                 // Páginas estáticas sin datos (los datos llegan por /api con sesión).
-                .requestMatchers(GET, "/", "/login", "/webauthn/register", "/index.html", "/login.html",
-                    "/register.html", "/js/**", "/css/**", "/favicon.ico").permitAll()
+                .requestMatchers(GET, WebPagesConfig.SPA_ROUTES).permitAll()
+                .requestMatchers(GET, "/index.html", "/assets/**", "/icons/**", "/manifest.webmanifest",
+                    "/favicon.svg").permitAll()
                 .requestMatchers(POST, "/login/code", "/webauthn/authenticate/options", "/login/webauthn").permitAll()
                 // Registrar una passkey: sesión de código, o passkey usada hace < 5 min.
                 .requestMatchers(POST, "/webauthn/register/options", "/webauthn/register").access(enrollOrRecentPasskey())
