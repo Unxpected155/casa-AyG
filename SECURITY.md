@@ -5,7 +5,7 @@
 **No abras un issue público.** Un issue es visible para todo el mundo antes de que exista una corrección.
 
 Usa el reporte privado de GitHub: pestaña **Security → Report a vulnerability**
-(<https://github.com/Unxpected155/finanzapp/security/advisories/new>).
+(<https://github.com/Unxpected155/casa-AyG/security/advisories/new>).
 
 Incluye, si puedes:
 - Qué componente está afectado (backend, frontend, base de datos, pipeline, imagen Docker).

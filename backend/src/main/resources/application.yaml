@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: casa-ayg
+  # Los secretos se leen como archivos (un archivo por secreto), nunca de variables de entorno
+  # ni de este YAML. En local: ./secrets/ en la raíz del repo, desde donde se ejecuta la app
+  # (ver scripts/New-DevSecrets.ps1). En un contenedor: /run/secrets/.
+  # ⚠️ La ruta no puede contener "..": configtree ignora como "ocultos" los archivos de rutas
+  # con elementos que empiezan con ".." (para saltarse los "..data" de Kubernetes).
+  config:
+    import: "optional:configtree:${CASAAYG_SECRETS_DIR:./secrets/}"
+
+  # La app en runtime usa casaayg_app: solo DML, nunca DDL (ver 01-roles.sh y V2).
+  datasource:
+    url: ${CASAAYG_DB_URL:jdbc:postgresql://localhost:5432/casaayg}
+    username: casaayg_app
+    password: ${db_app_password}
+
+  # Flyway usa otro rol: casaayg_owner, dueño del esquema.
+  flyway:
+    user: casaayg_owner
+    password: ${db_owner_password}
+    schemas: casaayg
+    default-schema: casaayg
+    create-schemas: false
+    # `flyway clean` borra TODO el esquema: deshabilitado siempre, en todo entorno.
+    clean-disabled: true
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: casaayg
+
+# Los errores no revelan detalles internos (threat model 5.1-I).
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+    include-exception: false
+
+# Actuator: solo health, sin detalles. env, beans, heapdump, etc. filtran información.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
