@@ -16,7 +16,34 @@ Requisitos: Java 25, Docker Desktop.
 ./scripts/New-DevSecrets.ps1     # 1. genera ./secrets/ (una sola vez)
 docker compose up -d --wait      # 2. Postgres en 127.0.0.1:5432
 ./backend/mvnw -f backend/pom.xml spring-boot:run   # 3. la app en http://localhost:8080
+./scripts/New-User.ps1 -Username ana -DisplayName Ana   # 4. usuario + código de inscripción
 ```
+
+### Acceso: solo passkeys
+
+No hay contraseñas. El administrador crea a cada persona desde la consola (la app no puede crear usuarios) y le entrega un **código de inscripción** de un solo uso que vence en 24 horas. Con ese código, en `/login`, se abre una sesión que **solo** sirve para registrar passkeys. Después:
+
+- El login es con passkey (Face ID, huella o Windows Hello).
+- Conviene registrar **dos** passkeys: teléfono y computadora.
+- `POST /api/me/recovery-codes` entrega 10 códigos de recuperación de un solo uso. Usar uno cierra las demás sesiones.
+- Si se pierde todo: `./scripts/New-User.ps1 -Username ana -NewCode`.
+
+| Sesión | Dura | Puede |
+|---|---|---|
+| Passkey | 30 min de inactividad, 7 días como máximo | Usar la API. Registrar o borrar passkeys, generar códigos y aprobar la fusión exige haber usado la passkey hace menos de 5 minutos. |
+| Código | 10 minutos | Solo registrar passkeys |
+
+### API
+
+| Recurso | Rutas |
+|---|---|
+| Cuenta | `GET /api/me`, `GET/DELETE /api/me/passkeys`, `POST /api/me/recovery-codes`, `POST /api/me/sessions/revoke-others` |
+| Espacios | `GET /api/spaces`, `GET /api/spaces/{id}/export` |
+| Categorías | `GET/POST /api/spaces/{id}/categories`, `PUT/DELETE …/categories/{catId}` |
+| Movimientos | `GET/POST /api/spaces/{id}/transactions`, `GET/PUT/DELETE …/transactions/{txId}` |
+| Presupuesto | `GET/PUT /api/spaces/{id}/budgets/{año}/{mes}` |
+| Resumen del mes | `GET /api/spaces/{id}/summary?year=&month=` (totales en ₡, en $ y consolidado en $) |
+| Fusión de espacios | `GET/POST /api/merge-requests`, `POST …/{id}/approve`, `POST …/{id}/decline` |
 
 Tests (levantan su propio Postgres con Testcontainers):
 

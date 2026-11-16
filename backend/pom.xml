@@ -19,6 +19,8 @@
 
     <properties>
         <java.version>25</java.version>
+        <!-- La misma versión que trae spring-security-webauthn (para el emulador de los tests). -->
+        <webauthn4j.version>0.31.10.RELEASE</webauthn4j.version>
     </properties>
 
     <!--
@@ -36,10 +38,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-        <!-- Acceso a datos: consultas parametrizadas por defecto -->
+        <!-- Passkeys (WebAuthn). En Spring Security 7 es un módulo aparte; trae webauthn4j. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-webauthn</artifactId>
+        </dependency>
+        <!-- Acceso a datos con SQL explícito y parametrizado (JdbcClient). Sin JPA/Hibernate:
+             menos dependencias y control total del set_config de RLS por transacción. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
         </dependency>
         <!-- Validación de DTOs (@Valid) -->
         <dependency>
@@ -70,6 +78,18 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Autenticador WebAuthn emulado: prueba registro y login con passkey de verdad. -->
+        <dependency>
+            <groupId>com.webauthn4j</groupId>
+            <artifactId>webauthn4j-test</artifactId>
+            <version>${webauthn4j.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
