@@ -58,7 +58,7 @@ export interface Totals {
   totalUsd: number;
 }
 
-export type Status = "OK" | "CERCA" | "EXCEDIDO" | "SIN_PRESUPUESTO";
+export type Status = "OK" | "CERCA" | "AL_LIMITE" | "EXCEDIDO" | "SIN_PRESUPUESTO";
 
 export interface SummaryLine {
   categoryId: string;
@@ -69,6 +69,8 @@ export interface SummaryLine {
   spentCrc: number;
   spentUsd: number;
   spentTotalUsd: number;
+  /** Planeado menos lo gastado, en colones (negativo si se pasó). null sin presupuesto. */
+  remainingCrc: number | null;
   status: Status;
 }
 

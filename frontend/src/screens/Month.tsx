@@ -122,12 +122,16 @@ function GroupSection({ group, lines, showIdle }: { group: Group; lines: Summary
   );
 }
 
-const STATUS_TEXT: Record<SummaryLine["status"], string> = {
-  OK: "",
-  CERCA: "cerca del límite",
-  EXCEDIDO: "te pasaste",
-  SIN_PRESUPUESTO: "",
-};
+/** Lo que dice cada renglón: claro con el dinero, sin alarmar (PRODUCT.md, principio 2). */
+function statusText(line: SummaryLine): string | null {
+  const left = Math.abs(line.remainingCrc ?? 0);
+  switch (line.status) {
+    case "CERCA": return `quedan ${money(left, "CRC")}`;
+    case "AL_LIMITE": return "justo lo planeado";
+    case "EXCEDIDO": return `te pasaste por ${money(left, "CRC")}`;
+    default: return null;
+  }
+}
 
 function CategoryRow({ line, income }: { line: SummaryLine; income: boolean }) {
   const spent = [
@@ -135,11 +139,17 @@ function CategoryRow({ line, income }: { line: SummaryLine; income: boolean }) {
     line.spentUsd > 0 ? money(line.spentUsd, "USD") : null,
   ].filter(Boolean).join(" + ");
 
-  const ratio = line.plannedUsd && line.plannedUsd > 0
-    ? line.spentTotalUsd / line.plannedUsd
-    : line.plannedCrc > 0 ? line.spentCrc / line.plannedCrc : 0;
+  // El avance se calcula en colones, igual que el estado del servidor.
+  const ratio = line.plannedCrc > 0 && line.remainingCrc !== null
+    ? (line.plannedCrc - line.remainingCrc) / line.plannedCrc
+    : 0;
   const fill = Math.min(ratio, 1);
-  const tone = income ? "income" : line.status === "EXCEDIDO" ? "over" : line.status === "CERCA" ? "near" : "ok";
+  const tone = income ? "income"
+    : line.status === "EXCEDIDO" ? "over"
+    : line.status === "CERCA" ? "near"
+    : line.status === "AL_LIMITE" ? "full"
+    : "ok";
+  const text = income ? null : statusText(line);
 
   return (
     <li className="row">
@@ -163,9 +173,9 @@ function CategoryRow({ line, income }: { line: SummaryLine; income: boolean }) {
           />
         </div>
       )}
-      {STATUS_TEXT[line.status] && !income && (
+      {text && (
         <span className={`row-status ${tone}`}>
-          <Icon name="alert" size={14} /> {STATUS_TEXT[line.status]}
+          <Icon name={line.status === "AL_LIMITE" ? "check" : "alert"} size={14} /> {text}
         </span>
       )}
     </li>

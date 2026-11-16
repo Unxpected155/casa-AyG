@@ -36,7 +36,7 @@ public class SummaryService {
 
     public record CategoryLine(UUID categoryId, String name, CategoryGroup group, BigDecimal plannedCrc,
                                BigDecimal plannedUsd, BigDecimal spentCrc, BigDecimal spentUsd,
-                               BigDecimal spentTotalUsd, String status) {}
+                               BigDecimal spentTotalUsd, BigDecimal remainingCrc, String status) {}
 
     public record Totals(BigDecimal crc, BigDecimal usd, BigDecimal totalUsd) {}
 
@@ -79,10 +79,16 @@ public class SummaryService {
                 BigDecimal plannedUsd = rate == null ? null : planned.divide(rate, 2, RoundingMode.HALF_UP);
                 BigDecimal totalUsd = rs.getBigDecimal("spent_total_usd").setScale(2, RoundingMode.HALF_UP);
                 missing[0] |= rs.getBoolean("missing_rate");
+                // El estado se calcula EN COLONES (la moneda del presupuesto). Así, gastar exactamente
+                // lo planeado en colones da exactamente 100 %, sin redondeos de conversión.
+                BigDecimal spentCrc = rs.getBigDecimal("spent_crc");
+                BigDecimal spentUsd = rs.getBigDecimal("spent_usd");
+                BigDecimal spentAsCrc = rate == null ? spentCrc
+                    : spentCrc.add(spentUsd.multiply(rate)).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal remaining = planned.signum() == 0 ? null : planned.subtract(spentAsCrc);
                 lines.add(new CategoryLine(rs.getObject("id", UUID.class), rs.getString("name"),
                     CategoryGroup.valueOf(rs.getString("category_group")), planned, plannedUsd,
-                    rs.getBigDecimal("spent_crc"), rs.getBigDecimal("spent_usd"), totalUsd,
-                    status(plannedUsd, totalUsd)));
+                    spentCrc, spentUsd, totalUsd, remaining, status(planned, spentAsCrc)));
             });
 
         Map<CategoryGroup, Totals> byGroup = new EnumMap<>(CategoryGroup.class);
@@ -112,15 +118,22 @@ public class SummaryService {
         return new Totals(crc, usd, total);
     }
 
-    /** OK (< 90 %), CERCA (90–100 %), EXCEDIDO (> 100 %) o SIN_PRESUPUESTO. */
-    static String status(BigDecimal plannedUsd, BigDecimal spentUsd) {
-        if (plannedUsd == null || plannedUsd.signum() == 0) {
+    /**
+     * OK (< 90 %), CERCA (90 % a menos de 100 %), AL_LIMITE (exactamente lo planeado),
+     * EXCEDIDO (más de lo planeado) o SIN_PRESUPUESTO. Montos en colones.
+     */
+    static String status(BigDecimal plannedCrc, BigDecimal spentCrc) {
+        if (plannedCrc == null || plannedCrc.signum() == 0) {
             return "SIN_PRESUPUESTO";
         }
-        BigDecimal ratio = spentUsd.divide(plannedUsd, 4, RoundingMode.HALF_UP);
-        if (ratio.compareTo(BigDecimal.ONE) > 0) {
+        int vsPlanned = spentCrc.compareTo(plannedCrc);
+        if (vsPlanned > 0) {
             return "EXCEDIDO";
         }
-        return ratio.compareTo(new BigDecimal("0.9")) >= 0 ? "CERCA" : "OK";
+        if (vsPlanned == 0) {
+            return "AL_LIMITE";
+        }
+        // gastado ≥ 90 % de lo planeado, sin dividir (una división redondeada convertiría 89,9999 % en 90 %).
+        return spentCrc.multiply(BigDecimal.TEN).compareTo(plannedCrc.multiply(new BigDecimal("9"))) >= 0 ? "CERCA" : "OK";
     }
 }

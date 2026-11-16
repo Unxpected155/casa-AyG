@@ -294,6 +294,11 @@
   background: var(--over);
 }
 
+/* Justo lo planeado: completo, no es una alarma. */
+.rule-fill.full {
+  background: var(--ok);
+}
+
 .rule-fill.income {
   background: var(--ink-soft);
 }
@@ -313,6 +318,10 @@
 
 .row-status.over {
   color: var(--over);
+}
+
+.row-status.full {
+  color: var(--ink-soft);
 }
 
 .idle-toggle {
