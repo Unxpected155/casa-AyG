@@ -1,4 +1,4 @@
-package com.finanzapp.db;
+package com.casaayg.db;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -16,8 +16,8 @@ import org.testcontainers.utility.MountableFile;
 
 /**
  * Levanta un Postgres real (la misma imagen y el mismo script de roles que compose.yaml)
- * y arranca la app completa: Flyway migra como finanzapp_owner y la app se conecta
- * como finanzapp_app. Un solo contenedor para todos los tests.
+ * y arranca la app completa: Flyway migra como casaayg_owner y la app se conecta
+ * como casaayg_app. Un solo contenedor para todos los tests.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class PostgresTestBase {
@@ -26,9 +26,11 @@ public abstract class PostgresTestBase {
     protected static final String OWNER_PASSWORD = randomSecret();
     protected static final String APP_PASSWORD = randomSecret();
 
+    // La MISMA imagen que compose.yaml, fijada por digest (postgres:18.7).
     protected static final PostgreSQLContainer POSTGRES =
-        new PostgreSQLContainer(DockerImageName.parse("postgres:18.7"))
-            .withDatabaseName("finanzapp")
+        new PostgreSQLContainer(DockerImageName.parse(
+                "postgres@sha256:b9f6b8ff03b62f3cfd9d9ba3fe56226a9991c79d3fb46fd46536263bf02be553"))
+            .withDatabaseName("casaayg")
             .withCopyFileToContainer(
                 MountableFile.forHostPath("../docker/postgres/initdb/01-roles.sh"),
                 "/docker-entrypoint-initdb.d/01-roles.sh")
@@ -48,14 +50,14 @@ public abstract class PostgresTestBase {
 
     /** Conexión como el rol de la aplicación (el que importa para la seguridad). */
     protected static Connection asApp() throws SQLException {
-        return DriverManager.getConnection(POSTGRES.getJdbcUrl(), "finanzapp_app", APP_PASSWORD);
+        return DriverManager.getConnection(POSTGRES.getJdbcUrl(), "casaayg_app", APP_PASSWORD);
     }
 
     /** Conexión como superusuario: solo para preparar datos de prueba. */
     protected static Connection asSuperuser() throws SQLException {
         Connection c = DriverManager.getConnection(
             POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
-        c.createStatement().execute("SET search_path = finanzapp");
+        c.createStatement().execute("SET search_path = casaayg");
         return c;
     }
 

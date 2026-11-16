@@ -1,4 +1,4 @@
-package com.finanzapp.db;
+package com.casaayg.db;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

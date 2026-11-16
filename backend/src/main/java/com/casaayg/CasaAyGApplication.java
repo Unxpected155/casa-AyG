@@ -1,12 +1,12 @@
-package com.finanzapp;
+package com.casaayg;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class FinanzAppApplication {
+public class CasaAyGApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(FinanzAppApplication.class, args);
+        SpringApplication.run(CasaAyGApplication.class, args);
     }
 }

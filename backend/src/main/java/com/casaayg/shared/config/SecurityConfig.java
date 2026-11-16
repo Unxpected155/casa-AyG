@@ -1,4 +1,4 @@
-package com.finanzapp.shared.config;
+package com.casaayg.shared.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -11,11 +11,11 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.finanzapp</groupId>
-    <artifactId>finanzapp</artifactId>
+    <groupId>com.casaayg</groupId>
+    <artifactId>casa-ayg</artifactId>
     <version>0.1.0-SNAPSHOT</version>
-    <name>finanzapp</name>
-    <description>App personal de finanzas construida para aprender seguridad</description>
+    <name>casa-ayg</name>
+    <description>Finanzas de pareja: espacios personales y familiar, construida para aprender seguridad</description>
 
     <properties>
         <java.version>25</java.version>

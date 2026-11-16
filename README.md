@@ -1,10 +1,12 @@
-# FinanzApp
+# Casa A&G
 
-App web personal (PWA) para manejar presupuesto, gastos, metas y deudas, construida para **aprender seguridad de aplicaciones** haciendo: threat modeling, seguridad de base de datos, supply chain, GitHub Advanced Security y Docker.
+Sitio web privado (PWA) para las finanzas de una pareja: cada quien con su **espacio personal** y, al casarse, un **espacio familiar** compartido. Registra gastos desde las **facturas electrónicas de Costa Rica** (Hacienda v4.4). Construido para **aprender seguridad de aplicaciones** haciendo: threat modeling, seguridad de base de datos, supply chain, GitHub Advanced Security y Docker.
 
-> 🚧 En construcción — Fase 0: repositorio y baseline de seguridad.
+> 🚧 En construcción — Fase 2: backend y base de datos.
 
-Stack previsto: Java + Spring Boot, PostgreSQL, React + TypeScript (PWA), Docker.
+Acceso solo por red privada (Tailscale): el sitio no se publica en internet.
+
+Stack: Java 25 + Spring Boot, PostgreSQL, React + TypeScript + GSAP (PWA), Docker.
 
 ## Desarrollo local
 
@@ -25,8 +27,8 @@ Tests (levantan su propio Postgres con Testcontainers):
 | Rol de Postgres | Para qué | Puede |
 |---|---|---|
 | `postgres` | Administración manual | Todo |
-| `finanzapp_owner` | Flyway (migraciones) | DDL en el esquema `finanzapp` |
-| `finanzapp_app` | La app en runtime | Solo DML; `audit_log` solo `INSERT`/`SELECT` |
+| `casaayg_owner` | Flyway (migraciones) | DDL en el esquema `casaayg` |
+| `casaayg_app` | La app en runtime | Solo DML, sujeta a RLS por espacio; `audit_log` solo `INSERT`/`SELECT` |
 
 ## Seguridad
 
