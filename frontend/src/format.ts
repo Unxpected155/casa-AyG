@@ -1,4 +1,4 @@
-import type { Currency, Group } from "./types";
+import type { Currency, Group, PlaceKind } from "./types";
 
 const crc = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 });
 const crcExact = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -19,6 +19,13 @@ export const GROUP_LABEL: Record<Group, string> = {
   NECESIDAD: "Necesidades",
   DESEO: "Deseos",
   AHORRO: "Ahorro",
+};
+
+export const PLACE_KIND_LABEL: Record<PlaceKind, string> = {
+  BANCO: "Banco",
+  SOBRE: "Sobre",
+  CDP: "CDP",
+  EFECTIVO: "Efectivo",
 };
 
 /** Meta de la regla 50/30/20 por grupo. */

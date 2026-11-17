@@ -43,6 +43,40 @@ export interface Transaction {
   source: string;
   createdBy: string;
   beforeMerge: boolean;
+  placeId: string | null;
+}
+
+export type PlaceKind = "BANCO" | "SOBRE" | "CDP" | "EFECTIVO";
+
+/** Un lugar donde vive el dinero. `balance` es el saldo a hoy, calculado por el servidor. */
+export interface Place {
+  id: string;
+  name: string;
+  kind: PlaceKind;
+  currency: Currency;
+  openingBalance: number;
+  openingDate: string;
+  parentId: string | null;
+  archived: boolean;
+  balance: number;
+}
+
+/** Dinero movido entre dos lugares: no es gasto ni ingreso. */
+export interface Transfer {
+  id: string;
+  fromPlace: string;
+  toPlace: string;
+  date: string;
+  amount: number;
+  currency: Currency;
+  description: string | null;
+  batchId: string | null;
+  createdBy: string;
+}
+
+export interface Suggestion {
+  categoryId: string | null;
+  placeId: string | null;
 }
 
 export interface TransactionPage {

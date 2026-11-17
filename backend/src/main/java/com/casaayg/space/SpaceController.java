@@ -63,7 +63,8 @@ class SpaceController {
     }
 
     record Export(Instant exportedAt, SpaceView space, List<Map<String, Object>> categories,
-                  List<Map<String, Object>> budgets, List<Map<String, Object>> transactions) {}
+                  List<Map<String, Object>> budgets, List<Map<String, Object>> transactions,
+                  List<Map<String, Object>> places, List<Map<String, Object>> transfers) {}
 
     /**
      * Exportación completa del espacio (ADR-005: si alguien sale del espacio familiar, cada quien
@@ -84,13 +85,24 @@ class SpaceController {
         var transactions = jdbc.sql("""
                 SELECT t.id, t.tx_date AS "date", t.description, t.amount, t.currency,
                        t.payment_method AS "paymentMethod", t.source, t.category_id AS "categoryId",
-                       u.display_name AS "createdBy", t.origin_space_id IS NOT NULL AS "beforeMerge"
+                       u.display_name AS "createdBy", t.origin_space_id IS NOT NULL AS "beforeMerge",
+                       t.place_id AS "placeId"
                   FROM transaction t JOIN app_user u ON u.id = t.created_by
                  WHERE t.space_id = ? ORDER BY t.tx_date, t.created_at""").param(spaceId).query().listOfRows();
+        var places = jdbc.sql("""
+                SELECT id, name, kind, currency, opening_balance AS "openingBalance", opening_date AS "openingDate",
+                       parent_id AS "parentId", archived
+                  FROM place WHERE space_id = ? ORDER BY created_at""").param(spaceId).query().listOfRows();
+        var transfers = jdbc.sql("""
+                SELECT x.id, x.tx_date AS "date", x.from_place AS "from", x.to_place AS "to", x.amount,
+                       x.description, x.batch_id AS "batchId", u.display_name AS "createdBy"
+                  FROM transfer x JOIN app_user u ON u.id = x.created_by
+                 WHERE x.space_id = ? ORDER BY x.tx_date, x.created_at""").param(spaceId).query().listOfRows();
         audit.record(CurrentUser.require(), "EXPORTACION", Map.of("espacio", spaceId.toString()), request);
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"casa-ayg-" + LocalDate.now() + ".json\"")
-            .body(new Export(Instant.now(), space, normalize(categories), normalize(budgets), normalize(transactions)));
+            .body(new Export(Instant.now(), space, normalize(categories), normalize(budgets), normalize(transactions),
+                normalize(places), normalize(transfers)));
     }
 
     /** Tipos de JDBC → JSON estable (fechas ISO, montos como número exacto). */
