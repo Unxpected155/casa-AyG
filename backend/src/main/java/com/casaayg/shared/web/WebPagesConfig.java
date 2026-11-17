@@ -12,7 +12,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebPagesConfig implements WebMvcConfigurer {
 
     /** Rutas de la SPA (ver frontend/src/router.ts). */
-    public static final String[] SPA_ROUTES = {"/", "/login", "/registrar", "/movimientos", "/plan", "/cuenta", "/boda", "/lugares"};
+    public static final String[] SPA_ROUTES = {"/", "/login", "/registrar", "/movimientos", "/plan", "/cuenta", "/boda", "/lugares", "/metas"};
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {

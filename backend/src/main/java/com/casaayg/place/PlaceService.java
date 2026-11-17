@@ -64,17 +64,7 @@ public class PlaceService {
         SELECT p.id, p.name, p.kind, p.currency, p.opening_balance, p.opening_date, p.parent_id, p.archived,
                p.cdp_rate, p.cdp_term_days, p.cdp_day_basis, p.cdp_tax_pct, p.cdp_matures_on, p.cdp_payout_place,
                p.cdp_last_contribution,
-               p.opening_balance
-               + COALESCE((SELECT sum(CASE WHEN c.category_group = 'INGRESO' THEN t.amount ELSE -t.amount END)
-                             FROM transaction t JOIN category c ON c.id = t.category_id
-                            WHERE t.place_id = p.id AND t.tx_date >= p.opening_date
-                              AND t.tx_date <= current_date), 0)
-               + COALESCE((SELECT sum(x.amount) FROM transfer x
-                            WHERE x.to_place = p.id AND x.tx_date >= p.opening_date
-                              AND x.tx_date <= current_date), 0)
-               - COALESCE((SELECT sum(x.amount) FROM transfer x
-                            WHERE x.from_place = p.id AND x.tx_date >= p.opening_date
-                              AND x.tx_date <= current_date), 0) AS balance
+               place_balance(p.id, current_date) AS balance
           FROM place p""";
 
     @Transactional(readOnly = true)

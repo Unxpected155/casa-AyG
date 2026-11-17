@@ -1351,3 +1351,152 @@ body.sheet-open {
   color: var(--ink-soft);
 }
 
+/* ---------- Metas (V10) ---------- */
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.goal {
+  padding: var(--s4) 0 var(--s5);
+  border-bottom: 1px solid var(--rule);
+}
+
+.goal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s1) var(--s3);
+}
+
+.goal-name {
+  font-family: var(--font-serif);
+  font-size: var(--t-xl);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.goal-figures {
+  font-size: var(--t-sm);
+}
+
+.goal-figures > .figure {
+  font-size: var(--t-md);
+  font-weight: 600;
+}
+
+.goal-pct {
+  color: var(--ink-soft);
+}
+
+.goal .row-rule {
+  margin-top: var(--s2);
+}
+
+.rule-fill.goal-tone {
+  background: var(--accent);
+}
+
+.goal-plan {
+  margin-top: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.goal.reached .goal-plan {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.goal.paused {
+  opacity: 0.75;
+}
+
+.goal-parts {
+  list-style: none;
+  margin: var(--s3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s1);
+  font-size: var(--t-sm);
+}
+
+.goal-parts li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding-left: var(--s3);
+  color: var(--ink-soft);
+}
+
+.goal-parts-form {
+  display: grid;
+  gap: var(--s2);
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.goal-parts-form legend {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  margin-bottom: var(--s2);
+}
+
+.goal-parts-form .field-row {
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.goal-parts-form input {
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: var(--t-md);
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.chip-row.wrap {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+
+.reorder {
+  display: inline-flex;
+  gap: var(--s1);
+  margin-right: auto;
+}
+
+.account-link {
+  margin-left: auto;
+  color: var(--ink-soft);
+}
+
+.account-link[aria-current="page"] {
+  color: var(--accent);
+}
+
+
+/* Un fieldset no se encoge por debajo de su contenido (min-width: min-content por defecto):
+   sin esto, una fila de campos ensancha toda la página en el teléfono. */
+fieldset {
+  min-width: 0;
+}
+
+/* Partes: nombre | monto | quitar, siempre dentro del ancho de la pantalla. */
+.goal-parts-form .field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 7.5rem) 44px;
+  gap: var(--s2);
+}
+
+.goal-parts-form .field-row input {
+  width: 100%;
+}

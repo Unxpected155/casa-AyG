@@ -54,6 +54,31 @@ export interface Transaction {
   recurringId: string | null;
 }
 
+export type GoalStatus = "ACTIVA" | "PAUSADA" | "CUMPLIDA" | "ARCHIVADA";
+
+/** Una meta con su avance (calculado por el servidor con el saldo de sus lugares). */
+export interface Goal {
+  id: string;
+  name: string;
+  kind: "NORMAL" | "EMERGENCIA";
+  targetAmount: number | null;
+  emergencyMonths: number | null;
+  currency: Currency;
+  targetDate: string | null;
+  priority: number;
+  status: GoalStatus;
+  target: number;
+  saved: number;
+  remaining: number;
+  percent: number;
+  monthlyNeeded: number | null;
+  monthlyPace: number;
+  eta: string | null;
+  monthlyExpenses: number;
+  placeIds: string[];
+  parts: { name: string; amount: number }[];
+}
+
 /** Un pago fijo visto en un mes (fecha de ese mes y, si ya se pagó, el movimiento). */
 export interface Recurring {
   id: string;
