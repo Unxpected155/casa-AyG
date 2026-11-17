@@ -1,0 +1,19 @@
+# Perfil de producción (SPRING_PROFILES_ACTIVE=prod). Lo demás llega por variables de entorno
+# desde deploy/compose.yaml.
+# Los secretos llegan como archivos en /run/secrets/ (CASAAYG_SECRETS_DIR en el compose).
+
+casaayg:
+  security:
+    # TLS lo termina `tailscale serve` en el host: HSTS se envía siempre.
+    force-hsts: true
+
+server:
+  # Confía en X-Forwarded-* SOLO desde proxies internos (Tomcat RemoteIpValve: 127.x, 10.x,
+  # 172.16/12, 192.168.x): así la auditoría guarda la IP real del dispositivo en la tailnet.
+  forward-headers-strategy: native
+
+logging:
+  level:
+    root: INFO
+    # Nada de DEBUG en producción: los detalles de errores pueden traer datos.
+    com.casaayg: INFO
