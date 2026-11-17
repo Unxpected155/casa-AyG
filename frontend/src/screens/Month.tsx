@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, messageOf } from "../api";
 import { Balance } from "../components/Balance";
+import { cdpDue } from "../components/CdpPanel";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
@@ -12,7 +13,8 @@ import { GROUPS, type Group, type Summary, type SummaryLine } from "../types";
 
 /** Pantalla principal: el mes como una página de libreta. */
 export function Month() {
-  const { space, month, version } = useApp();
+  const { space, month, version, places } = useApp();
+  const dueCdps = places.filter((p) => !p.archived && cdpDue(p));
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -51,6 +53,13 @@ export function Month() {
       <div ref={ledger} className="ledger" aria-busy={summary === null && !error}>
         {error && <p className="form-error" role="alert">{error}</p>}
         {summary === null && !error && <LedgerSkeleton />}
+
+        {summary && isCurrentMonth && dueCdps.map((p) => (
+          <p key={p.id} className="notice cdp-due">
+            <span>Tu <strong>{p.name}</strong> venció: toca renovarlo.</span>
+            <button type="button" className="button secondary small" onClick={() => navigate("/lugares")}>Renovar</button>
+          </p>
+        ))}
 
         {summary && isCurrentMonth && <Balance />}
 

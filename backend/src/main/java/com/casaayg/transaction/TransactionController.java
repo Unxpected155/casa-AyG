@@ -49,14 +49,15 @@ class TransactionController {
      */
     record TransactionRequest(@NotNull UUID categoryId, @NotNull LocalDate date, @NotNull String description,
                               @NotNull BigDecimal amount, @NotNull Money.Currency currency, String paymentMethod,
-                              UUID placeId) {
+                              UUID placeId, BigDecimal grossAmount, Boolean tithe) {
 
         TransactionData toData() {
             if (date.isBefore(MIN_DATE) || date.isAfter(LocalDate.now().plusYears(1))) {
                 throw new IllegalArgumentException("fecha fuera de rango");
             }
             return new TransactionData(categoryId, date, new Description(description), new Money(amount, currency),
-                Text.optionalPaymentMethod(paymentMethod), placeId);
+                Text.optionalPaymentMethod(paymentMethod), placeId,
+                grossAmount == null ? null : new Money(grossAmount, currency).amount(), Boolean.TRUE.equals(tithe));
         }
     }
 
@@ -71,8 +72,9 @@ class TransactionController {
 
     @GetMapping("/suggest")
     TransactionService.Suggestion suggest(@PathVariable UUID spaceId,
-                                          @RequestParam(defaultValue = "") @jakarta.validation.constraints.Size(max = 200) String description) {
-        return transactions.suggest(spaceId, description);
+                                          @RequestParam(defaultValue = "") @jakarta.validation.constraints.Size(max = 200) String description,
+                                          @RequestParam(required = false) UUID categoryId) {
+        return transactions.suggest(spaceId, description, categoryId);
     }
 
     @GetMapping("/{id}")

@@ -45,7 +45,11 @@ public class PlaceService {
                                boolean archived) {}
 
     public record PlaceView(UUID id, String name, Kind kind, Money.Currency currency, BigDecimal openingBalance,
-                            LocalDate openingDate, UUID parentId, boolean archived, BigDecimal balance) {}
+                            LocalDate openingDate, UUID parentId, boolean archived, BigDecimal balance, Cdp cdp) {}
+
+    /** Datos de un CDP (null en los demás lugares; sus campos quedan null hasta configurarlo). */
+    public record Cdp(BigDecimal rate, Integer termDays, Integer dayBasis, BigDecimal taxPct, LocalDate maturesOn,
+                      UUID payoutPlace, BigDecimal lastContribution) {}
 
     public record NewTransfer(UUID from, UUID to, LocalDate date, BigDecimal amount, String note) {}
 
@@ -58,6 +62,8 @@ public class PlaceService {
      */
     private static final String PLACE_SELECT = """
         SELECT p.id, p.name, p.kind, p.currency, p.opening_balance, p.opening_date, p.parent_id, p.archived,
+               p.cdp_rate, p.cdp_term_days, p.cdp_day_basis, p.cdp_tax_pct, p.cdp_matures_on, p.cdp_payout_place,
+               p.cdp_last_contribution,
                p.opening_balance
                + COALESCE((SELECT sum(CASE WHEN c.category_group = 'INGRESO' THEN t.amount ELSE -t.amount END)
                              FROM transaction t JOIN category c ON c.id = t.category_id
@@ -214,10 +220,15 @@ public class PlaceService {
     }
 
     private static PlaceView mapPlace(ResultSet rs, int n) throws SQLException {
-        return new PlaceView(rs.getObject("id", UUID.class), rs.getString("name"), Kind.valueOf(rs.getString("kind")),
+        Kind kind = Kind.valueOf(rs.getString("kind"));
+        Cdp cdp = kind != Kind.CDP ? null : new Cdp(rs.getBigDecimal("cdp_rate"),
+            rs.getObject("cdp_term_days", Integer.class), rs.getObject("cdp_day_basis", Integer.class),
+            rs.getBigDecimal("cdp_tax_pct"), rs.getObject("cdp_matures_on", LocalDate.class),
+            rs.getObject("cdp_payout_place", UUID.class), rs.getBigDecimal("cdp_last_contribution"));
+        return new PlaceView(rs.getObject("id", UUID.class), rs.getString("name"), kind,
             Money.Currency.valueOf(rs.getString("currency")), rs.getBigDecimal("opening_balance"),
             rs.getObject("opening_date", LocalDate.class), rs.getObject("parent_id", UUID.class),
-            rs.getBoolean("archived"), rs.getBigDecimal("balance"));
+            rs.getBoolean("archived"), rs.getBigDecimal("balance"), cdp);
     }
 
     private static TransferView mapTransfer(ResultSet rs, int n) throws SQLException {

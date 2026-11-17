@@ -75,7 +75,9 @@ export function dayLabel(iso: string): string {
 }
 
 export function dateLabel(iso: string | null): string {
-  return iso ? shortDate.format(new Date(iso)) : "nunca";
+  if (!iso) return "nunca";
+  // "2026-12-09" es una fecha sin hora: se lee en hora local (si no, en Costa Rica sale un día antes).
+  return shortDate.format(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? parseDate(iso) : new Date(iso));
 }
 
 export function todayIso(): string {

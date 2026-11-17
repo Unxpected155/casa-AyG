@@ -1218,3 +1218,102 @@ body.sheet-open {
   color: var(--ink-soft);
   cursor: default;
 }
+
+/* ---------- Diezmo y CDP (V7) ---------- */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  min-height: 44px;
+  cursor: pointer;
+  font-size: var(--t-md);
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.tithe {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+
+.tithe .field-row {
+  align-items: end;
+}
+
+.tithe-amount {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+}
+
+.tithe-amount strong {
+  color: var(--ink);
+  font-size: var(--t-md);
+}
+
+.cdp {
+  display: grid;
+  gap: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule);
+  justify-items: start;
+}
+
+.cdp .field-row,
+.cdp .actions {
+  width: 100%;
+}
+
+.cdp-line {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.cdp-line strong {
+  color: var(--ink);
+}
+
+.renew {
+  display: grid;
+  gap: var(--s3);
+  width: 100%;
+}
+
+.renew-sheet {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s2) var(--s4);
+  margin: 0;
+  font-size: var(--t-sm);
+}
+
+.renew-sheet dt {
+  color: var(--ink-soft);
+}
+
+.renew-sheet dd {
+  margin: 0;
+  text-align: right;
+}
+
+.tag.due {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.notice.cdp-due {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
