@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, messageOf } from "../api";
 import { Balance } from "../components/Balance";
 import { cdpDue } from "../components/CdpPanel";
+import { DueList } from "../components/Recurring";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
@@ -89,6 +90,8 @@ export function Month() {
                 {summary.missingRates && " Algunos movimientos no tienen tipo de cambio de su fecha."}
               </p>
             </section>
+
+            {isCurrentMonth && <DueList />}
 
             {GROUPS.map((group) => (
               <GroupSection

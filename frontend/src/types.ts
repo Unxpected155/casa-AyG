@@ -50,6 +50,25 @@ export interface Transaction {
   titheOf: string | null;
   /** Si es un ingreso con diezmo: el gasto del diezmo. */
   titheId: string | null;
+  /** El pago fijo que se pagó con este movimiento. */
+  recurringId: string | null;
+}
+
+/** Un pago fijo visto en un mes (fecha de ese mes y, si ya se pagó, el movimiento). */
+export interface Recurring {
+  id: string;
+  name: string;
+  categoryId: string;
+  placeId: string | null;
+  dueDay: number | null;
+  expectedAmount: number | null;
+  currency: Currency;
+  notifyDaysBefore: number;
+  active: boolean;
+  dueDate: string | null;
+  paidTransactionId: string | null;
+  paidAmount: number | null;
+  paidOn: string | null;
 }
 
 export type PlaceKind = "BANCO" | "SOBRE" | "CDP" | "EFECTIVO";
