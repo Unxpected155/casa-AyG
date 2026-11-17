@@ -12,6 +12,9 @@
 set -euo pipefail
 
 [[ $EUID -eq 0 ]] || { echo "Correr con sudo." >&2; exit 1; }
+. /etc/os-release
+[[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 24.04 ]] \
+  || { echo "Este script es para Ubuntu 24.04; este servidor es ${PRETTY_NAME:-desconocido}." >&2; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 
 echo "==> Sistema al día y actualizaciones automáticas de seguridad"
@@ -29,7 +32,6 @@ APT::Periodic::Unattended-Upgrade "1";
 EOF
 
 install -d -m 0755 /etc/apt/keyrings
-. /etc/os-release
 
 echo "==> Docker (repositorio oficial)"
 if ! command -v docker >/dev/null; then
