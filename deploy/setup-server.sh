@@ -72,6 +72,18 @@ chown 999:999   /etc/casa-ayg/secrets/db_superuser_password && chmod 0400 /etc/c
 chown 999:10001 /etc/casa-ayg/secrets/db_owner_password /etc/casa-ayg/secrets/db_app_password
 chmod 0440      /etc/casa-ayg/secrets/db_owner_password /etc/casa-ayg/secrets/db_app_password
 
+echo "==> Llave VAPID de las notificaciones push (se genera una sola vez)"
+vapid=/etc/casa-ayg/secrets/vapid_private_key
+if [[ ! -s $vapid ]]; then
+  key=$(openssl ecparam -name prime256v1 -genkey -noout)
+  printf '%s\n' "$key" | openssl pkcs8 -topk8 -nocrypt -outform DER | base64 -w0 > "$vapid"
+  printf '%s\n' "$key" | openssl ec -pubout -outform DER 2>/dev/null | base64 -w0 > /etc/casa-ayg/secrets/vapid_public_key
+  unset key
+fi
+# Solo la app la lee (gid 10001); la pública no es secreta pero viaja igual.
+chown root:10001 /etc/casa-ayg/secrets/vapid_private_key /etc/casa-ayg/secrets/vapid_public_key
+chmod 0440       /etc/casa-ayg/secrets/vapid_private_key /etc/casa-ayg/secrets/vapid_public_key
+
 echo "==> Código (repo público) en /opt/casa-ayg"
 if [[ ! -d /opt/casa-ayg/.git ]]; then
   git clone --depth 1 https://github.com/Unxpected155/casa-AyG.git /opt/casa-ayg

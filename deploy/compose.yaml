@@ -57,11 +57,13 @@ services:
       CASAAYG_DB_URL: jdbc:postgresql://db:5432/casaayg
       CASAAYG_RP_ID: ${PUBLIC_HOST:?falta PUBLIC_HOST}
       CASAAYG_ORIGINS: https://${PUBLIC_HOST}
+      # Contacto que exige VAPID: el propio sitio (los servicios de push lo usan si hay problemas).
+      CASAAYG_PUSH_SUBJECT: https://${PUBLIC_HOST}
       # Heap fijo y reservado al arrancar: sin redimensionar la memoria en caliente y con el
       # servidor por encima del umbral de inactividad de Oracle Always Free (20 % de RAM).
       JAVA_TOOL_OPTIONS: -Xms1280m -Xmx1280m -XX:+AlwaysPreTouch
     # Solo los secretos que la app usa (no el del superusuario).
-    secrets: [db_owner_password, db_app_password]
+    secrets: [db_owner_password, db_app_password, vapid_private_key, vapid_public_key]
     user: "10001:10001"
     read_only: true
     tmpfs: ["/tmp:size=64m"]
@@ -100,3 +102,8 @@ secrets:
     file: /etc/casa-ayg/secrets/db_owner_password
   db_app_password:
     file: /etc/casa-ayg/secrets/db_app_password
+  # Llave VAPID de las notificaciones push (P-256, DER en base64). La genera setup-server.sh.
+  vapid_private_key:
+    file: /etc/casa-ayg/secrets/vapid_private_key
+  vapid_public_key:
+    file: /etc/casa-ayg/secrets/vapid_public_key
