@@ -48,6 +48,9 @@ casaayg:
     url: https://api.hacienda.go.cr/indicadores/tc/dolar
 
 server:
+  # El manifest de la PWA con su tipo correcto (si no, sale como octet-stream).
+  mime-mappings:
+    webmanifest: application/manifest+json
   # Límite del tamaño de las peticiones (Tomcat): nadie manda un JSON de 100 MB.
   max-http-request-header-size: 16KB
   tomcat:

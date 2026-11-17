@@ -1,6 +1,5 @@
 # Dependabot: PRs automáticos para mantener dependencias al día.
 # Se agrega cada ecosistema cuando exista su manifiesto:
-#   npm    → Fase 5 (frontend/package.json)
 #   docker → D4 (Dockerfile)
 version: 2
 updates:
@@ -27,3 +26,14 @@ updates:
       interval: weekly
     commit-message:
       prefix: "deps"
+
+  # Frontend (Fase 5). Versiones exactas + lockfile; ignore-scripts en frontend/.npmrc.
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "deps"
+    groups:
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]

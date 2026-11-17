@@ -35,23 +35,31 @@ class SpaceController {
         this.audit = audit;
     }
 
-    record SpaceView(UUID id, String kind, String name, boolean archived, List<String> members) {}
+    record Member(UUID id, String displayName) {}
+
+    record SpaceView(UUID id, String kind, String name, boolean archived, List<Member> members) {}
 
     @GetMapping
     @Transactional(readOnly = true)
     public List<SpaceView> list() {
         // RLS solo devuelve los espacios donde soy miembro.
-        return jdbc.sql("""
+        record Row(UUID id, String kind, String name, boolean archived, UUID memberId, String memberName) {}
+        List<Row> rows = jdbc.sql("""
                 SELECT s.id, s.kind, s.name, s.archived_at IS NOT NULL AS archived,
-                       array_agg(u.display_name ORDER BY u.display_name) AS members
+                       u.id AS member_id, u.display_name AS member_name
                   FROM space s
                   JOIN space_member m ON m.space_id = s.id
                   JOIN app_user u ON u.id = m.user_id
-                 GROUP BY s.id ORDER BY s.archived_at NULLS FIRST, s.kind, s.created_at""")
-            .query((rs, n) -> new SpaceView(rs.getObject("id", UUID.class), rs.getString("kind"),
-                rs.getString("name"), rs.getBoolean("archived"),
-                List.of((String[]) rs.getArray("members").getArray())))
+                 ORDER BY s.archived_at NULLS FIRST, s.kind, s.created_at, u.display_name""")
+            .query((rs, n) -> new Row(rs.getObject("id", UUID.class), rs.getString("kind"), rs.getString("name"),
+                rs.getBoolean("archived"), rs.getObject("member_id", UUID.class), rs.getString("member_name")))
             .list();
+        Map<UUID, SpaceView> spaces = new java.util.LinkedHashMap<>();
+        for (Row row : rows) {
+            spaces.computeIfAbsent(row.id(), id -> new SpaceView(id, row.kind(), row.name(), row.archived(),
+                new java.util.ArrayList<>())).members().add(new Member(row.memberId(), row.memberName()));
+        }
+        return List.copyOf(spaces.values());
     }
 
     record Export(Instant exportedAt, SpaceView space, List<Map<String, Object>> categories,
