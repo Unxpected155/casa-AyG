@@ -44,6 +44,12 @@ export interface Transaction {
   createdBy: string;
   beforeMerge: boolean;
   placeId: string | null;
+  /** Monto bruto de un ingreso (base del diezmo). */
+  grossAmount: number | null;
+  /** Si es un diezmo: el ingreso del que salió. */
+  titheOf: string | null;
+  /** Si es un ingreso con diezmo: el gasto del diezmo. */
+  titheId: string | null;
 }
 
 export type PlaceKind = "BANCO" | "SOBRE" | "CDP" | "EFECTIVO";
@@ -59,6 +65,34 @@ export interface Place {
   parentId: string | null;
   archived: boolean;
   balance: number;
+  /** Solo en un CDP; sus campos quedan null hasta configurarlo. */
+  cdp: CdpData | null;
+}
+
+export interface CdpData {
+  rate: number | null;
+  termDays: number | null;
+  dayBasis: number | null;
+  taxPct: number | null;
+  maturesOn: string | null;
+  payoutPlace: string | null;
+  lastContribution: number | null;
+}
+
+/** Lo que pasa al renovar un CDP (calculado por el servidor, igual que el banco). */
+export interface Renewal {
+  principal: number;
+  rate: number;
+  grossInterest: number;
+  tax: number;
+  netInterest: number;
+  tithe: number;
+  contribution: number;
+  newPrincipal: number;
+  maturesOn: string;
+  nextMaturity: string;
+  payoutPlace: string;
+  currency: Currency;
 }
 
 /** Dinero movido entre dos lugares: no es gasto ni ingreso. */
@@ -77,6 +111,8 @@ export interface Transfer {
 export interface Suggestion {
   categoryId: string | null;
   placeId: string | null;
+  /** Último bruto anotado en la categoría pedida (el salario bruto). */
+  lastGross: number | null;
 }
 
 export interface TransactionPage {

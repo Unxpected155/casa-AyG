@@ -49,6 +49,10 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Diezmo: siempre marcado en un ingreso nuevo; al editar, según si ya lo tiene.
+  const [tithe, setTithe] = useState(editing ? Boolean(editing.titheId) : true);
+  const [gross, setGross] = useState(editing?.grossAmount ? String(editing.grossAmount).replace(".", ",") : "");
+  const [grossTouched, setGrossTouched] = useState(Boolean(editing));
 
   const activePlaces = useMemo(
     () => orderedPlaces(places).map((r) => r.place).filter((p) => !p.archived || p.id === placeId),
@@ -123,8 +127,23 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     };
   }, [space, description, categoryTouched, kind, options]);
 
+  // Al elegir la categoría de un ingreso: el último bruto que anotaste en ella (tu salario bruto).
+  useEffect(() => {
+    if (!space || kind !== "ingreso" || !categoryId || grossTouched) return;
+    let cancelled = false;
+    api.get<Suggestion>(`/api/spaces/${space.id}/transactions/suggest?categoryId=${encodeURIComponent(categoryId)}`)
+      .then((s) => !cancelled && setGross(s.lastGross ? String(s.lastGross).replace(".", ",") : ""))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [space, kind, categoryId, grossTouched]);
+
   if (!space) return null;
   const base = `/api/spaces/${space.id}`;
+  const parsedGross = gross.trim() ? parseAmount(gross) : null;
+  const titheBase = parsedGross ?? parseAmount(amount);
+  const titheAmount = titheBase ? Math.round(Number(titheBase) * 10) / 100 : 0;
 
   const choosePlace = (p: Place) => {
     if (p.id === placeId) {
@@ -154,6 +173,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     } else {
       if (!categoryId) return setError("Elige una categoría.");
       if (!description.trim()) return setError("Agrega una descripción corta.");
+      if (kind === "ingreso" && gross.trim() && !parsedGross) return setError("Revisa el monto bruto.");
     }
     setBusy(true);
     setError(null);
@@ -161,8 +181,10 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
       if (kind === "mover") {
         await api.post(`${base}/transfers`, { from, to, date, amount: parsed, description: description.trim() || null });
       } else {
+        const income = kind === "ingreso";
         const body = { categoryId, date, description: description.trim(), amount: parsed, currency,
-                       paymentMethod: editing?.paymentMethod ?? null, placeId };
+                       paymentMethod: editing?.paymentMethod ?? null, placeId,
+                       grossAmount: income ? parsedGross : null, tithe: income && tithe };
         if (editing) await api.put(`${base}/transactions/${editing.id}`, body);
         else await api.post(`${base}/transactions`, body);
       }
@@ -310,6 +332,30 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                     </div>
                   ))}
                 </fieldset>
+
+                {kind === "ingreso" && (
+                  <div className="tithe">
+                    <label className="check">
+                      <input type="checkbox" checked={tithe} onChange={(e) => setTithe(e.target.checked)} />
+                      <span>Dar diezmo (10 % del bruto)</span>
+                    </label>
+                    {tithe && (
+                      <div className="field-row">
+                        <label className="field grow">
+                          <span>Monto bruto</span>
+                          <input inputMode="decimal" maxLength={18} value={gross} placeholder={amount || "Igual al monto"}
+                                 onChange={(e) => { setGross(e.target.value); setGrossTouched(true); }} />
+                        </label>
+                        <p className="tithe-amount" aria-live="polite">
+                          Diezmo <strong className="figure">{money(titheAmount, currency, true)}</strong>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {editing?.titheOf && (
+                  <p className="muted small">Este diezmo se anotó con su ingreso: si cambias el ingreso, se ajusta solo.</p>
+                )}
               </>
             )}
 

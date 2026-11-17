@@ -1,6 +1,7 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { api, messageOf } from "../api";
 import { orderedPlaces, showKind, totals } from "../components/Balance";
+import { CdpPanel, cdpDue } from "../components/CdpPanel";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
@@ -22,6 +23,15 @@ export function Places() {
   const { space, places, touch } = useApp();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Si un CDP ya venció, abre directo su renovación (se llega aquí desde el aviso del mes).
+  // Una sola vez: los lugares pueden llegar después de abrir la pantalla.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpened.current || places.length === 0) return;
+    autoOpened.current = true;
+    const due = places.find((p) => !p.archived && cdpDue(p));
+    if (due) setEditingId(due.id);
+  }, [places]);
   const [distributeFrom, setDistributeFrom] = useState<string | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
   const [entry, setEntry] = useState(false);
@@ -60,6 +70,7 @@ export function Places() {
               <span className="row-name">
                 {place.name}
                 {showKind(place) && <span className="tag">{PLACE_KIND_LABEL[place.kind]}</span>}
+                {cdpDue(place) && <span className="tag due">toca renovar</span>}
               </span>
               <span className={`figure${place.balance < 0 ? " negative" : ""}`}>
                 {money(place.balance, place.currency, true)}
@@ -281,6 +292,7 @@ function PlaceEditor({ place, places, onDone, onDistribute, onMove }: {
       <p className="muted small">
         Si el saldo no cuadra con el banco, corrige el saldo inicial o la fecha: lo anotado antes de esa fecha no cuenta.
       </p>
+      {place.kind === "CDP" && !place.archived && <CdpPanel place={place} places={places} onDone={onDone} />}
       {place.kind === "SOBRE" && parents.length > 0 && (
         <label className="field">
           <span>Dentro de</span>

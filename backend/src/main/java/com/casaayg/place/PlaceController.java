@@ -47,9 +47,11 @@ class PlaceController {
     private static final LocalDate MIN_DATE = LocalDate.of(2000, 1, 1);
 
     private final PlaceService places;
+    private final CdpService cdps;
 
-    PlaceController(PlaceService places) {
+    PlaceController(PlaceService places, CdpService cdps) {
         this.places = places;
+        this.cdps = cdps;
     }
 
     static LocalDate checkDate(LocalDate date) {
@@ -83,6 +85,27 @@ class PlaceController {
 
     record DistributeItem(@NotNull UUID to, @NotNull BigDecimal amount) {}
 
+    /** Datos del CDP como vienen en el comprobante del banco. */
+    record CdpRequest(@NotNull @jakarta.validation.constraints.DecimalMin(value = "0", inclusive = false)
+                      @jakarta.validation.constraints.DecimalMax(value = "100", inclusive = false) BigDecimal rate,
+                      @Min(1) @Max(3660) int termDays, int dayBasis,
+                      @NotNull @jakarta.validation.constraints.DecimalMin("0")
+                      @jakarta.validation.constraints.DecimalMax(value = "100", inclusive = false) BigDecimal taxPct,
+                      @NotNull LocalDate maturesOn, @NotNull UUID payoutPlace, BigDecimal lastContribution) {
+        CdpService.CdpSettings toSettings() {
+            if (dayBasis != 360 && dayBasis != 365) {
+                throw new IllegalArgumentException("base de días 360 o 365");
+            }
+            if (rate.scale() > 4 || taxPct.scale() > 2) {
+                throw new IllegalArgumentException("demasiados decimales");
+            }
+            return new CdpService.CdpSettings(rate, termDays, dayBasis, taxPct, checkDate(maturesOn), payoutPlace,
+                lastContribution);
+        }
+    }
+
+    record RenewRequest(BigDecimal rate, BigDecimal contribution, Boolean tithe) {}
+
     record DistributeRequest(@NotNull UUID from, @NotNull LocalDate date, String description,
                              @NotNull @Size(min = 1, max = PlaceService.MAX_BATCH) List<@Valid @NotNull DistributeItem> items) {}
 
@@ -100,6 +123,23 @@ class PlaceController {
     @PutMapping("/places/{id}")
     PlaceView update(@PathVariable UUID spaceId, @PathVariable UUID id, @Valid @RequestBody PlaceUpdate body) {
         return places.update(spaceId, id, body.toChanges());
+    }
+
+    @PutMapping("/places/{id}/cdp")
+    PlaceView configureCdp(@PathVariable UUID spaceId, @PathVariable UUID id, @Valid @RequestBody CdpRequest body) {
+        return cdps.configure(spaceId, id, body.toSettings());
+    }
+
+    @GetMapping("/places/{id}/cdp/preview")
+    CdpService.Renewal previewCdp(@PathVariable UUID spaceId, @PathVariable UUID id,
+                                  @RequestParam(required = false) BigDecimal rate,
+                                  @RequestParam(required = false) BigDecimal contribution) {
+        return cdps.preview(spaceId, id, rate, contribution);
+    }
+
+    @PostMapping("/places/{id}/cdp/renew")
+    CdpService.Renewal renewCdp(@PathVariable UUID spaceId, @PathVariable UUID id, @Valid @RequestBody RenewRequest body) {
+        return cdps.renew(spaceId, id, body.rate(), body.contribution(), Boolean.TRUE.equals(body.tithe()));
     }
 
     @GetMapping("/transfers")
