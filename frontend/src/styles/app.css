@@ -1320,3 +1320,34 @@ body.sheet-open {
 .actions.start {
   justify-content: flex-start;
 }
+
+/* ---------- Pagos fijos (V9) ---------- */
+.due-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.due-when {
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+}
+
+.due-when.late {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.due-list .row-main {
+  align-items: center;
+}
+
+.due-done,
+.due-paid {
+  padding-top: var(--s3);
+}
+
+.row.inactive .row-name {
+  color: var(--ink-soft);
+}
+

@@ -102,6 +102,42 @@ public class PushService {
         }
     }
 
+    /**
+     * Cada mañana: los pagos fijos que vencen hoy, mañana o en 3 días (según el aviso de cada
+     * uno) y que ese mes no se han pagado. Un solo aviso por persona, con los nombres.
+     */
+    @Scheduled(cron = "0 0 8 * * *", zone = "America/Costa_Rica")
+    public void remindRecurring() {
+        if (!sender.enabled()) {
+            return;
+        }
+        LocalDate today = LocalDate.now(COSTA_RICA);
+        record Due(UUID userId, String name, LocalDate dueDate) {}
+        List<Due> due = asUser.run(null, () -> jdbc.sql("SELECT user_id, name, due_date FROM recurring_reminders(?)")
+            .param(today)
+            .query((rs, n) -> new Due(rs.getObject("user_id", UUID.class), rs.getString("name"),
+                rs.getObject("due_date", LocalDate.class))).list());
+        due.stream().collect(java.util.stream.Collectors.groupingBy(Due::userId, java.util.LinkedHashMap::new,
+                java.util.stream.Collectors.toList()))
+            .forEach((user, items) -> notify(user, "Pagos por hacer", recurringText(today, items.stream()
+                .map(d -> new String[] {d.name(), d.dueDate().toString()}).toList()), "/"));
+    }
+
+    /** "Hoy vence: Internet." / "Mañana vence: Agua." / "El 15 vence: Luz." (varios: separados por punto). */
+    static String recurringText(LocalDate today, List<String[]> items) {
+        java.util.Map<LocalDate, List<String>> byDate = new java.util.TreeMap<>();
+        for (String[] item : items) {
+            byDate.computeIfAbsent(LocalDate.parse(item[1]), k -> new java.util.ArrayList<>()).add(item[0]);
+        }
+        List<String> parts = new java.util.ArrayList<>();
+        byDate.forEach((date, names) -> {
+            String when = date.equals(today) ? "Hoy" : date.equals(today.plusDays(1)) ? "Mañana" : "El " + date.getDayOfMonth();
+            parts.add(when + (names.size() == 1 ? " vence: " : " vencen: ") + String.join(", ", names) + ".");
+        });
+        String text = String.join(" ", parts);
+        return text.length() > 200 ? text.substring(0, 197) + "…" : text;
+    }
+
     /** Envía a todos los dispositivos de una persona; borra los que el servicio dio por muertos. */
     int notify(UUID userId, String title, String body, String url) {
         String json = "{\"title\":" + quote(title) + ",\"body\":" + quote(body) + ",\"url\":" + quote(url) + "}";

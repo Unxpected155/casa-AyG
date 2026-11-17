@@ -19,6 +19,15 @@ interface EntrySheetProps {
   initialKind?: Kind;
   /** Lugar de origen sugerido al abrir en modo "mover". */
   initialFrom?: string;
+  /** Hoja nueva ya llena (pagar un pago fijo). */
+  preset?: {
+    categoryId: string;
+    description: string;
+    amount: number | null;
+    currency: Currency;
+    placeId: string | null;
+    recurringId: string;
+  };
   onClose: () => void;
 }
 
@@ -27,7 +36,7 @@ interface EntrySheetProps {
  * gasto en menos de 10 segundos, de pie en la caja. La descripción va antes que la categoría
  * porque la app sugiere la categoría a partir de lo que escribes.
  */
-export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom, onClose }: EntrySheetProps) {
+export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom, preset, onClose }: EntrySheetProps) {
   const { space, categories, places, touch } = useApp();
   const sheet = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -36,16 +45,17 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const editingCategory = categories.find((c) => c.id === editing?.categoryId);
   const [kind, setKind] = useState<Kind>(
     editingTransfer ? "mover" : editing ? (editingCategory?.group === "INGRESO" ? "ingreso" : "gasto") : initialKind ?? "gasto");
-  const [amount, setAmount] = useState(editing ? String(editing.amount).replace(".", ",") : "");
-  const [currency, setCurrency] = useState<Currency>(editing?.currency ?? "CRC");
-  const [categoryId, setCategoryId] = useState(editing?.categoryId ?? "");
-  const [categoryTouched, setCategoryTouched] = useState(Boolean(editing));
+  const [amount, setAmount] = useState(editing ? String(editing.amount).replace(".", ",")
+    : preset?.amount != null ? String(preset.amount).replace(".", ",") : "");
+  const [currency, setCurrency] = useState<Currency>(editing?.currency ?? preset?.currency ?? "CRC");
+  const [categoryId, setCategoryId] = useState(editing?.categoryId ?? preset?.categoryId ?? "");
+  const [categoryTouched, setCategoryTouched] = useState(Boolean(editing || preset));
   const [suggested, setSuggested] = useState(false);
-  const [placeId, setPlaceId] = useState<string | null>(editing ? editing.placeId : null);
+  const [placeId, setPlaceId] = useState<string | null>(editing ? editing.placeId : preset?.placeId ?? null);
   const [from, setFrom] = useState(initialFrom ?? "");
   const [to, setTo] = useState("");
   const [date, setDate] = useState(editing?.date ?? todayIso());
-  const [description, setDescription] = useState(editing?.description ?? "");
+  const [description, setDescription] = useState(editing?.description ?? preset?.description ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -184,7 +194,8 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
         const income = kind === "ingreso";
         const body = { categoryId, date, description: description.trim(), amount: parsed, currency,
                        paymentMethod: editing?.paymentMethod ?? null, placeId,
-                       grossAmount: income ? parsedGross : null, tithe: income && tithe };
+                       grossAmount: income ? parsedGross : null, tithe: income && tithe,
+                       recurringId: editing ? undefined : preset?.recurringId ?? null };
         if (editing) await api.put(`${base}/transactions/${editing.id}`, body);
         else await api.post(`${base}/transactions`, body);
       }
@@ -210,7 +221,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   };
 
   const placeName = (id: string) => places.find((p) => p.id === id)?.name ?? "un lugar";
-  const title = editingTransfer ? "Dinero movido" : editing ? "Editar movimiento" : "Anotar";
+  const title = editingTransfer ? "Dinero movido" : editing ? "Editar movimiento" : preset ? `Pagar ${preset.description}` : "Anotar";
   const destinations = activePlaces.filter((p) => p.id !== from && (!fromPlace || p.currency === fromPlace.currency));
 
   // Portal a <body>: un ancestro con transform (la animación de página) volvería relativo

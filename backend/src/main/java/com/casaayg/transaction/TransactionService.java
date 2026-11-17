@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.casaayg.domain.Money;
 import com.casaayg.domain.Text.Description;
 import com.casaayg.place.PlaceService;
+import com.casaayg.recurring.RecurringService;
 import com.casaayg.shared.security.CurrentUser;
 import com.casaayg.shared.web.ConflictException;
 import com.casaayg.shared.web.NotFoundException;
@@ -29,11 +30,13 @@ public class TransactionService {
     private final JdbcClient jdbc;
     private final Spaces spaces;
     private final PlaceService places;
+    private final RecurringService recurring;
 
-    TransactionService(JdbcClient jdbc, Spaces spaces, PlaceService places) {
+    TransactionService(JdbcClient jdbc, Spaces spaces, PlaceService places, RecurringService recurring) {
         this.jdbc = jdbc;
         this.spaces = spaces;
         this.places = places;
+        this.recurring = recurring;
     }
 
     /** El diezmo es el 10 % del monto bruto del ingreso. */
@@ -44,13 +47,20 @@ public class TransactionService {
      * Datos validados de un movimiento (los arma el controlador con domain primitives).
      * {@code gross}: monto bruto de un ingreso (base del diezmo); null = el mismo monto.
      * {@code tithe}: anotar también el diezmo de este ingreso.
+     * {@code recurringId}: el pago fijo que se está pagando (solo al anotar).
      */
     public record TransactionData(UUID categoryId, LocalDate date, Description description, Money money,
-                                  String paymentMethod, UUID placeId, BigDecimal gross, boolean tithe) {
+                                  String paymentMethod, UUID placeId, BigDecimal gross, boolean tithe,
+                                  UUID recurringId) {
 
         public TransactionData(UUID categoryId, LocalDate date, Description description, Money money,
                                String paymentMethod, UUID placeId) {
-            this(categoryId, date, description, money, paymentMethod, placeId, null, false);
+            this(categoryId, date, description, money, paymentMethod, placeId, null, false, null);
+        }
+
+        public TransactionData(UUID categoryId, LocalDate date, Description description, Money money,
+                               String paymentMethod, UUID placeId, BigDecimal gross, boolean tithe) {
+            this(categoryId, date, description, money, paymentMethod, placeId, gross, tithe, null);
         }
 
         /** Base del diezmo: el bruto si se dio, si no el monto. */
@@ -62,7 +72,7 @@ public class TransactionService {
     public record TransactionView(UUID id, UUID categoryId, LocalDate date, String description,
                                   BigDecimal amount, Money.Currency currency, String paymentMethod,
                                   String source, UUID createdBy, boolean beforeMerge, UUID placeId,
-                                  BigDecimal grossAmount, UUID titheOf, UUID titheId) {}
+                                  BigDecimal grossAmount, UUID titheOf, UUID titheId, UUID recurringId) {}
 
     /**
      * Lo que se sugiere al anotar: la categoría que se usó antes con esa descripción, el último
@@ -75,7 +85,7 @@ public class TransactionService {
     private static final String COLUMNS = """
         id, category_id, tx_date, description, amount, currency, payment_method, source,
         created_by, origin_space_id IS NOT NULL AS before_merge, place_id, gross_amount, tithe_of,
-        (SELECT d.id FROM transaction d WHERE d.tithe_of = transaction.id) AS tithe_id""";
+        (SELECT d.id FROM transaction d WHERE d.tithe_of = transaction.id) AS tithe_id, recurring_id""";
 
     @Transactional(readOnly = true)
     public Page list(UUID spaceId, YearMonth month, int page, int size) {
@@ -104,13 +114,16 @@ public class TransactionService {
         boolean income = requireCategory(spaceId, data.categoryId());
         requirePlace(spaceId, data);
         requireTitheOnlyForIncome(income, data);
+        if (data.recurringId() != null) {
+            recurring.requireInSpace(spaceId, data.recurringId());
+        }
         UUID id = jdbc.sql("""
                 INSERT INTO transaction (space_id, created_by, category_id, tx_date, description, amount,
-                                         currency, payment_method, source, place_id, gross_amount)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'MANUAL', ?, ?) RETURNING id""")
+                                         currency, payment_method, source, place_id, gross_amount, recurring_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'MANUAL', ?, ?, ?) RETURNING id""")
             .params(spaceId, CurrentUser.require(), data.categoryId(), data.date(), data.description().value(),
                 data.money().amount(), data.money().currency().name(), data.paymentMethod(), data.placeId(),
-                income ? data.gross() : null)
+                income ? data.gross() : null, data.recurringId())
             .query(UUID.class).single();
         if (data.tithe()) {
             insertTithe(spaceId, id, data);
@@ -255,6 +268,6 @@ public class TransactionService {
             Money.Currency.valueOf(rs.getString("currency")), rs.getString("payment_method"),
             rs.getString("source"), rs.getObject("created_by", UUID.class), rs.getBoolean("before_merge"),
             rs.getObject("place_id", UUID.class), rs.getBigDecimal("gross_amount"), rs.getObject("tithe_of", UUID.class),
-            rs.getObject("tithe_id", UUID.class));
+            rs.getObject("tithe_id", UUID.class), rs.getObject("recurring_id", UUID.class));
     }
 }

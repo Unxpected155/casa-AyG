@@ -50,6 +50,7 @@ export function shiftMonth(ym: YearMonth, delta: number): YearMonth {
 const monthName = new Intl.DateTimeFormat("es-CR", { month: "long" });
 const dayHeading = new Intl.DateTimeFormat("es-CR", { weekday: "long", day: "numeric", month: "long" });
 const shortDate = new Intl.DateTimeFormat("es-CR", { day: "numeric", month: "short", year: "numeric" });
+const dayMonth = new Intl.DateTimeFormat("es-CR", { day: "numeric", month: "short" });
 
 export function monthLabel(ym: YearMonth): string {
   const name = monthName.format(new Date(ym.year, ym.month - 1, 1));
@@ -78,6 +79,11 @@ export function dateLabel(iso: string | null): string {
   if (!iso) return "nunca";
   // "2026-12-09" es una fecha sin hora: se lee en hora local (si no, en Costa Rica sale un día antes).
   return shortDate.format(/^\d{4}-\d{2}-\d{2}$/.test(iso) ? parseDate(iso) : new Date(iso));
+}
+
+/** "2026-11-25" → "25 nov" (sin año: para fechas de este mes). */
+export function dayMonthLabel(iso: string): string {
+  return dayMonth.format(parseDate(iso));
 }
 
 export function todayIso(): string {
