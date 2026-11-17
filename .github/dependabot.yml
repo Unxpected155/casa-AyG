@@ -1,12 +1,19 @@
 # Dependabot: PRs automáticos para mantener dependencias al día.
 # Se agrega cada ecosistema cuando exista su manifiesto:
 #   docker → D4 (Dockerfile)
+#
+# cooldown de 14 días: no se proponen versiones con menos de 2 semanas publicadas.
+# Los paquetes maliciosos suelen detectarse y retirarse en sus primeros días; esperar
+# es la defensa más barata contra un ataque a la cadena de suministro.
+# (Las actualizaciones de SEGURIDAD de Dependabot no esperan: llegan de inmediato.)
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     # Las Actions van fijadas por SHA (obligatorio en el repo);
     # Dependabot actualiza el SHA y mantiene el tag en el comentario.
     commit-message:
@@ -16,14 +23,22 @@ updates:
     directory: /backend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: "deps"
+    ignore:
+      # webauthn4j-test debe ser la MISMA versión que webauthn4j-core, que trae
+      # spring-security-webauthn. Se actualiza a mano junto con Spring Boot.
+      - dependency-name: "com.webauthn4j:*"
 
   # Imagen de Postgres fijada por digest en compose.yaml.
   - package-ecosystem: docker-compose
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: "deps"
 
@@ -32,6 +47,8 @@ updates:
     directory: /frontend
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: "deps"
     groups:

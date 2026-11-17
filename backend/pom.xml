@@ -19,7 +19,8 @@
 
     <properties>
         <java.version>25</java.version>
-        <!-- La misma versión que trae spring-security-webauthn (para el emulador de los tests). -->
+        <!-- La misma versión que trae spring-security-webauthn (para el emulador de los tests).
+             Se actualiza a mano junto con Spring Boot: Dependabot la ignora (ver dependabot.yml). -->
         <webauthn4j.version>0.31.10.RELEASE</webauthn4j.version>
     </properties>
 
