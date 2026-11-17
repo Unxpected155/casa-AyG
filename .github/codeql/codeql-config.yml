@@ -1,0 +1,6 @@
+name: Casa A&G
+queries:
+  - uses: security-extended
+paths-ignore:
+  - frontend/dist
+  - "**/node_modules"
