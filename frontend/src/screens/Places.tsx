@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { api, messageOf } from "../api";
-import { orderedPlaces, totals } from "../components/Balance";
+import { orderedPlaces, showKind, totals } from "../components/Balance";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
@@ -33,26 +33,23 @@ export function Places() {
 
   return (
     <Shell onAdd={() => setEntry(true)}>
-      <div className="section-head">
-        <h1 className="page-title">Tus lugares</h1>
-        {rows.length > 1 && !readOnly && (
-          <button type="button" className="button secondary small" onClick={() => setMoving("")}>
-            <Icon name="swap" size={18} /> Mover dinero
-          </button>
-        )}
-      </div>
-      <p className="hint">
-        Donde vive tu dinero. El saldo empieza con lo que tenía el lugar el día que lo agregaste y se actualiza con
-        lo que anotas.
-      </p>
+      <h1 className="page-title">Tus lugares</h1>
+      <p className="hint">Cada lugar parte de lo que tenía el día que lo agregaste y suma lo que anotas.</p>
 
       {rows.length > 0 && (
-        <p className="overview-line places-total">
-          Hoy tienes{" "}
-          {rows.some((r) => r.place.currency === "CRC") && <strong className="figure">{money(crc, "CRC")}</strong>}
-          {rows.some((r) => r.place.currency === "CRC") && rows.some((r) => r.place.currency === "USD") && " y "}
-          {rows.some((r) => r.place.currency === "USD") && <strong className="figure">{money(usd, "USD")}</strong>}.
-        </p>
+        <div className="places-head">
+          <p className="places-total">
+            Hoy tienes{" "}
+            {rows.some((r) => r.place.currency === "CRC") && <strong className="figure">{money(crc, "CRC")}</strong>}
+            {rows.some((r) => r.place.currency === "CRC") && rows.some((r) => r.place.currency === "USD") && " y "}
+            {rows.some((r) => r.place.currency === "USD") && <strong className="figure">{money(usd, "USD")}</strong>}
+          </p>
+          {rows.length > 1 && !readOnly && (
+            <button type="button" className="button secondary small" onClick={() => setMoving("")}>
+              <Icon name="swap" size={18} /> Mover dinero
+            </button>
+          )}
+        </div>
       )}
 
       <ul className="rows">
@@ -62,7 +59,7 @@ export function Places() {
                     onClick={() => setEditingId(editingId === place.id ? null : place.id)} disabled={readOnly}>
               <span className="row-name">
                 {place.name}
-                <span className="tag">{PLACE_KIND_LABEL[place.kind]}</span>
+                {showKind(place) && <span className="tag">{PLACE_KIND_LABEL[place.kind]}</span>}
               </span>
               <span className={`figure${place.balance < 0 ? " negative" : ""}`}>
                 {money(place.balance, place.currency, true)}

@@ -240,7 +240,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
 
             <div className="amount-field">
               {kind === "mover" || place ? (
-                <span className="currency" aria-hidden="true">
+                <span className="currency static" aria-hidden="true">
                   {(kind === "mover" ? fromPlace?.currency ?? "CRC" : currency) === "CRC" ? "₡" : "$"}
                 </span>
               ) : (
@@ -361,6 +361,8 @@ function PlaceChips({ legend, places, selected, onSelect, empty }: {
   onSelect: (place: Place) => void;
   empty?: string;
 }) {
+  // La moneda solo se marca si hay lugares en colones y en dólares.
+  const mixed = new Set(places.map((p) => p.currency)).size > 1;
   return (
     <fieldset className="chips">
       <legend>{legend}</legend>
@@ -368,7 +370,7 @@ function PlaceChips({ legend, places, selected, onSelect, empty }: {
       <div className="chip-row">
         {places.map((p) => (
           <button key={p.id} type="button" className="chip" aria-pressed={p.id === selected} onClick={() => onSelect(p)}>
-            {p.name} <span className="chip-note">{p.currency === "USD" ? "$" : "₡"}</span>
+            {p.name}{mixed && <span className="chip-note"> {p.currency === "USD" ? "$" : "₡"}</span>}
           </button>
         ))}
       </div>

@@ -4,6 +4,11 @@ import { navigate } from "../router";
 import { useApp } from "../state";
 import type { Place } from "../types";
 
+/** La etiqueta del tipo sobra si el nombre ya lo dice ("Efectivo", "CDP ahorro"). */
+export function showKind(place: Place): boolean {
+  return !place.name.toLowerCase().includes(PLACE_KIND_LABEL[place.kind].toLowerCase());
+}
+
 /** Lugares activos ordenados como se muestran: cada lugar y, debajo, sus sobres. */
 export function orderedPlaces(places: Place[]): { place: Place; nested: boolean }[] {
   const active = places.filter((p) => !p.archived);
@@ -54,7 +59,7 @@ export function Balance() {
           {hasCrc && hasUsd && " y "}
           {hasUsd && <strong className="figure">{money(usd, "USD")}</strong>}
         </span>
-        <span className="balance-more">{open ? "Ocultar" : "Ver por lugar"}</span>
+        <span className="balance-more">{open ? "Ocultar el detalle" : "Ver por lugar"}</span>
       </button>
       {open && (
         <div id="balance-detail" className="balance-detail">
@@ -64,7 +69,7 @@ export function Balance() {
                 <div className="row-main">
                   <span className="row-name">
                     {place.name}
-                    <span className="tag">{PLACE_KIND_LABEL[place.kind]}</span>
+                    {showKind(place) && <span className="tag">{PLACE_KIND_LABEL[place.kind]}</span>}
                   </span>
                   <span className={`figure${place.balance < 0 ? " negative" : ""}`}>
                     {money(place.balance, place.currency, true)}

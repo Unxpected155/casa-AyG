@@ -35,7 +35,7 @@ export function Month() {
   useGSAP(() => {
     if (!summary) return;
     const total = ledger.current?.querySelector<HTMLElement>("[data-count]");
-    if (total) countUp(total, summary.expenses.crc, (n) => money(n, "CRC"));
+    if (total) countUp(total, Math.round(summary.expenses.crc), (n) => money(n, "CRC"));
     return whenMotionAllowed(() => {
       gsap.from(".rule-fill", { scaleX: 0, duration: 0.6, ease: "expo.out", stagger: 0.025 });
     });
@@ -109,28 +109,32 @@ export function Month() {
  * que queda. Los dólares van aparte, sin convertir, si hubo movimientos en dólares.
  */
 function MonthFlow({ summary }: { summary: Summary }) {
+  // Se redondea antes de restar, para que la frase cuadre a la vista (sin ₡1 de diferencia).
+  const inCrc = Math.round(summary.income.crc);
+  const outCrc = Math.round(summary.expenses.crc);
+  const left = inCrc - outCrc;
   const { income, expenses } = summary;
-  const left = income.crc - expenses.crc;
-  const usd = income.usd > 0 || expenses.usd > 0;
   return (
     <>
       <p className="overview-line">
         {income.crc > 0 ? (
           <>
-            Entraron <span className="figure">{money(income.crc, "CRC")}</span> y salieron{" "}
-            <strong data-count className="figure">{money(expenses.crc, "CRC")}</strong>
+            Entraron <span className="figure">{money(inCrc, "CRC")}</span> y salieron{" "}
+            <strong data-count className="figure">{money(outCrc, "CRC")}</strong>
             {left >= 0
               ? <>: te quedan <strong className="figure">{money(left, "CRC")}</strong> del mes.</>
               : <>: gastaste <strong className="figure">{money(-left, "CRC")}</strong> más de lo que entró.</>}
           </>
         ) : (
-          <>Van <strong data-count className="figure">{money(expenses.crc, "CRC")}</strong> en gastos este mes.</>
+          <>Van <strong data-count className="figure">{money(outCrc, "CRC")}</strong> en gastos este mes.</>
         )}
       </p>
-      {usd && (
+      {(income.usd > 0 || expenses.usd > 0) && (
         <p className="overview-detail">
-          En dólares: entraron <span className="figure">{money(income.usd, "USD")}</span> y salieron{" "}
-          <span className="figure">{money(expenses.usd, "USD")}</span>.
+          En dólares:
+          {income.usd > 0 && <> entraron <span className="figure">{money(income.usd, "USD")}</span></>}
+          {income.usd > 0 && expenses.usd > 0 && " y"}
+          {expenses.usd > 0 && <> salieron <span className="figure">{money(expenses.usd, "USD")}</span></>}.
         </p>
       )}
     </>
