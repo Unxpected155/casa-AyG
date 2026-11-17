@@ -36,6 +36,9 @@ spring:
       enabled: false
 
 casaayg:
+  push:
+    # VAPID "sub": en producción, https://<PUBLIC_HOST> (ver deploy/compose.yaml).
+    subject: ${CASAAYG_PUSH_SUBJECT:}
   security:
     # Producción: el nombre *.ts.net de Tailscale (ADR-003). Las passkeys quedan ligadas a él.
     rp-id: ${CASAAYG_RP_ID:localhost}

@@ -107,7 +107,7 @@ public class SecurityConfig {
                 // Páginas estáticas sin datos (los datos llegan por /api con sesión).
                 .requestMatchers(GET, WebPagesConfig.SPA_ROUTES).permitAll()
                 .requestMatchers(GET, "/index.html", "/assets/**", "/icons/**", "/manifest.webmanifest",
-                    "/favicon.svg").permitAll()
+                    "/favicon.svg", "/sw.js").permitAll()
                 .requestMatchers(POST, "/login/code", "/webauthn/authenticate/options", "/login/webauthn").permitAll()
                 // Registrar una passkey: sesión de código, o passkey usada hace < 5 min.
                 .requestMatchers(POST, "/webauthn/register/options", "/webauthn/register").access(enrollOrRecentPasskey())
