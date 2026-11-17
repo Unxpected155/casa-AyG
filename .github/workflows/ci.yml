@@ -1,0 +1,79 @@
+# CI de Casa A&G (Fase 6). Endurecido:
+# - Actions de GitHub fijadas por SHA completo (el repo lo exige); Dependabot las actualiza.
+# - permissions: {} arriba y cada job pide solo lo que usa (GITHUB_TOKEN de solo lectura).
+# - checkout sin persistir credenciales: ningún paso posterior puede usar el token de git.
+# - Sin pull_request_target: el código de un PR nunca corre con permisos del repo.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+      # Tests contra Postgres real (Testcontainers usa el Docker del runner).
+      - name: Tests
+        run: ./backend/mvnw -B -ntp -f backend/pom.xml verify
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # npm ci respeta el lockfile exacto; frontend/.npmrc pone ignore-scripts=true.
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Auditoría de dependencias
+        run: npm audit --audit-level=high
+      - name: Tipos y build
+        run: npm run build
+
+  dependency-review:
+    name: Dependencias
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      # Falla el PR si agrega una dependencia con vulnerabilidad alta o crítica.
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: never
