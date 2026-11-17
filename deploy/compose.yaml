@@ -57,13 +57,16 @@ services:
       CASAAYG_DB_URL: jdbc:postgresql://db:5432/casaayg
       CASAAYG_RP_ID: ${PUBLIC_HOST:?falta PUBLIC_HOST}
       CASAAYG_ORIGINS: https://${PUBLIC_HOST}
+      # Heap fijo y reservado al arrancar: sin redimensionar la memoria en caliente y con el
+      # servidor por encima del umbral de inactividad de Oracle Always Free (20 % de RAM).
+      JAVA_TOOL_OPTIONS: -Xms1280m -Xmx1280m -XX:+AlwaysPreTouch
     # Solo los secretos que la app usa (no el del superusuario).
     secrets: [db_owner_password, db_app_password]
     user: "10001:10001"
     read_only: true
     tmpfs: ["/tmp:size=64m"]
     cap_drop: [ALL]
-    mem_limit: 1g
+    mem_limit: 2g
     pids_limit: 300
     cpus: 1.0
     # Solo en localhost del servidor; tailscale serve hace de proxy HTTPS.
