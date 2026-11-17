@@ -20,7 +20,7 @@
     <properties>
         <java.version>25</java.version>
         <!-- La misma versión que trae spring-security-webauthn (para el emulador de los tests). -->
-        <webauthn4j.version>0.31.10.RELEASE</webauthn4j.version>
+        <webauthn4j.version>0.32.0.RELEASE</webauthn4j.version>
     </properties>
 
     <!--
