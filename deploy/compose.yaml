@@ -1,0 +1,99 @@
+# Producción de Casa A&G (Fase 7, checklist Docker D7). Se usa en el servidor con:
+#   docker compose --env-file /etc/casa-ayg/casa-ayg.env -f deploy/compose.yaml up -d
+#
+# Variables (en /etc/casa-ayg/casa-ayg.env, fuera del repo):
+#   APP_IMAGE   imagen por DIGEST, p. ej. ghcr.io/unxpected155/casa-ayg@sha256:…
+#   PUBLIC_HOST nombre en la tailnet, p. ej. casa-ayg.tu-red.ts.net
+#
+# Nada se publica a internet: la app escucha solo en 127.0.0.1 y `tailscale serve` le pone
+# HTTPS y la expone únicamente a los dispositivos de la tailnet (ADR-003).
+name: casa-ayg
+
+x-hardening: &hardening
+  # Ningún proceso puede ganar privilegios (setuid, etc.).
+  security_opt: ["no-new-privileges:true"]
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+services:
+  db:
+    <<: *hardening
+    image: postgres:18.7@sha256:b9f6b8ff03b62f3cfd9d9ba3fe56226a9991c79d3fb46fd46536263bf02be553
+    environment:
+      POSTGRES_DB: casaayg
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_superuser_password
+    secrets: [db_superuser_password, db_owner_password, db_app_password]
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ../docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    # Sistema de archivos de solo lectura; solo se escribe en el volumen de datos y en tmpfs.
+    read_only: true
+    tmpfs: [/var/run/postgresql, /tmp]
+    # Sin capacidades, salvo las que el entrypoint necesita para preparar el directorio de
+    # datos y bajar a usuario postgres (gosu).
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    mem_limit: 1g
+    pids_limit: 200
+    cpus: 0.75
+    shm_size: 128m
+    # Red interna: la BD no tiene salida a internet ni puertos publicados.
+    networks: [db]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d casaayg"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  app:
+    <<: *hardening
+    image: ${APP_IMAGE:?falta APP_IMAGE (imagen por digest)}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      CASAAYG_SECRETS_DIR: /run/secrets/
+      CASAAYG_DB_URL: jdbc:postgresql://db:5432/casaayg
+      CASAAYG_RP_ID: ${PUBLIC_HOST:?falta PUBLIC_HOST}
+      CASAAYG_ORIGINS: https://${PUBLIC_HOST}
+    # Solo los secretos que la app usa (no el del superusuario).
+    secrets: [db_owner_password, db_app_password]
+    user: "10001:10001"
+    read_only: true
+    tmpfs: ["/tmp:size=64m"]
+    cap_drop: [ALL]
+    mem_limit: 1g
+    pids_limit: 300
+    cpus: 1.0
+    # Solo en localhost del servidor; tailscale serve hace de proxy HTTPS.
+    ports: ["127.0.0.1:8080:8080"]
+    # db: para la BD. egress: salida a internet (tipo de cambio de Hacienda).
+    networks: [db, egress]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # Sin curl en la imagen: bash abre la conexión directamente.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+networks:
+  db:
+    internal: true
+  egress: {}
+
+volumes:
+  pgdata: {}
+
+# Archivos fuera del repo, creados por deploy/setup-server.sh con permisos mínimos.
+secrets:
+  db_superuser_password:
+    file: /etc/casa-ayg/secrets/db_superuser_password
+  db_owner_password:
+    file: /etc/casa-ayg/secrets/db_owner_password
+  db_app_password:
+    file: /etc/casa-ayg/secrets/db_app_password

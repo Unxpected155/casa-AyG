@@ -48,6 +48,8 @@ import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationFilter;
@@ -160,7 +162,16 @@ public class SecurityConfig {
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
                     "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
                         + "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"))
-                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER)))
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
+                // Lo que la página NO puede usar, aunque alguien lograra inyectar código.
+                .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy",
+                    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"))
+                .httpStrictTransportSecurity(hsts -> {
+                    hsts.maxAgeInSeconds(31_536_000).includeSubDomains(false);
+                    if (props.forceHsts()) {
+                        hsts.requestMatcher(AnyRequestMatcher.INSTANCE);
+                    }
+                }))
             .httpBasic(basic -> basic.disable())
             .formLogin(form -> form.disable());
         return http.build();

@@ -1,0 +1,12 @@
+[Unit]
+Description=Casa A&G: respaldo cifrado de la base de datos
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash /opt/casa-ayg/deploy/backup.sh
+# Endurecimiento del servicio: sin escalada de privilegios y con /home inaccesible.
+NoNewPrivileges=true
+ProtectHome=true
+PrivateTmp=true
