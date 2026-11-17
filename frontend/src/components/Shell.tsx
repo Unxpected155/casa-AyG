@@ -9,6 +9,7 @@ const NAV: { route: Route; label: string; icon: IconName }[] = [
   { route: "/", label: "Mes", icon: "ledger" },
   { route: "/movimientos", label: "Movimientos", icon: "list" },
   { route: "/plan", label: "Plan", icon: "plan" },
+  { route: "/lugares", label: "Lugares", icon: "wallet" },
   { route: "/cuenta", label: "Cuenta", icon: "user" },
 ];
 

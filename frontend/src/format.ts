@@ -1,13 +1,14 @@
-import type { Currency, Group } from "./types";
+import type { Currency, Group, PlaceKind } from "./types";
 
 const crc = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 });
-const crcExact = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const crcCents = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const usd = new Intl.NumberFormat("es-CR", { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat("es-CR", { maximumFractionDigits: 0 });
 
 export function money(amount: number, currency: Currency, exact = false): string {
   if (currency === "USD") return usd.format(amount);
-  return (exact ? crcExact : crc).format(amount);
+  // Exacto: con céntimos solo si los hay, y entonces siempre dos (₡950 179,50, nunca ₡950 179,5).
+  return exact && !Number.isInteger(Math.round(amount * 100) / 100) ? crcCents.format(amount) : crc.format(amount);
 }
 
 export function pct(value: number): string {
@@ -19,6 +20,13 @@ export const GROUP_LABEL: Record<Group, string> = {
   NECESIDAD: "Necesidades",
   DESEO: "Deseos",
   AHORRO: "Ahorro",
+};
+
+export const PLACE_KIND_LABEL: Record<PlaceKind, string> = {
+  BANCO: "Banco",
+  SOBRE: "Sobre",
+  CDP: "CDP",
+  EFECTIVO: "Efectivo",
 };
 
 /** Meta de la regla 50/30/20 por grupo. */
