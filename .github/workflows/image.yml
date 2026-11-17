@@ -60,7 +60,6 @@ jobs:
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "### Imagen publicada" >> "$GITHUB_STEP_SUMMARY"
           echo "\`$IMAGE@$digest\`" >> "$GITHUB_STEP_SUMMARY"
-          docker logout ghcr.io
 
       - name: Attestation de procedencia
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -76,3 +75,8 @@ jobs:
           subject-digest: ${{ steps.push.outputs.digest }}
           sbom-path: sbom.cdx.json
           push-to-registry: true
+
+      # Las attestations con push-to-registry usan la sesión de Docker: se cierra al final.
+      - name: Cerrar sesión en GHCR
+        if: always()
+        run: docker logout ghcr.io
