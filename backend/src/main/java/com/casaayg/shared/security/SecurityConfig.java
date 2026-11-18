@@ -48,6 +48,8 @@ import org.springframework.security.web.csrf.CsrfAuthenticationStrategy;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationFilter;
@@ -105,7 +107,7 @@ public class SecurityConfig {
                 // Páginas estáticas sin datos (los datos llegan por /api con sesión).
                 .requestMatchers(GET, WebPagesConfig.SPA_ROUTES).permitAll()
                 .requestMatchers(GET, "/index.html", "/assets/**", "/icons/**", "/manifest.webmanifest",
-                    "/favicon.svg").permitAll()
+                    "/favicon.svg", "/sw.js").permitAll()
                 .requestMatchers(POST, "/login/code", "/webauthn/authenticate/options", "/login/webauthn").permitAll()
                 // Registrar una passkey: sesión de código, o passkey usada hace < 5 min.
                 .requestMatchers(POST, "/webauthn/register/options", "/webauthn/register").access(enrollOrRecentPasskey())
@@ -160,7 +162,22 @@ public class SecurityConfig {
                 .contentSecurityPolicy(csp -> csp.policyDirectives(
                     "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
                         + "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"))
-                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER)))
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.NO_REFERRER))
+                // Lo que la página NO puede usar, aunque alguien lograra inyectar código.
+                .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy",
+                    "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"))
+                // Aislamiento entre orígenes (lo pidió ZAP): ninguna otra página puede quedar
+                // conectada a esta ventana (COOP), ni incrustar sus archivos (CORP), y la página
+                // solo carga recursos propios (COEP). La app no usa nada de otros dominios.
+                .addHeaderWriter(new StaticHeadersWriter("Cross-Origin-Opener-Policy", "same-origin"))
+                .addHeaderWriter(new StaticHeadersWriter("Cross-Origin-Resource-Policy", "same-origin"))
+                .addHeaderWriter(new StaticHeadersWriter("Cross-Origin-Embedder-Policy", "require-corp"))
+                .httpStrictTransportSecurity(hsts -> {
+                    hsts.maxAgeInSeconds(31_536_000).includeSubDomains(false);
+                    if (props.forceHsts()) {
+                        hsts.requestMatcher(AnyRequestMatcher.INSTANCE);
+                    }
+                }))
             .httpBasic(basic -> basic.disable())
             .formLogin(form -> form.disable());
         return http.build();

@@ -1,0 +1,22 @@
+# Lo que NUNCA entra al contexto de build (ni a la imagen).
+# Secretos y datos primero: si no están en el contexto, ningún COPY los puede filtrar.
+secrets/
+data/
+backups/
+*.env
+.env*
+**/*.pem
+**/*.key
+
+# Generados y dependencias (se reconstruyen dentro de la imagen)
+**/node_modules
+**/target
+frontend/dist
+
+# Repo y herramientas
+.git
+.github
+.idea
+.vscode
+*.md
+Untitled.md

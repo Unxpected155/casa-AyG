@@ -49,4 +49,16 @@ public final class Text {
     public static String optionalPaymentMethod(String raw) {
         return raw == null || raw.isBlank() ? null : clean(raw, 30, "medio de pago");
     }
+
+    /** Nombre de un lugar donde vive el dinero (1–40). */
+    public record PlaceName(String value) {
+        public PlaceName {
+            value = clean(value, 40, "nombre");
+        }
+    }
+
+    /** Nota opcional de una transferencia (hasta 200). */
+    public static String optionalNote(String raw) {
+        return raw == null || raw.isBlank() ? null : clean(raw, 200, "nota");
+    }
 }

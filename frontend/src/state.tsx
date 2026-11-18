@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, ApiError } from "./api";
 import { currentMonth, shiftMonth, type YearMonth } from "./format";
-import type { Category, Me, Space } from "./types";
+import type { Category, Me, Place, Space } from "./types";
 
 export type Session =
   | { kind: "loading" }
@@ -16,6 +16,8 @@ interface AppState {
   space: Space | null;
   selectSpace: (id: string) => void;
   categories: Category[];
+  /** Lugares del espacio (incluye archivados), con su saldo a hoy. */
+  places: Place[];
   month: YearMonth;
   moveMonth: (delta: number) => void;
   /** Sube cada vez que cambian los datos, para que las pantallas recarguen. */
@@ -37,6 +39,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [spaceId, setSpaceId] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [places, setPlaces] = useState<Place[]>([]);
   const [month, setMonth] = useState<YearMonth>(currentMonth);
   const [version, setVersion] = useState(0);
 
@@ -67,12 +70,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!space) {
       setCategories([]);
+      setPlaces([]);
       return;
     }
     let cancelled = false;
     api.get<Category[]>(`/api/spaces/${space.id}/categories`)
       .then((list) => !cancelled && setCategories(list))
       .catch(() => !cancelled && setCategories([]));
+    api.get<Place[]>(`/api/spaces/${space.id}/places`)
+      .then((list) => !cancelled && setPlaces(list))
+      .catch(() => !cancelled && setPlaces([]));
     return () => {
       cancelled = true;
     };
@@ -88,13 +95,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       space,
       selectSpace: setSpaceId,
       categories,
+      places,
       month,
       moveMonth: (delta) => setMonth((m) => shiftMonth(m, delta)),
       version,
       touch: () => setVersion((v) => v + 1),
       memberName: (id) => names.get(id) ?? "Alguien",
     };
-  }, [session, reloadSession, spaces, space, categories, month, version]);
+  }, [session, reloadSession, spaces, space, categories, places, month, version]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

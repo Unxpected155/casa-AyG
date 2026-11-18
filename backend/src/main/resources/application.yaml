@@ -36,12 +36,16 @@ spring:
       enabled: false
 
 casaayg:
+  push:
+    # VAPID "sub": en producción, https://<PUBLIC_HOST> (ver deploy/compose.yaml).
+    subject: ${CASAAYG_PUSH_SUBJECT:}
   security:
     # Producción: el nombre *.ts.net de Tailscale (ADR-003). Las passkeys quedan ligadas a él.
     rp-id: ${CASAAYG_RP_ID:localhost}
     origins: ${CASAAYG_ORIGINS:http://localhost:8080}
     session-absolute: 7d
     session-code: 10m
+    force-hsts: ${CASAAYG_FORCE_HSTS:false}
   exchange-rate:
     # Tipo de cambio de referencia del BCCR, publicado por Hacienda (sin token).
     enabled: ${CASAAYG_EXCHANGE_RATE_ENABLED:true}

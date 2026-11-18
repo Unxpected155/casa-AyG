@@ -48,14 +48,17 @@ class TransactionController {
      * Un JSON con esos campos se rechaza con 400 (fail-on-unknown-properties).
      */
     record TransactionRequest(@NotNull UUID categoryId, @NotNull LocalDate date, @NotNull String description,
-                              @NotNull BigDecimal amount, @NotNull Money.Currency currency, String paymentMethod) {
+                              @NotNull BigDecimal amount, @NotNull Money.Currency currency, String paymentMethod,
+                              UUID placeId, BigDecimal grossAmount, Boolean tithe, UUID recurringId) {
 
         TransactionData toData() {
             if (date.isBefore(MIN_DATE) || date.isAfter(LocalDate.now().plusYears(1))) {
                 throw new IllegalArgumentException("fecha fuera de rango");
             }
             return new TransactionData(categoryId, date, new Description(description), new Money(amount, currency),
-                Text.optionalPaymentMethod(paymentMethod));
+                Text.optionalPaymentMethod(paymentMethod), placeId,
+                grossAmount == null ? null : new Money(grossAmount, currency).amount(), Boolean.TRUE.equals(tithe),
+                recurringId);
         }
     }
 
@@ -66,6 +69,13 @@ class TransactionController {
               @RequestParam(defaultValue = "0") @Min(0) @Max(10_000) int page,
               @RequestParam(defaultValue = "50") @Min(1) @Max(TransactionService.MAX_PAGE_SIZE) int size) {
         return transactions.list(spaceId, YearMonth.of(year, month), page, size);
+    }
+
+    @GetMapping("/suggest")
+    TransactionService.Suggestion suggest(@PathVariable UUID spaceId,
+                                          @RequestParam(defaultValue = "") @jakarta.validation.constraints.Size(max = 200) String description,
+                                          @RequestParam(required = false) UUID categoryId) {
+        return transactions.suggest(spaceId, description, categoryId);
     }
 
     @GetMapping("/{id}")

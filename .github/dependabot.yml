@@ -1,6 +1,4 @@
 # Dependabot: PRs automáticos para mantener dependencias al día.
-# Se agrega cada ecosistema cuando exista su manifiesto:
-#   docker → D4 (Dockerfile)
 #
 # cooldown de 14 días: no se proponen versiones con menos de 2 semanas publicadas.
 # Los paquetes maliciosos suelen detectarse y retirarse en sus primeros días; esperar
@@ -54,3 +52,23 @@ updates:
     groups:
       react:
         patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+
+  # Bases del Dockerfile (node, JDK, JRE) fijadas por digest (Fase 7).
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "deps"
+
+  # Postgres de producción, fijado por digest.
+  - package-ecosystem: docker-compose
+    directory: /deploy
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: "deps"

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, messageOf, withPasskeyConfirm } from "../api";
 import { Icon } from "../components/Icon";
+import { Notifications } from "../components/Notifications";
 import { Shell } from "../components/Shell";
 import { dateLabel } from "../format";
 import { navigate } from "../router";
@@ -120,6 +121,8 @@ export function Account() {
           </button>
         </div>
       </section>
+
+      <Notifications />
 
       <section className="block" aria-labelledby="rc-title">
         <h2 id="rc-title" className="section-title">Códigos de recuperación</h2>
