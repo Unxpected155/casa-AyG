@@ -100,11 +100,15 @@ class PushSubscriptionTest extends WebTestSupport {
             app.setAutoCommit(false);
             try (var ps = app.prepareStatement("SELECT user_id FROM casaayg.cdp_due_users(?)")) {
                 ps.setObject(1, LocalDate.now());
+                // La BD es compartida entre pruebas: otras pueden dejar CDP vencidos. Lo que importa
+                // es que A esté y B (sin CDP) no.
+                java.util.List<UUID> users = new java.util.ArrayList<>();
                 try (var rs = ps.executeQuery()) {
-                    assertThat(rs.next()).isTrue();
-                    assertThat(rs.getObject(1, UUID.class)).isEqualTo(a.id());
-                    assertThat(rs.next()).isFalse();
+                    while (rs.next()) {
+                        users.add(rs.getObject(1, UUID.class));
+                    }
                 }
+                assertThat(users).contains(a.id()).doesNotContain(b.id());
             }
         }
     }

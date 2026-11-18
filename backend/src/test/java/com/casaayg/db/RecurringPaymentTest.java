@@ -62,13 +62,13 @@ class RecurringPaymentTest extends WebTestSupport {
 
         row = month(a, tomorrow).stream().filter(r -> internet.toString().equals(r.get("id"))).findFirst().orElseThrow();
         assertThat(row.get("paidTransactionId")).isNotNull();
-        assertThat(reminders(TODAY)).noneMatch(r -> r.contains("Internet"));
+        assertThat(reminders(TODAY)).noneMatch(r -> r.startsWith(a.id() + "|Internet"));
     }
 
     @Test
     void sinDiaDePagoNoHayAviso() throws Exception {
         create(a, "Gas", null, null, 0);
-        assertThat(reminders(TODAY)).noneMatch(r -> r.contains("Gas"));
+        assertThat(reminders(TODAY)).noneMatch(r -> r.startsWith(a.id() + "|Gas"));
         assertThat(month(a, TODAY)).anyMatch(r -> "Gas".equals(r.get("name")) && r.get("dueDate") == null);
     }
 

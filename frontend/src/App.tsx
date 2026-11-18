@@ -5,6 +5,7 @@ import { Enroll, Login } from "./screens/Login";
 import { Month } from "./screens/Month";
 import { Movements } from "./screens/Movements";
 import { Goals } from "./screens/Goals";
+import { History } from "./screens/History";
 import { Places } from "./screens/Places";
 import { Plan } from "./screens/Plan";
 import { Wedding } from "./screens/Wedding";
@@ -34,6 +35,7 @@ export function App() {
     case "/boda": return <Wedding />;
     case "/lugares": return <Places />;
     case "/metas": return <Goals />;
+    case "/historia": return <History />;
     default: return <Month />;
   }
 }

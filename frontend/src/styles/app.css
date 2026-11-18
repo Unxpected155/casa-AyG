@@ -1500,3 +1500,170 @@ fieldset {
 .goal-parts-form .field-row input {
   width: 100%;
 }
+
+/* ---------- Historia ---------- */
+.history-link {
+  justify-self: start;
+  padding-left: 0;
+}
+
+.changed {
+  list-style: none;
+  margin: 0 0 var(--s3);
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+}
+
+.changed li {
+  display: grid;
+  grid-template-columns: 1.25rem 1fr;
+  gap: var(--s1);
+  line-height: 1.45;
+}
+
+.changed-mark {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  padding-top: 0.25em;
+}
+
+.changed-calm {
+  font-family: var(--font-serif);
+  font-size: var(--t-lg);
+}
+
+.chart {
+  margin: 0 0 var(--s4);
+}
+
+.chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.chart-legend {
+  display: flex;
+  gap: var(--s4);
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  margin-bottom: var(--s2);
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: var(--s1);
+  vertical-align: -1px;
+}
+
+.swatch.in,
+.bar.in {
+  background: var(--chart-in);
+  fill: var(--chart-in);
+}
+
+.swatch.out,
+.bar.out {
+  background: var(--chart-out);
+  fill: var(--chart-out);
+}
+
+.chart-axis {
+  stroke: var(--rule-strong);
+  stroke-width: 1;
+}
+
+.chart-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.chart-label {
+  font-size: 10px;
+  fill: var(--ink-soft);
+  font-family: var(--font-sans);
+}
+
+.chart-label.current {
+  fill: var(--ink);
+  font-weight: 600;
+}
+
+.chart-readout {
+  margin-top: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.chart-readout strong {
+  color: var(--ink);
+}
+
+.months-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+  margin-bottom: var(--s3);
+}
+
+.months-table th,
+.months-table td {
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: right;
+}
+
+.months-table th:first-child {
+  text-align: left;
+}
+
+.months-table thead th {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.trend-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.spark {
+  width: 60px;
+  height: 18px;
+}
+
+.spark-past {
+  fill: var(--rule-strong);
+}
+
+.spark-now {
+  fill: var(--chart-out);
+}
+
+.trend-detail {
+  padding: var(--s2) 0 var(--s1);
+}
+
+.trend-months {
+  list-style: none;
+  margin: var(--s2) 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s1) var(--s4);
+  font-size: var(--t-sm);
+}
+
+.trend-months li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s2);
+  color: var(--ink-soft);
+}
+
