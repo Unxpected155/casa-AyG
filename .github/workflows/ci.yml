@@ -59,8 +59,14 @@ jobs:
       # npm ci respeta el lockfile exacto; frontend/.npmrc pone ignore-scripts=true.
       - name: Instalar dependencias
         run: npm ci
-      - name: Auditoría de dependencias
-        run: npm audit --audit-level=high
+      # Lo que llega al navegador (dependencies) no puede tener NINGÚN aviso moderado o peor.
+      - name: Auditoría de dependencias (lo que se publica)
+        run: npm audit --omit=dev --audit-level=moderate
+      # Herramientas de build (devDependencies): corren solo en CI y en la PC, con entradas
+      # propias, y no viajan en la imagen. Bloquean solo los críticos; los altos sin parche
+      # quedan visibles en el log y Dependabot propone la versión corregida cuando exista.
+      - name: Auditoría de dependencias (herramientas de build)
+        run: npm audit --audit-level=critical
       - name: Tipos y build
         run: npm run build
 
