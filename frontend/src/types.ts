@@ -54,6 +54,35 @@ export interface Transaction {
   recurringId: string | null;
 }
 
+export interface HistoryMonth {
+  month: string; // "2026-11"
+  income: number;
+  expenses: number;
+  saved: number;
+  savingsRate: number | null;
+}
+
+export interface Trend {
+  categoryId: string;
+  name: string;
+  group: Group;
+  current: number;
+  average: number | null;
+  expected: number | null;
+  delta: number | null;
+  deltaPct: number | null;
+  series: number[];
+}
+
+export interface History {
+  month: string;
+  partial: boolean;
+  elapsed: number;
+  baselineMonths: number;
+  months: HistoryMonth[];
+  categories: Trend[];
+}
+
 export type GoalStatus = "ACTIVA" | "PAUSADA" | "CUMPLIDA" | "ARCHIVADA";
 
 /** Una meta con su avance (calculado por el servidor con el saldo de sus lugares). */

@@ -83,6 +83,9 @@ export function Month() {
                 {summary.income.totalUsd > 0 && <> de <span className="figure">{money(summary.income.totalUsd, "USD")}</span></>}.
               </p>
               <Rule503020 summary={summary} />
+              <button type="button" className="button ghost small history-link" onClick={() => navigate("/historia")}>
+                Comparar con otros meses
+              </button>
               <p className="rate">
                 {summary.usdSellRate
                   ? <>Dólar a <span className="figure">{money(summary.usdSellRate, "CRC", true)}</span>, venta de referencia del BCCR.</>

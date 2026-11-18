@@ -2,8 +2,8 @@
 // WebPagesConfig.SPA_ROUTES en el backend.
 import { useSyncExternalStore } from "react";
 
-export type Route = "/" | "/login" | "/registrar" | "/movimientos" | "/plan" | "/cuenta" | "/boda" | "/lugares" | "/metas";
-const ROUTES: Route[] = ["/", "/login", "/registrar", "/movimientos", "/plan", "/cuenta", "/boda", "/lugares", "/metas"];
+export type Route = "/" | "/login" | "/registrar" | "/movimientos" | "/plan" | "/cuenta" | "/boda" | "/lugares" | "/metas" | "/historia";
+const ROUTES: Route[] = ["/", "/login", "/registrar", "/movimientos", "/plan", "/cuenta", "/boda", "/lugares", "/metas", "/historia"];
 
 function current(): Route {
   const path = window.location.pathname as Route;
