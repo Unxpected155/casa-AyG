@@ -9,8 +9,8 @@ const NAV: { route: Route; label: string; icon: IconName }[] = [
   { route: "/", label: "Mes", icon: "ledger" },
   { route: "/movimientos", label: "Movimientos", icon: "list" },
   { route: "/plan", label: "Plan", icon: "plan" },
+  { route: "/metas", label: "Metas", icon: "target" },
   { route: "/lugares", label: "Lugares", icon: "wallet" },
-  { route: "/cuenta", label: "Cuenta", icon: "user" },
 ];
 
 interface ShellProps {
@@ -61,6 +61,12 @@ export function Shell({ children, withMonth = false, onAdd }: ShellProps) {
             ))}
           </div>
         )}
+        {/* Cuenta va arriba: la barra de abajo queda para lo del día a día. */}
+        <a className="account-link icon-button" href="/cuenta" aria-label="Cuenta"
+           aria-current={route === "/cuenta" ? "page" : undefined}
+           onClick={(e) => { e.preventDefault(); navigate("/cuenta"); }}>
+          <Icon name="user" />
+        </a>
       </header>
 
       {withMonth && (

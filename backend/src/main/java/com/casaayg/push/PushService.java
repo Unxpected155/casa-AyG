@@ -123,6 +123,28 @@ public class PushService {
                 .map(d -> new String[] {d.name(), d.dueDate().toString()}).toList()), "/"));
     }
 
+    /** Cada mañana: las metas que cruzaron 25, 50, 75 o 100 %. Solo el nombre y el %. */
+    @Scheduled(cron = "0 0 8 * * *", zone = "America/Costa_Rica")
+    public void celebrateGoals() {
+        if (!sender.enabled()) {
+            return;
+        }
+        record Hit(UUID userId, String name, int milestone) {}
+        List<Hit> hits = asUser.run(null, () -> jdbc.sql("SELECT user_id, goal_name, milestone FROM goal_milestones(?)")
+            .param(LocalDate.now(COSTA_RICA))
+            .query((rs, n) -> new Hit(rs.getObject("user_id", UUID.class), rs.getString("goal_name"), rs.getInt("milestone")))
+            .list());
+        for (Hit h : hits) {
+            notify(h.userId(), "Metas", goalText(h.name(), h.milestone()), "/metas");
+        }
+    }
+
+    static String goalText(String name, int milestone) {
+        String text = milestone >= 100 ? "¡Lo lograron! " + name + " está completa."
+            : name + " ya va por el " + milestone + " %.";
+        return text.length() > 200 ? text.substring(0, 197) + "…" : text;
+    }
+
     /** "Hoy vence: Internet." / "Mañana vence: Agua." / "El 15 vence: Luz." (varios: separados por punto). */
     static String recurringText(LocalDate today, List<String[]> items) {
         java.util.Map<LocalDate, List<String>> byDate = new java.util.TreeMap<>();
