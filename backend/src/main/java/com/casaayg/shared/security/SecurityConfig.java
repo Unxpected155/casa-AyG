@@ -166,6 +166,12 @@ public class SecurityConfig {
                 // Lo que la página NO puede usar, aunque alguien lograra inyectar código.
                 .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy",
                     "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"))
+                // Aislamiento entre orígenes (lo pidió ZAP): ninguna otra página puede quedar
+                // conectada a esta ventana (COOP), ni incrustar sus archivos (CORP), y la página
+                // solo carga recursos propios (COEP). La app no usa nada de otros dominios.
+                .addHeaderWriter(new StaticHeadersWriter("Cross-Origin-Opener-Policy", "same-origin"))
+                .addHeaderWriter(new StaticHeadersWriter("Cross-Origin-Resource-Policy", "same-origin"))
+                .addHeaderWriter(new StaticHeadersWriter("Cross-Origin-Embedder-Policy", "require-corp"))
                 .httpStrictTransportSecurity(hsts -> {
                     hsts.maxAgeInSeconds(31_536_000).includeSubDomains(false);
                     if (props.forceHsts()) {
