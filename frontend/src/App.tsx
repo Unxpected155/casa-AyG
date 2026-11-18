@@ -4,6 +4,9 @@ import { Account } from "./screens/Account";
 import { Enroll, Login } from "./screens/Login";
 import { Month } from "./screens/Month";
 import { Movements } from "./screens/Movements";
+import { Goals } from "./screens/Goals";
+import { History } from "./screens/History";
+import { Places } from "./screens/Places";
 import { Plan } from "./screens/Plan";
 import { Wedding } from "./screens/Wedding";
 import { useApp } from "./state";
@@ -30,6 +33,9 @@ export function App() {
     case "/plan": return <Plan />;
     case "/cuenta": return <Account />;
     case "/boda": return <Wedding />;
+    case "/lugares": return <Places />;
+    case "/metas": return <Goals />;
+    case "/historia": return <History />;
     default: return <Month />;
   }
 }

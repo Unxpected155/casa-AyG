@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { RecurringManager } from "../components/Recurring";
 import { api, messageOf } from "../api";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
@@ -114,6 +115,8 @@ export function Plan() {
           </div>
         )}
       </section>
+
+      <RecurringManager readOnly={readOnly} />
 
       <Categories categories={categories} readOnly={readOnly} spaceId={space.id} onChange={touch} />
     </Shell>

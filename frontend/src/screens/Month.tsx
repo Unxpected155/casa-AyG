@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { api, messageOf } from "../api";
+import { Balance } from "../components/Balance";
+import { cdpDue } from "../components/CdpPanel";
+import { DueList } from "../components/Recurring";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
@@ -11,7 +14,8 @@ import { GROUPS, type Group, type Summary, type SummaryLine } from "../types";
 
 /** Pantalla principal: el mes como una página de libreta. */
 export function Month() {
-  const { space, month, version } = useApp();
+  const { space, month, version, places } = useApp();
+  const dueCdps = places.filter((p) => !p.archived && cdpDue(p));
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -34,12 +38,14 @@ export function Month() {
   useGSAP(() => {
     if (!summary) return;
     const total = ledger.current?.querySelector<HTMLElement>("[data-count]");
-    if (total) countUp(total, summary.expenses.totalUsd, (n) => money(n, "USD"));
+    if (total) countUp(total, Math.round(summary.expenses.crc), (n) => money(n, "CRC"));
     return whenMotionAllowed(() => {
       gsap.from(".rule-fill", { scaleX: 0, duration: 0.6, ease: "expo.out", stagger: 0.025 });
     });
   }, { scope: ledger, dependencies: [summary] });
 
+  const today = new Date();
+  const isCurrentMonth = month.year === today.getFullYear() && month.month === today.getMonth() + 1;
   const lines = summary?.categories ?? [];
   const isEmpty = summary !== null && lines.every((l) => l.spentTotalUsd === 0 && l.spentCrc === 0 && l.plannedCrc === 0);
 
@@ -48,6 +54,15 @@ export function Month() {
       <div ref={ledger} className="ledger" aria-busy={summary === null && !error}>
         {error && <p className="form-error" role="alert">{error}</p>}
         {summary === null && !error && <LedgerSkeleton />}
+
+        {summary && isCurrentMonth && dueCdps.map((p) => (
+          <p key={p.id} className="notice cdp-due">
+            <span>Tu <strong>{p.name}</strong> venció: toca renovarlo.</span>
+            <button type="button" className="button secondary small" onClick={() => navigate("/lugares")}>Renovar</button>
+          </p>
+        ))}
+
+        {summary && isCurrentMonth && <Balance />}
 
         {summary && isEmpty && (
           <section className="empty">
@@ -62,18 +77,15 @@ export function Month() {
         {summary && !isEmpty && (
           <>
             <section className="overview" aria-label="Resumen del mes">
-              <p className="overview-line">
-                Van <strong data-count className="figure">{money(summary.expenses.totalUsd, "USD")}</strong> en gastos
-                {summary.income.totalUsd > 0 && (
-                  <> de <span className="figure">{money(summary.income.totalUsd, "USD")}</span> que entraron</>
-                )}.
-              </p>
+              <MonthFlow summary={summary} />
               <p className="overview-detail">
-                <span className="figure">{money(summary.expenses.crc, "CRC")}</span> en colones
-                {" · "}
-                <span className="figure">{money(summary.expenses.usd, "USD")}</span> en dólares
+                Todo en dólares: <span className="figure">{money(summary.expenses.totalUsd, "USD")}</span> en gastos
+                {summary.income.totalUsd > 0 && <> de <span className="figure">{money(summary.income.totalUsd, "USD")}</span></>}.
               </p>
               <Rule503020 summary={summary} />
+              <button type="button" className="button ghost small history-link" onClick={() => navigate("/historia")}>
+                Comparar con otros meses
+              </button>
               <p className="rate">
                 {summary.usdSellRate
                   ? <>Dólar a <span className="figure">{money(summary.usdSellRate, "CRC", true)}</span>, venta de referencia del BCCR.</>
@@ -81,6 +93,8 @@ export function Month() {
                 {summary.missingRates && " Algunos movimientos no tienen tipo de cambio de su fecha."}
               </p>
             </section>
+
+            {isCurrentMonth && <DueList />}
 
             {GROUPS.map((group) => (
               <GroupSection
@@ -102,6 +116,43 @@ export function Month() {
 
       {adding && <EntrySheet onClose={() => setAdding(false)} />}
     </Shell>
+  );
+}
+
+/**
+ * El mes en colones, que es como se piensa el dinero aquí: lo que entró, lo que salió y lo
+ * que queda. Los dólares van aparte, sin convertir, si hubo movimientos en dólares.
+ */
+function MonthFlow({ summary }: { summary: Summary }) {
+  // Se redondea antes de restar, para que la frase cuadre a la vista (sin ₡1 de diferencia).
+  const inCrc = Math.round(summary.income.crc);
+  const outCrc = Math.round(summary.expenses.crc);
+  const left = inCrc - outCrc;
+  const { income, expenses } = summary;
+  return (
+    <>
+      <p className="overview-line">
+        {income.crc > 0 ? (
+          <>
+            Entraron <span className="figure">{money(inCrc, "CRC")}</span> y salieron{" "}
+            <strong data-count className="figure">{money(outCrc, "CRC")}</strong>
+            {left >= 0
+              ? <>: te quedan <strong className="figure">{money(left, "CRC")}</strong> del mes.</>
+              : <>: gastaste <strong className="figure">{money(-left, "CRC")}</strong> más de lo que entró.</>}
+          </>
+        ) : (
+          <>Van <strong data-count className="figure">{money(outCrc, "CRC")}</strong> en gastos este mes.</>
+        )}
+      </p>
+      {(income.usd > 0 || expenses.usd > 0) && (
+        <p className="overview-detail">
+          En dólares:
+          {income.usd > 0 && <> entraron <span className="figure">{money(income.usd, "USD")}</span></>}
+          {income.usd > 0 && expenses.usd > 0 && " y"}
+          {expenses.usd > 0 && <> salieron <span className="figure">{money(expenses.usd, "USD")}</span></>}.
+        </p>
+      )}
+    </>
   );
 }
 

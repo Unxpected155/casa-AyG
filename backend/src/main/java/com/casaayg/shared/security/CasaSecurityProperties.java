@@ -11,6 +11,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param origins         orígenes exactos desde los que se acepta una ceremonia WebAuthn.
  * @param sessionAbsolute duración máxima de una sesión de passkey, aunque se use.
  * @param sessionCode     duración máxima de una sesión abierta con código.
+ * @param forceHsts       enviar HSTS siempre. En producción el TLS lo termina Tailscale (proxy local),
+ *                        así que Spring ve HTTP y no lo enviaría por su cuenta.
  */
 @ConfigurationProperties("casaayg.security")
-public record CasaSecurityProperties(String rpId, Set<String> origins, Duration sessionAbsolute, Duration sessionCode) {}
+public record CasaSecurityProperties(String rpId, Set<String> origins, Duration sessionAbsolute, Duration sessionCode,
+                                     boolean forceHsts) {}
