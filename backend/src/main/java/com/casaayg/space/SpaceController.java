@@ -62,9 +62,14 @@ class SpaceController {
         return List.copyOf(spaces.values());
     }
 
-    record Export(Instant exportedAt, SpaceView space, List<Map<String, Object>> categories,
+    /** Versión del formato: sube si cambia la forma del archivo. */
+    static final int EXPORT_FORMAT = 2;
+
+    record Export(int format, Instant exportedAt, SpaceView space, List<Map<String, Object>> categories,
                   List<Map<String, Object>> budgets, List<Map<String, Object>> transactions,
-                  List<Map<String, Object>> places, List<Map<String, Object>> transfers) {}
+                  List<Map<String, Object>> places, List<Map<String, Object>> transfers,
+                  List<Map<String, Object>> goals, List<Map<String, Object>> goalParts,
+                  List<Map<String, Object>> goalPlaces, List<Map<String, Object>> recurringPayments) {}
 
     /**
      * Exportación completa del espacio (ADR-005: si alguien sale del espacio familiar, cada quien
@@ -86,29 +91,50 @@ class SpaceController {
                 SELECT t.id, t.tx_date AS "date", t.description, t.amount, t.currency,
                        t.payment_method AS "paymentMethod", t.source, t.category_id AS "categoryId",
                        u.display_name AS "createdBy", t.origin_space_id IS NOT NULL AS "beforeMerge",
-                       t.place_id AS "placeId"
+                       t.place_id AS "placeId", t.gross_amount AS "grossAmount", t.tithe_of AS "titheOf",
+                       t.recurring_id AS "recurringId"
                   FROM transaction t JOIN app_user u ON u.id = t.created_by
                  WHERE t.space_id = ? ORDER BY t.tx_date, t.created_at""").param(spaceId).query().listOfRows();
         var places = jdbc.sql("""
                 SELECT id, name, kind, currency, opening_balance AS "openingBalance", opening_date AS "openingDate",
-                       parent_id AS "parentId", archived
+                       parent_id AS "parentId", archived,
+                       cdp_rate AS "cdpRate", cdp_term_days AS "cdpTermDays", cdp_day_basis AS "cdpDayBasis",
+                       cdp_tax_pct AS "cdpTaxPct", cdp_matures_on AS "cdpMaturesOn",
+                       cdp_payout_place AS "cdpPayoutPlace", cdp_last_contribution AS "cdpLastContribution"
                   FROM place WHERE space_id = ? ORDER BY created_at""").param(spaceId).query().listOfRows();
         var transfers = jdbc.sql("""
                 SELECT x.id, x.tx_date AS "date", x.from_place AS "from", x.to_place AS "to", x.amount,
                        x.description, x.batch_id AS "batchId", u.display_name AS "createdBy"
                   FROM transfer x JOIN app_user u ON u.id = x.created_by
                  WHERE x.space_id = ? ORDER BY x.tx_date, x.created_at""").param(spaceId).query().listOfRows();
+        var goals = jdbc.sql("""
+                SELECT id, name, kind, target_amount AS "targetAmount", emergency_months AS "emergencyMonths",
+                       currency, target_date AS "targetDate", priority, status, achieved_at AS "achievedAt"
+                  FROM goal WHERE space_id = ? ORDER BY priority, created_at""").param(spaceId).query().listOfRows();
+        var goalParts = jdbc.sql("""
+                SELECT goal_id AS "goalId", name, amount, position FROM goal_part
+                 WHERE space_id = ? ORDER BY goal_id, position""").param(spaceId).query().listOfRows();
+        var goalPlaces = jdbc.sql("""
+                SELECT goal_id AS "goalId", place_id AS "placeId" FROM goal_place
+                 WHERE space_id = ? ORDER BY goal_id""").param(spaceId).query().listOfRows();
+        var recurring = jdbc.sql("""
+                SELECT id, name, category_id AS "categoryId", place_id AS "placeId", due_day AS "dueDay",
+                       expected_amount AS "expectedAmount", currency, notify_days_before AS "notifyDaysBefore", active
+                  FROM recurring_payment WHERE space_id = ? ORDER BY lower(name)""").param(spaceId).query().listOfRows();
         audit.record(CurrentUser.require(), "EXPORTACION", Map.of("espacio", spaceId.toString()), request);
         return ResponseEntity.ok()
             .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"casa-ayg-" + LocalDate.now() + ".json\"")
-            .body(new Export(Instant.now(), space, normalize(categories), normalize(budgets), normalize(transactions),
-                normalize(places), normalize(transfers)));
+            .body(new Export(EXPORT_FORMAT, Instant.now(), space, normalize(categories), normalize(budgets),
+                normalize(transactions), normalize(places), normalize(transfers), normalize(goals),
+                normalize(goalParts), normalize(goalPlaces), normalize(recurring)));
     }
 
     /** Tipos de JDBC → JSON estable (fechas ISO, montos como número exacto). */
     private static List<Map<String, Object>> normalize(List<Map<String, Object>> rows) {
         rows.forEach(row -> row.replaceAll((k, v) -> switch (v) {
             case java.sql.Date d -> d.toLocalDate().toString();
+            case java.sql.Timestamp t -> t.toInstant().toString();
+            case java.time.OffsetDateTime t -> t.toInstant().toString();
             case BigDecimal b -> b.toPlainString();
             case UUID u -> u.toString();
             case null, default -> v;
