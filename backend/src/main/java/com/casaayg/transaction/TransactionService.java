@@ -80,7 +80,22 @@ public class TransactionService {
      */
     public record Suggestion(UUID categoryId, UUID placeId, BigDecimal lastGross) {}
 
-    public record Page(List<TransactionView> items, int page, int size, long total) {}
+    /** Sumas de lo filtrado, por moneda: responden "¿cuánto gastamos en Uber este mes?". */
+    public record Totals(BigDecimal incomeCrc, BigDecimal expenseCrc, BigDecimal incomeUsd, BigDecimal expenseUsd) {}
+
+    public record Page(List<TransactionView> items, int page, int size, long total, Totals totals) {}
+
+    /**
+     * Filtros opcionales. {@code text}: parte de la descripción (sin importar mayúsculas; los
+     * comodines de LIKE se escapan). {@code allMonths}: buscar en toda la historia, no solo el mes.
+     */
+    public record Filter(String text, UUID categoryId, UUID placeId, boolean allMonths) {
+        public static final Filter NONE = new Filter(null, null, null, false);
+    }
+
+    /** Letras con tilde del español (y vecinas) y su versión sin tilde, para buscar sin tildes. */
+    private static final String ACCENTED = "áàäâéèëêíìïîóòöôúùüûñç";
+    private static final String PLAIN = "aaaaeeeeiiiioooouuuunc";
 
     private static final String COLUMNS = """
         id, category_id, tx_date, description, amount, currency, payment_method, source,
@@ -89,17 +104,58 @@ public class TransactionService {
 
     @Transactional(readOnly = true)
     public Page list(UUID spaceId, YearMonth month, int page, int size) {
+        return list(spaceId, month, page, size, Filter.NONE);
+    }
+
+    @Transactional(readOnly = true)
+    public Page list(UUID spaceId, YearMonth month, int page, int size, Filter f) {
         spaces.requireMember(spaceId);
-        LocalDate from = month.atDay(1);
-        LocalDate to = month.plusMonths(1).atDay(1);
-        long total = jdbc.sql("SELECT count(*) FROM transaction WHERE space_id = ? AND tx_date >= ? AND tx_date < ?")
-            .params(spaceId, from, to).query(Long.class).single();
-        List<TransactionView> items = jdbc.sql("SELECT " + COLUMNS
-                + " FROM transaction WHERE space_id = ? AND tx_date >= ? AND tx_date < ?"
+        // El WHERE se arma solo con fragmentos fijos; los valores van SIEMPRE como parámetros.
+        StringBuilder where = new StringBuilder(" WHERE space_id = ?");
+        List<Object> params = new java.util.ArrayList<>(List.of(spaceId));
+        if (!f.allMonths()) {
+            where.append(" AND tx_date >= ? AND tx_date < ?");
+            params.add(month.atDay(1));
+            params.add(month.plusMonths(1).atDay(1));
+        }
+        String text = f.text() == null ? "" : f.text().strip().toLowerCase(java.util.Locale.ROOT);
+        if (!text.isEmpty()) {
+            // Sin tildes en los dos lados: "super" encuentra "Súper" y "cafe" encuentra "Café".
+            where.append(" AND translate(lower(description), '" + ACCENTED + "', '" + PLAIN + "') LIKE ?");
+            String plain = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+            params.add("%" + plain.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%");
+        }
+        if (f.categoryId() != null) {
+            where.append(" AND category_id = ?");
+            params.add(f.categoryId());
+        }
+        if (f.placeId() != null) {
+            where.append(" AND place_id = ?");
+            params.add(f.placeId());
+        }
+        Object[] filter = params.toArray();
+        record Agg(long count, BigDecimal incomeCrc, BigDecimal expenseCrc, BigDecimal incomeUsd, BigDecimal expenseUsd) {}
+        Agg agg = jdbc.sql("""
+                SELECT count(*),
+                       COALESCE(sum(amount) FILTER (WHERE currency = 'CRC' AND income), 0),
+                       COALESCE(sum(amount) FILTER (WHERE currency = 'CRC' AND NOT income), 0),
+                       COALESCE(sum(amount) FILTER (WHERE currency = 'USD' AND income), 0),
+                       COALESCE(sum(amount) FILTER (WHERE currency = 'USD' AND NOT income), 0)
+                  FROM (SELECT t.amount, t.currency, c.category_group = 'INGRESO' AS income
+                          FROM transaction t JOIN category c ON c.id = t.category_id""" + where.toString().replace(" space_id", " t.space_id")
+                    + ") x")
+            .params(filter)
+            .query((rs, n) -> new Agg(rs.getLong(1), rs.getBigDecimal(2), rs.getBigDecimal(3), rs.getBigDecimal(4),
+                rs.getBigDecimal(5)))
+            .single();
+        params.add(size);
+        params.add((long) page * size);
+        List<TransactionView> items = jdbc.sql("SELECT " + COLUMNS + " FROM transaction" + where
                 + " ORDER BY tx_date DESC, created_at DESC LIMIT ? OFFSET ?")
-            .params(spaceId, from, to, size, (long) page * size)
+            .params(params.toArray())
             .query(TransactionService::map).list();
-        return new Page(items, page, size, total);
+        return new Page(items, page, size, agg.count(),
+            new Totals(agg.incomeCrc(), agg.expenseCrc(), agg.incomeUsd(), agg.expenseUsd()));
     }
 
     @Transactional(readOnly = true)

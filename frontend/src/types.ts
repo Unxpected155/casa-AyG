@@ -193,6 +193,8 @@ export interface TransactionPage {
   page: number;
   size: number;
   total: number;
+  /** Sumas de lo filtrado (o de todo el mes sin filtros). */
+  totals: { incomeCrc: number; expenseCrc: number; incomeUsd: number; expenseUsd: number };
 }
 
 export interface Totals {
