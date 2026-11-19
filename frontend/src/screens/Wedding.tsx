@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, messageOf, withPasskeyConfirm } from "../api";
 import { Shell } from "../components/Shell";
+import { navigate } from "../router";
 import { useApp } from "../state";
 import type { MergeRequest } from "../types";
 
@@ -50,8 +51,11 @@ export function Wedding() {
       {family && (
         <section className="block">
           <p className="lead">Comparten «{family.name}» con {family.members.map((m) => m.displayName).join(" y ")}.</p>
-          <p className="hint">Todo lo que registren ahí lo ven los dos. Los espacios personales quedaron archivados, de solo lectura.</p>
-          <button type="button" className="button secondary" onClick={() => selectSpace(family.id)}>Ir al espacio familiar</button>
+          <p className="hint">Todo lo que registren ahí lo ven los dos. Cada quien conserva su espacio personal, que sigue siendo privado.</p>
+          <div className="actions">
+            <button type="button" className="button ghost" onClick={() => selectSpace(family.id)}>Ir al espacio familiar</button>
+            <button type="button" className="button secondary" onClick={() => navigate("/casa")}>Ver la casa</button>
+          </div>
         </section>
       )}
 
@@ -109,11 +113,11 @@ export function Wedding() {
 function WhatHappens() {
   return (
     <ul className="explain">
-      <li>Se crea un espacio familiar donde los dos ven y registran todo.</li>
-      <li>Los movimientos y presupuestos de cada quien pasan ahí, marcados «antes de la boda».</li>
-      <li>Las categorías con el mismo nombre se juntan en una.</li>
+      <li>Se crea un espacio familiar, vacío, donde los dos ven y registran todo. Ahí entran los salarios.</li>
+      <li>Cada quien conserva su espacio personal, privado: del otro solo se ve cuánto tiene, nunca en qué lo gasta.</li>
+      <li>Al cerrar cada mes, la casa le da a cada quien lo mismo: un monto fijo más un bono de lo que sobró.</li>
+      <li>Si alguien quiere poner de lo suyo, lo aporta a la casa.</li>
       <li>Necesita la confirmación de los dos, con passkey. Nadie puede hacerlo solo.</li>
-      <li>Si algún día hiciera falta, cada quien puede descargar todos los datos.</li>
     </ul>
   );
 }

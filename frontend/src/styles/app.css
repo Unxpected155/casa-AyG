@@ -1755,3 +1755,48 @@ fieldset {
   font-size: var(--t-sm);
 }
 
+
+/* ---------- La casa: cierre del mes ---------- */
+.close-month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: 0.75rem;
+}
+
+.close-month-label {
+  font-family: var(--font-serif);
+  font-size: var(--t-lg);
+  text-transform: capitalize;
+}
+
+.close-sums {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.close-sums div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.close-sums dt {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.close-sums dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.field input[type="range"] {
+  padding: 0;
+  min-height: 44px;
+  accent-color: var(--accent);
+}

@@ -9,6 +9,7 @@ import { History } from "./screens/History";
 import { Places } from "./screens/Places";
 import { Plan } from "./screens/Plan";
 import { Wedding } from "./screens/Wedding";
+import { House } from "./screens/House";
 import { useApp } from "./state";
 
 export function App() {
@@ -36,6 +37,7 @@ export function App() {
     case "/lugares": return <Places />;
     case "/metas": return <Goals />;
     case "/historia": return <History />;
+    case "/casa": return <House />;
     default: return <Month />;
   }
 }

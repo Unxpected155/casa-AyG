@@ -64,6 +64,12 @@ export function Month() {
 
         {summary && isCurrentMonth && <Balance />}
 
+        {summary && space?.kind === "FAMILIA" && (
+          <button type="button" className="button ghost small history-link" onClick={() => navigate("/casa")}>
+            <Icon name="home" size={18} /> La casa: lo personal y el cierre del mes
+          </button>
+        )}
+
         {summary && isEmpty && (
           <section className="empty">
             <p className="empty-title">Esta página está en blanco.</p>

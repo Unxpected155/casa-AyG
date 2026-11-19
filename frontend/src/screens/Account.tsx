@@ -169,6 +169,11 @@ export function Account() {
           <button type="button" className="button ghost" onClick={() => navigate("/boda")}>
             <Icon name="rings" size={18} /> Espacio familiar
           </button>
+          {spaces.some((s) => s.kind === "FAMILIA" && !s.archived) && (
+            <button type="button" className="button ghost" onClick={() => navigate("/casa")}>
+              <Icon name="home" size={18} /> La casa: dinero personal y cierre del mes
+            </button>
+          )}
           <button type="button" className="button ghost danger" onClick={exit}>
             <Icon name="logout" size={18} /> Cerrar sesión
           </button>

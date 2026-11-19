@@ -193,7 +193,7 @@ class PlacesTest extends WebTestSupport {
     }
 
     @Test
-    void laFusionLlevaLosLugaresYSusSaldosAlEspacioFamiliar() throws Exception {
+    void laFusionNoMueveLosLugaresPersonales() throws Exception {
         UUID banco = place(a, "BAC", "BANCO", "CRC", "1000", TODAY.minusDays(1), null);
         tx(a, supermercado, "300", "CRC", TODAY, banco, "Súper");
         place(b, "BAC", "BANCO", "CRC", "500", TODAY.minusDays(1), null);
@@ -205,15 +205,11 @@ class PlacesTest extends WebTestSupport {
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         UUID family = uuid(json(approved).get("familySpaceId"));
 
+        // V11: la casa empieza sin lugares; los personales siguen donde estaban, con su saldo.
         String body = as(a, get("/api/spaces/" + family + "/places"))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-        List<Map<String, Object>> places = list(body);
-        assertThat(places).hasSize(2);
-        // Mismo nombre en los dos espacios: el segundo lleva el nombre de su espacio de origen.
-        assertThat(places).extracting(p -> p.get("name")).contains("BAC").anyMatch(n -> !"BAC".equals(n));
-        assertThat(places).extracting(p -> new BigDecimal(String.valueOf(p.get("balance"))))
-            .anyMatch(v -> v.compareTo(new BigDecimal("700")) == 0)
-            .anyMatch(v -> v.compareTo(new BigDecimal("500")) == 0);
+        assertThat(list(body)).isEmpty();
+        assertThat(balances(a).get(banco)).isEqualByComparingTo("700");
     }
 
     @ParameterizedTest
