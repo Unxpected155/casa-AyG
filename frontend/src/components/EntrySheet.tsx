@@ -78,13 +78,26 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     }));
   }, [categories, kind, categoryId]);
 
-  useGSAP(() => whenMotionAllowed(() => {
-    gsap.from(backdrop.current, { autoAlpha: 0, duration: 0.2 });
-    gsap.from(sheet.current, { yPercent: 100, duration: 0.32, ease: "expo.out" });
-  }));
+  // El monto se enfoca cuando la hoja YA está en su lugar y sin desplazar la vista. Si se enfoca
+  // mientras sube, el teléfono abre el teclado y corre la pantalla hacia donde estaba el campo
+  // (abajo, fuera de la vista), y la hoja queda "empezando desde abajo".
+  const focusAmount = () => {
+    sheet.current?.scrollTo({ top: 0 });
+    if (!editingTransfer) amountInput.current?.focus({ preventScroll: true });
+  };
+
+  useGSAP(() => {
+    let animated = false;
+    const revert = whenMotionAllowed(() => {
+      animated = true;
+      gsap.from(backdrop.current, { autoAlpha: 0, duration: 0.2 });
+      gsap.from(sheet.current, { yPercent: 100, duration: 0.32, ease: "expo.out", onComplete: focusAmount });
+    });
+    if (!animated) focusAmount();
+    return revert;
+  });
 
   useEffect(() => {
-    if (!editingTransfer) amountInput.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
     document.body.classList.add("sheet-open");
@@ -92,7 +105,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
       document.removeEventListener("keydown", onKey);
       document.body.classList.remove("sheet-open");
     };
-  }, [onClose, editingTransfer]);
+  }, [onClose]);
 
   // Al abrir una hoja nueva: el último lugar que usaste.
   useEffect(() => {

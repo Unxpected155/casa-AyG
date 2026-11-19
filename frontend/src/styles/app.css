@@ -1667,3 +1667,20 @@ fieldset {
   color: var(--ink-soft);
 }
 
+
+/* En el teléfono la hoja ocupa la pantalla completa, desde arriba: el título y los tipos
+   (Gasto / Ingreso / Mover) siempre a la vista, y el teclado no la deja "corrida". */
+@media (max-width: 640px) {
+  .sheet-layer {
+    align-items: stretch;
+  }
+
+  .sheet {
+    width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding-top: max(var(--s4), env(safe-area-inset-top));
+    overscroll-behavior: contain;
+  }
+}
