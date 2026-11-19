@@ -29,8 +29,6 @@ export const PLACE_KIND_LABEL: Record<PlaceKind, string> = {
   EFECTIVO: "Efectivo",
 };
 
-/** Meta de la regla 50/30/20 por grupo. */
-export const GROUP_TARGET: Partial<Record<Group, number>> = { NECESIDAD: 50, DESEO: 30, AHORRO: 20 };
 
 export interface YearMonth {
   year: number;

@@ -208,15 +208,11 @@
 
 .overview-detail,
 .rate,
-.rule-503020 {
+.income-split {
   color: var(--ink-soft);
   font-size: var(--t-sm);
 }
 
-.rule-503020 .target {
-  color: var(--ink-soft);
-  opacity: 0.8;
-}
 
 .rate {
   margin-top: var(--s2);
@@ -1746,3 +1742,16 @@ fieldset {
     overscroll-behavior: contain;
   }
 }
+
+/* Posible duplicado: pregunta tranquila dentro de la hoja, no un modal. */
+.duplicate {
+  display: grid;
+  gap: var(--s2);
+  margin: var(--s3) 0;
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-sunk);
+  font-size: var(--t-sm);
+}
+
