@@ -148,10 +148,13 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
   const [preview, setPreview] = useState<ClosePreview | null>(null);
   const [busy, setBusy] = useState(false);
   const options = crcOnly(homePlaces);
+  const source = options.find((p) => p.id === from);
 
   useEffect(() => {
     if (!from && options[0]) setFrom(options[0].id);
   }, [options.length]);
+  // Si cambian el bono habitual en los ajustes, el cierre lo toma.
+  useEffect(() => setBonusPct(house.settings.bonusPct), [house.settings.bonusPct]);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,6 +245,11 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
                     {options.filter((p) => p.id !== from).map((p) => <option key={p.id} value={p.id}>Pasarlo a {p.name}</option>)}
                   </select>
                 </label>
+              )}
+              {source && source.balance < preview.perPerson * preview.members && (
+                <p className="notice">
+                  {source.name} tiene {money(source.balance, "CRC")} y el cierre saca {money(preview.perPerson * preview.members, "CRC")}: quedaría en negativo.
+                </p>
               )}
               {isCurrent && <p className="hint">El mes todavía no termina: si cierran ahora, lo que anoten después no cuenta.</p>}
               <button type="button" className="button primary" disabled={busy || !from} onClick={close}>

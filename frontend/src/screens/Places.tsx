@@ -43,7 +43,7 @@ export function Places() {
 
   return (
     <Shell onAdd={() => setEntry(true)}>
-      <h1 className="page-title">Tus lugares</h1>
+      <h1 className="page-title">{space?.kind === "FAMILIA" ? "Lugares de la casa" : "Tus lugares"}</h1>
       <p className="hint">Cada lugar parte de lo que tenía el día que lo agregaste y suma lo que anotas.</p>
 
       {rows.length > 0 && (
