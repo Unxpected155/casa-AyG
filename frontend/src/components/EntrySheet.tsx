@@ -4,7 +4,7 @@ import { api, messageOf } from "../api";
 import { GROUP_LABEL, money, parseAmount, todayIso } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { useApp } from "../state";
-import type { Currency, Group, Place, Suggestion, Transaction, Transfer } from "../types";
+import type { Currency, Group, Place, Suggestion, Transaction, TransactionPage, Transfer } from "../types";
 import { orderedPlaces } from "./Balance";
 import { Icon } from "./Icon";
 
@@ -37,7 +37,7 @@ interface EntrySheetProps {
  * porque la app sugiere la categoría a partir de lo que escribes.
  */
 export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom, preset, onClose }: EntrySheetProps) {
-  const { space, categories, places, touch } = useApp();
+  const { space, categories, places, touch, memberName } = useApp();
   const sheet = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   const amountInput = useRef<HTMLInputElement>(null);
@@ -59,6 +59,15 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Un movimiento que se parece a uno ya anotado (mismo día, monto y descripción): se pregunta
+  // antes de guardar. Pasa sobre todo en el espacio familiar, cuando los dos anotan lo mismo.
+  const [duplicate, setDuplicate] = useState<Transaction | null>(null);
+  // Si se corrige lo anotado, la pregunta ya no aplica: se vuelve a revisar al guardar.
+  useEffect(() => setDuplicate(null), [amount, description, date, currency]);
+  const duplicateBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (duplicate) duplicateBox.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [duplicate]);
   // Diezmo: siempre marcado en un ingreso nuevo; al editar, según si ya lo tiene.
   const [tithe, setTithe] = useState(editing ? Boolean(editing.titheId) : true);
   const [gross, setGross] = useState(editing?.grossAmount ? String(editing.grossAmount).replace(".", ",") : "");
@@ -200,6 +209,14 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     }
     setBusy(true);
     setError(null);
+    if (kind !== "mover" && !editing && !duplicate) {
+      const twin = await findDuplicate(parsed);
+      if (twin) {
+        setDuplicate(twin);
+        setBusy(false);
+        return;
+      }
+    }
     try {
       if (kind === "mover") {
         await api.post(`${base}/transfers`, { from, to, date, amount: parsed, description: description.trim() || null });
@@ -217,6 +234,20 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     } catch (e) {
       setError(messageOf(e, "No se pudo guardar."));
       setBusy(false);
+    }
+  };
+
+  /** El mismo día, monto, moneda y descripción (sin importar mayúsculas ni tildes). */
+  const findDuplicate = async (parsed: string): Promise<Transaction | null> => {
+    const [y, m] = date.split("-").map(Number);
+    const params = new URLSearchParams({ year: String(y), month: String(m), size: "100", q: description.trim() });
+    try {
+      const page = await api.get<TransactionPage>(`${base}/transactions?${params}`);
+      const norm = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").trim().toLowerCase();
+      return page.items.find((t) => t.date === date && t.currency === currency
+        && Number(t.amount) === Number(parsed) && norm(t.description) === norm(description) && !t.titheOf) ?? null;
+    } catch {
+      return null; // si no se puede revisar, no se bloquea el anotar
     }
   };
 
@@ -398,6 +429,19 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
             </div>
 
             {error && <p className="form-error" role="alert">{error}</p>}
+            {duplicate && (
+              <div className="duplicate" role="alert" ref={duplicateBox}>
+                <p>
+                  ¿Ya lo anotaste? Hay <strong>{duplicate.description}</strong> por{" "}
+                  <strong className="figure">{money(duplicate.amount, duplicate.currency, true)}</strong> el mismo día
+                  {(space.members.length > 1) && <>, anotado por {memberName(duplicate.createdBy)}</>}.
+                </p>
+                <div className="actions start">
+                  <button type="submit" className="button secondary small">Sí, anotarlo igual</button>
+                  <button type="button" className="button ghost small" onClick={onClose}>No, cancelar</button>
+                </div>
+              </div>
+            )}
 
             <div className="sheet-actions">
               {editing && !confirmDelete && (

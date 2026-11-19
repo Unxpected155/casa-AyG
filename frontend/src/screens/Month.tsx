@@ -6,7 +6,7 @@ import { DueList } from "../components/Recurring";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
-import { GROUP_LABEL, GROUP_TARGET, money, pct } from "../format";
+import { GROUP_LABEL, money, pct } from "../format";
 import { countUp, gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { navigate } from "../router";
 import { useApp } from "../state";
@@ -82,7 +82,7 @@ export function Month() {
                 Todo en dólares: <span className="figure">{money(summary.expenses.totalUsd, "USD")}</span> en gastos
                 {summary.income.totalUsd > 0 && <> de <span className="figure">{money(summary.income.totalUsd, "USD")}</span></>}.
               </p>
-              <Rule503020 summary={summary} />
+              <IncomeSplit summary={summary} />
               <button type="button" className="button ghost small history-link" onClick={() => navigate("/historia")}>
                 Comparar con otros meses
               </button>
@@ -233,21 +233,23 @@ function CategoryRow({ line, income }: { line: SummaryLine; income: boolean }) {
   );
 }
 
-function Rule503020({ summary }: { summary: Summary }) {
+/**
+ * Cómo se repartió lo que entró, sin juzgarlo: la meta de cada casa es su propio presupuesto
+ * (Plan), no una regla genérica como el 50/30/20, que no contempla el diezmo ni un ahorro fuerte.
+ */
+function IncomeSplit({ summary }: { summary: Summary }) {
   if (summary.income.totalUsd <= 0) return null;
   const parts = (["NECESIDAD", "DESEO", "AHORRO"] as const).map((g) => ({
     group: g,
     value: summary.percentOfIncome[g] ?? 0,
-    target: GROUP_TARGET[g] ?? 0,
   }));
   return (
-    <p className="rule-503020">
+    <p className="income-split">
       De lo que entró:{" "}
       {parts.map((p, i) => (
         <span key={p.group}>
           {i > 0 && " · "}
           {GROUP_LABEL[p.group].toLowerCase()} <span className="figure">{pct(p.value)}</span>
-          <span className="target"> (meta {p.target} %)</span>
         </span>
       ))}
     </p>
