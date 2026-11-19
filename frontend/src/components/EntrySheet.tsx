@@ -122,8 +122,10 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     let cancelled = false;
     api.get<Suggestion>(`/api/spaces/${space.id}/transactions/suggest`)
       .then((s) => {
-        if (cancelled || !s.placeId) return;
-        const last = places.find((p) => p.id === s.placeId && !p.archived);
+        if (cancelled) return;
+        // Sin historial: si hay un solo lugar, ese. Un movimiento sin lugar no mueve ningún saldo.
+        const open = places.filter((p) => !p.archived);
+        const last = places.find((p) => p.id === s.placeId && !p.archived) ?? (open.length === 1 ? open[0] : undefined);
         if (last) {
           setPlaceId((current) => current ?? last.id);
           setCurrency(last.currency);

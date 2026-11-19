@@ -252,3 +252,50 @@ export interface Passkey {
   created: string | null;
   lastUsed: string | null;
 }
+
+/** La casa (espacio familiar, Parte 4). */
+export interface Partner {
+  userId: string;
+  displayName: string;
+  crc: number;
+  usd: number;
+  me: boolean;
+}
+
+export interface HouseholdSettings {
+  personalFloor: number;
+  bonusPct: number;
+}
+
+export interface MonthClosed {
+  year: number;
+  month: number;
+  surplus: number;
+  bonusPct: number;
+  perPerson: number;
+}
+
+export interface Household {
+  settings: HouseholdSettings;
+  partners: Partner[];
+  myDestination: string | null;
+  myPersonalSpace: string | null;
+  closes: MonthClosed[];
+  /** Mes en que se creó la casa ("2026-11"). */
+  since: string;
+}
+
+export interface ClosePreview {
+  year: number;
+  month: number;
+  income: number;
+  expenses: number;
+  surplus: number;
+  personalFloor: number;
+  bonusPct: number;
+  bonus: number;
+  perPerson: number;
+  members: number;
+  rest: number;
+  closed: MonthClosed | null;
+}

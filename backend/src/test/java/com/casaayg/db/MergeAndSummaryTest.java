@@ -56,23 +56,26 @@ class MergeAndSummaryTest extends WebTestSupport {
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         UUID family = uuid(json(approved).get("familySpaceId"));
 
-        // Ambos ven el espacio familiar con TODOS los movimientos, marcados "antes de la boda".
+        // V11: la casa nace vacía, con sus propias categorías (incluidas Aportes y Dinero personal).
+        // Nada se mueve: lo personal sigue en lo personal.
+        String month = "?year=" + now().getYear() + "&month=" + now().getMonthValue();
         for (TestData.AppUser person : List.of(pareja1, pareja2)) {
-            String body = as(person, get("/api/spaces/" + family + "/transactions?year=" + now().getYear()
-                    + "&month=" + now().getMonthValue()))
+            String body = as(person, get("/api/spaces/" + family + "/transactions" + month))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> items = (List<Map<String, Object>>) json(body).get("items");
-            assertThat(items).hasSize(2).allMatch(t -> Boolean.TRUE.equals(t.get("beforeMerge")));
+            assertThat((List<?>) json(body).get("items")).isEmpty();
+            String own = as(person, get("/api/spaces/" + person.personalSpace() + "/transactions" + month))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertThat((List<?>) json(own).get("items")).hasSize(1);
         }
-        // Las categorías iguales se unificaron (no hay "Supermercado" dos veces).
         String categories = as(pareja1, get("/api/spaces/" + family + "/categories"))
             .andReturn().getResponse().getContentAsString();
-        assertThat(categories.split("\"Supermercado\"", -1)).hasSize(2);
-        // Los espacios personales quedaron archivados (solo lectura) y el tercero no ve nada.
+        assertThat(categories).contains("\"Supermercado\"", "\"Aportes\"", "\"Dinero personal\"", "\"Diezmo\"");
+        // Los espacios personales SIGUEN VIVOS (se puede escribir), y cada uno sigue siendo privado.
         as(pareja1, post("/api/spaces/" + pareja1.personalSpace() + "/categories")
                 .content("{\"name\":\"Nueva\",\"group\":\"DESEO\"}"))
-            .andExpect(status().isConflict());
+            .andExpect(status().isCreated());
+        as(pareja1, get("/api/spaces/" + pareja2.personalSpace() + "/transactions" + month))
+            .andExpect(status().isNotFound());
         as(tercero, get("/api/spaces/" + family + "/categories")).andExpect(status().isNotFound());
         // No se puede crear un segundo espacio familiar.
         as(tercero, post("/api/merge-requests").content(toJson(Map.of(
