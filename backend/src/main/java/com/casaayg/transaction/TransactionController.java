@@ -67,8 +67,13 @@ class TransactionController {
               @RequestParam @Min(2000) @Max(2100) int year,
               @RequestParam @Min(1) @Max(12) int month,
               @RequestParam(defaultValue = "0") @Min(0) @Max(10_000) int page,
-              @RequestParam(defaultValue = "50") @Min(1) @Max(TransactionService.MAX_PAGE_SIZE) int size) {
-        return transactions.list(spaceId, YearMonth.of(year, month), page, size);
+              @RequestParam(defaultValue = "50") @Min(1) @Max(TransactionService.MAX_PAGE_SIZE) int size,
+              @RequestParam(required = false) @jakarta.validation.constraints.Size(max = 100) String q,
+              @RequestParam(required = false) UUID categoryId,
+              @RequestParam(required = false) UUID placeId,
+              @RequestParam(defaultValue = "false") boolean all) {
+        return transactions.list(spaceId, YearMonth.of(year, month), page, size,
+            new TransactionService.Filter(q, categoryId, placeId, all));
     }
 
     @GetMapping("/suggest")

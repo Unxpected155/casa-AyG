@@ -1667,6 +1667,68 @@ fieldset {
   color: var(--ink-soft);
 }
 
+/* ---------- Buscar movimientos ---------- */
+.movements-search {
+  display: grid;
+  gap: var(--s3);
+  margin-bottom: var(--s6);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.movements-search input[type="search"] {
+  min-height: 44px;
+  width: 100%;
+  padding: 0 var(--s3);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-size: var(--t-md);
+}
+
+.movements-search input[type="search"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.search-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.search-result {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.search-result strong {
+  color: var(--ink);
+}
+
+.search-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s2);
+  align-items: center;
+}
+
+.search-bar .button {
+  min-height: 44px;
+}
+
+.filter-count {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.filters-panel {
+  display: grid;
+  gap: var(--s3);
+}
+
 
 /* En el teléfono la hoja ocupa la pantalla completa, desde arriba: el título y los tipos
    (Gasto / Ingreso / Mover) siempre a la vista, y el teclado no la deja "corrida". */
