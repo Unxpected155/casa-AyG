@@ -3,6 +3,7 @@ import { api, messageOf, withPasskeyConfirm } from "../api";
 import { Icon } from "../components/Icon";
 import { Notifications } from "../components/Notifications";
 import { Shell } from "../components/Shell";
+import { TaxId } from "../components/TaxId";
 import { dateLabel } from "../format";
 import { navigate } from "../router";
 import { useApp } from "../state";
@@ -123,6 +124,8 @@ export function Account() {
       </section>
 
       <Notifications />
+
+      <TaxId />
 
       <section className="block" aria-labelledby="rc-title">
         <h2 id="rc-title" className="section-title">Códigos de recuperación</h2>
