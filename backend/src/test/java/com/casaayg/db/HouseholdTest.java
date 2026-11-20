@@ -217,9 +217,10 @@ class HouseholdTest extends WebTestSupport {
 
     @Test
     void soloSeReabreElUltimoMesCerrado() throws Exception {
-        try (Connection su = asSuperuser()) {
-            su.createStatement().execute("UPDATE casaayg.space SET created_at = now() - interval '45 days' WHERE id = '"
-                + family + "'");
+        try (Connection su = asSuperuser();
+             var ps = su.prepareStatement("UPDATE casaayg.space SET created_at = now() - interval '45 days' WHERE id = ?")) {
+            ps.setObject(1, family);
+            ps.executeUpdate();
         }
         UUID conjunta = place(ana, family, "Cuenta conjunta", "0");
         as(ana, put("/api/spaces/" + family + "/household/settings").content(toJson(Map.of(
