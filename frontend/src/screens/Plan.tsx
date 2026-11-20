@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { RecurringManager } from "../components/Recurring";
 import { api, messageOf } from "../api";
 import { Icon } from "../components/Icon";
@@ -9,8 +9,11 @@ import { GROUPS, type BudgetLine, type Category, type Group } from "../types";
 
 /** Presupuesto del mes (en colones) y las categorías del espacio, en una sola página. */
 export function Plan() {
-  const { space, month, categories, touch, version } = useApp();
+  const { space, spaces, month, categories, touch, version } = useApp();
   const [planned, setPlanned] = useState<Record<string, string>>({});
+  // Lo traído de lo personal se suma cuando el presupuesto (y las categorías nuevas) recargan.
+  const imported = useRef<Record<string, number> | null>(null);
+  const personal = spaces.find((s) => s.kind === "PERSONAL" && !s.archived);
   const [status, setStatus] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const readOnly = space?.archived ?? true;
@@ -18,14 +21,21 @@ export function Plan() {
   useEffect(() => {
     if (!space) return;
     let cancelled = false;
-    setStatus(null);
     api.get<BudgetLine[]>(`/api/spaces/${space.id}/budgets/${month.year}/${month.month}`)
-      .then((lines) => !cancelled && setPlanned(toForm(lines)))
+      .then((lines) => {
+        if (cancelled) return;
+        const extra = imported.current;
+        imported.current = null;
+        setPlanned(extra ? addTo(toForm(lines), extra) : toForm(lines));
+      })
       .catch(() => !cancelled && setPlanned({}));
     return () => {
       cancelled = true;
     };
   }, [space, month.year, month.month, version]);
+
+  // El aviso se limpia al cambiar de espacio o de mes; no con la recarga que sigue a guardar.
+  useEffect(() => setStatus(null), [space?.id, month.year, month.month]);
 
   if (!space) return <Shell withMonth><p>Cargando…</p></Shell>;
 
@@ -53,6 +63,52 @@ export function Plan() {
       setStatus({ tone: "error", text: messageOf(e, "No se pudo guardar el presupuesto.") });
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * En la casa: suma mi presupuesto personal de este mes (o del anterior, si este no tiene),
+   * por nombre de categoría. Las que la casa no tiene se crean. Queda en el formulario para
+   * revisar antes de guardar; si los dos lo hacen, se suman.
+   */
+  const bringMine = async () => {
+    if (!personal) return;
+    setStatus(null);
+    try {
+      const prev = shiftMonth(month, -1);
+      let from = month;
+      let lines = await api.get<BudgetLine[]>(`/api/spaces/${personal.id}/budgets/${month.year}/${month.month}`);
+      if (lines.length === 0) {
+        from = prev;
+        lines = await api.get<BudgetLine[]>(`/api/spaces/${personal.id}/budgets/${prev.year}/${prev.month}`);
+      }
+      if (lines.length === 0) {
+        setStatus({ tone: "error", text: "Tu espacio personal no tiene presupuesto este mes ni el anterior." });
+        return;
+      }
+      const mine = await api.get<Category[]>(`/api/spaces/${personal.id}/categories`);
+      const key = (c: { name: string; group: Group }) => `${c.group}:${norm(c.name)}`;
+      const home = new Map(categories.map((c) => [key(c), c.id]));
+      const extra: Record<string, number> = {};
+      for (const line of lines) {
+        const cat = mine.find((c) => c.id === line.categoryId);
+        if (!cat || cat.group === "INGRESO" || SKIP.has(norm(cat.name)) || line.plannedAmount <= 0) continue;
+        let id = home.get(key(cat));
+        if (!id) {
+          id = (await api.post<Category>(`/api/spaces/${space.id}/categories`, { name: cat.name, group: cat.group })).id;
+          home.set(key(cat), id);
+        }
+        extra[id] = (extra[id] ?? 0) + Number(line.plannedAmount);
+      }
+      // Lo que ya está escrito en el formulario (aunque no se haya guardado) también cuenta.
+      setPlanned((current) => addTo(current, extra));
+      if (Object.keys(extra).some((id) => !categories.some((c) => c.id === id))) {
+        imported.current = extra;
+        touch(); // recarga las categorías nuevas; el presupuesto vuelve con lo traído sumado
+      }
+      setStatus({ tone: "ok", text: `Sumé tu presupuesto personal de ${monthLabel(from).toLowerCase()}. Revisa y guarda.` });
+    } catch (e) {
+      setStatus({ tone: "error", text: messageOf(e, "No se pudo traer tu presupuesto.") });
     }
   };
 
@@ -109,6 +165,9 @@ export function Plan() {
         {!readOnly && (
           <div className="actions">
             <button type="button" className="button ghost" onClick={copyPrevious}>Copiar del mes anterior</button>
+            {space.kind === "FAMILIA" && personal && (
+              <button type="button" className="button ghost" onClick={bringMine}>Sumar mi presupuesto personal</button>
+            )}
             <button type="button" className="button primary" onClick={save} disabled={saving}>
               {saving ? "Guardando…" : "Guardar presupuesto"}
             </button>
@@ -121,6 +180,23 @@ export function Plan() {
       <Categories categories={categories} readOnly={readOnly} spaceId={space.id} onChange={touch} />
     </Shell>
   );
+}
+
+/** Categorías de la casa misma: no se traen de lo personal. */
+const SKIP = new Set(["aporte al hogar", "de la casa"]);
+
+function norm(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").trim().toLowerCase();
+}
+
+/** Suma montos a un formulario de presupuesto (texto es-CR). */
+function addTo(form: Record<string, string>, extra: Record<string, number>): Record<string, string> {
+  const out = { ...form };
+  for (const [id, amount] of Object.entries(extra)) {
+    const base = Number(parseAmount(out[id] ?? "") ?? 0);
+    out[id] = String(Math.round((base + amount) * 100) / 100);
+  }
+  return out;
 }
 
 function toForm(lines: BudgetLine[]): Record<string, string> {

@@ -44,6 +44,18 @@ export function House() {
     setMessage(m);
     if (m) requestAnimationFrame(() => document.getElementById("casa-status")?.scrollIntoView({ block: "center", behavior: "smooth" }));
   };
+  // Si se llegó con el atajo «Aportar a la casa», baja directo a esa sección.
+  useEffect(() => {
+    if ((window.history.state as { focus?: string } | null)?.focus !== "aportar") return;
+    // La sección aparece cuando ya cargaron los lugares de los dos lados.
+    requestAnimationFrame(() => {
+      const target = document.getElementById("contrib-title");
+      if (!target) return;
+      window.history.replaceState(null, "");
+      target.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+  }, [house, myPlaces.length, homePlaces.length]);
+
   const changed = (text: string) => {
     show({ tone: "ok", text });
     setTick((t) => t + 1);
