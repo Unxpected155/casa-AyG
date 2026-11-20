@@ -190,7 +190,7 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) return setError("Ponle nombre a la meta, por ejemplo Casarnos.");
+    if (!name.trim()) return setError("Ponle nombre a la meta, por ejemplo «Comprar un carro».");
     const amount = kind === "NORMAL" ? parseAmount(target) : null;
     if (kind === "NORMAL" && !amount) return setError("Escribe cuánto quieres juntar.");
     const cleanParts = parts.filter((p) => p.name.trim() || p.amount.trim());
