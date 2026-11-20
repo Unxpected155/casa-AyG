@@ -3,7 +3,7 @@ import { RecurringManager } from "../components/Recurring";
 import { api, messageOf } from "../api";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
-import { GROUP_LABEL, money, monthLabel, parseAmount, shiftMonth } from "../format";
+import { amountChange, amountToInput, GROUP_LABEL, money, monthLabel, parseAmount, shiftMonth } from "../format";
 import { useApp } from "../state";
 import { GROUPS, type BudgetLine, type Category, type Group } from "../types";
 
@@ -152,7 +152,7 @@ export function Plan() {
                       maxLength={18}
                       disabled={readOnly}
                       value={planned[c.id] ?? ""}
-                      onChange={(e) => setPlanned({ ...planned, [c.id]: e.target.value })}
+                      onChange={(e) => setPlanned({ ...planned, [c.id]: amountChange(e) })}
                     />
                   </span>
                 </li>
@@ -194,13 +194,13 @@ function addTo(form: Record<string, string>, extra: Record<string, number>): Rec
   const out = { ...form };
   for (const [id, amount] of Object.entries(extra)) {
     const base = Number(parseAmount(out[id] ?? "") ?? 0);
-    out[id] = String(Math.round((base + amount) * 100) / 100);
+    out[id] = amountToInput(Math.round((base + amount) * 100) / 100);
   }
   return out;
 }
 
 function toForm(lines: BudgetLine[]): Record<string, string> {
-  return Object.fromEntries(lines.map((l) => [l.categoryId, String(l.plannedAmount)]));
+  return Object.fromEntries(lines.map((l) => [l.categoryId, amountToInput(l.plannedAmount)]));
 }
 
 function Categories({ categories, readOnly, spaceId, onChange }: {

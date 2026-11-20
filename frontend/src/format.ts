@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import type { Currency, Group, PlaceKind } from "./types";
 
 const crc = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 });
@@ -94,11 +95,56 @@ export function initials(name: string): string {
 }
 
 /** Convierte lo que se escribe ("12.500,50", "12500.5") en un decimal con punto, o null. */
+/**
+ * Lee un monto escrito como en Costa Rica: el punto separa miles y la coma, los decimales
+ * ("1.200.000,50"). El punto NUNCA es decimal: "1.200" son mil doscientos.
+ * @return el monto en formato de la API ("1200000.50"), o null si no es válido.
+ */
 export function parseAmount(text: string): string | null {
   const cleaned = text.replace(/[\s₡$]/g, "");
-  if (!cleaned) return null;
-  // Si hay coma como decimal (formato es-CR), los puntos son de miles.
-  const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
+  if (!cleaned || !/^[\d.]*(,\d{0,2})?$/.test(cleaned)) return null;
+  const normalized = cleaned.replace(/\./g, "").replace(",", ".").replace(/\.$/, "");
   if (!/^\d{1,12}(\.\d{1,2})?$/.test(normalized)) return null;
   return normalized;
+}
+
+const groupThousands = (digits: string) => digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+/** Mientras se escribe: "1200000,5" → "1.200.000,5". Una sola coma, hasta dos decimales. */
+export function formatAmountInput(text: string): string {
+  const cleaned = text.replace(/[^\d,]/g, "");
+  const comma = cleaned.indexOf(",");
+  const intPart = (comma < 0 ? cleaned : cleaned.slice(0, comma)).replace(/^0+(?=\d)/, "").slice(0, 12);
+  if (comma < 0) return groupThousands(intPart);
+  const decimals = cleaned.slice(comma + 1).replace(/,/g, "").slice(0, 2);
+  return `${groupThousands(intPart) || "0"},${decimals}`;
+}
+
+/** Un monto de la API, listo para un campo: 1234567.5 → "1.234.567,50". */
+export function amountToInput(value: number | string | null | undefined): string {
+  if (value == null || value === "") return "";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "";
+  const [int, dec] = (Math.round(n * 100) / 100).toFixed(2).split(".");
+  return dec === "00" ? groupThousands(int ?? "0") : `${groupThousands(int ?? "0")},${dec}`;
+}
+
+/**
+ * Para el onChange de un campo de monto: devuelve el texto con formato y, como al agregar o
+ * quitar puntos el texto cambia de largo, deja el cursor donde estaba (contando solo dígitos y coma).
+ */
+export function amountChange(event: ChangeEvent<HTMLInputElement>): string {
+  const el = event.target;
+  const caret = el.selectionStart ?? el.value.length;
+  const before = el.value.slice(0, caret).replace(/[^\d,]/g, "").length;
+  const next = formatAmountInput(el.value);
+  requestAnimationFrame(() => {
+    if (document.activeElement !== el) return;
+    let pos = 0;
+    for (let seen = 0; pos < next.length && seen < before; pos++) {
+      if (/[\d,]/.test(next[pos] ?? "")) seen++;
+    }
+    el.setSelectionRange(pos, pos);
+  });
+  return next;
 }

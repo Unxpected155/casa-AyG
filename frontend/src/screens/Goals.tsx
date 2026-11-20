@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 
 import { api, messageOf } from "../api";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
-import { money, parseAmount, pct } from "../format";
+import { amountChange, amountToInput, money, parseAmount, pct } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { useApp } from "../state";
 import type { Currency, Goal, GoalStatus } from "../types";
@@ -173,12 +173,12 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
   const { space, places } = useApp();
   const [kind, setKind] = useState<Goal["kind"]>(goal?.kind ?? "NORMAL");
   const [name, setName] = useState(goal?.name ?? "");
-  const [target, setTarget] = useState(goal?.targetAmount != null ? String(goal.targetAmount).replace(".", ",") : "");
+  const [target, setTarget] = useState(goal?.targetAmount != null ? amountToInput(goal.targetAmount) : "");
   const [months, setMonths] = useState(goal?.emergencyMonths ?? 3);
   const [currency, setCurrency] = useState<Currency>(goal?.currency ?? "CRC");
   const [date, setDate] = useState(goal?.targetDate ?? "");
   const [placeIds, setPlaceIds] = useState<string[]>(goal?.placeIds ?? []);
-  const [parts, setParts] = useState(goal?.parts.map((p) => ({ name: p.name, amount: String(p.amount).replace(".", ",") })) ?? []);
+  const [parts, setParts] = useState(goal?.parts.map((p) => ({ name: p.name, amount: amountToInput(p.amount) })) ?? []);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -262,7 +262,7 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
         {kind === "NORMAL" ? (
           <label className="field grow">
             <span>¿Cuánto quieres juntar?</span>
-            <input inputMode="decimal" value={target} maxLength={18} onChange={(e) => setTarget(e.target.value)} placeholder="5 000 000" />
+            <input inputMode="decimal" value={target} maxLength={18} onChange={(e) => setTarget(amountChange(e))} placeholder="5.000.000" />
           </label>
         ) : (
           <div className="field grow">
@@ -299,7 +299,7 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
               <input aria-label="Nombre de la parte" value={p.name} maxLength={60} placeholder="Prima"
                      onChange={(e) => setParts(parts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
               <input aria-label="Monto de la parte" inputMode="decimal" value={p.amount} maxLength={18} placeholder="0"
-                     onChange={(e) => setParts(parts.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} />
+                     onChange={(e) => setParts(parts.map((x, j) => (j === i ? { ...x, amount: amountChange(e) } : x)))} />
               <button type="button" className="icon-button" aria-label="Quitar parte" onClick={() => setParts(parts.filter((_, j) => j !== i))}>
                 <Icon name="close" size={18} />
               </button>

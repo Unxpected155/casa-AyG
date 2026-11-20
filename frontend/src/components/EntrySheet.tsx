@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { api, messageOf } from "../api";
-import { GROUP_LABEL, money, parseAmount, todayIso } from "../format";
+import { amountChange, amountToInput, GROUP_LABEL, money, parseAmount, todayIso } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { navigate } from "../router";
 import { useApp } from "../state";
@@ -46,8 +46,8 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const editingCategory = categories.find((c) => c.id === editing?.categoryId);
   const [kind, setKind] = useState<Kind>(
     editingTransfer ? "mover" : editing ? (editingCategory?.group === "INGRESO" ? "ingreso" : "gasto") : initialKind ?? "gasto");
-  const [amount, setAmount] = useState(editing ? String(editing.amount).replace(".", ",")
-    : preset?.amount != null ? String(preset.amount).replace(".", ",") : "");
+  const [amount, setAmount] = useState(editing ? amountToInput(editing.amount)
+    : preset?.amount != null ? amountToInput(preset.amount) : "");
   const [currency, setCurrency] = useState<Currency>(editing?.currency ?? preset?.currency ?? "CRC");
   const [categoryId, setCategoryId] = useState(editing?.categoryId ?? preset?.categoryId ?? "");
   const [categoryTouched, setCategoryTouched] = useState(Boolean(editing || preset));
@@ -71,7 +71,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   }, [duplicate]);
   // Diezmo: siempre marcado en un ingreso nuevo; al editar, según si ya lo tiene.
   const [tithe, setTithe] = useState(editing ? Boolean(editing.titheId) : true);
-  const [gross, setGross] = useState(editing?.grossAmount ? String(editing.grossAmount).replace(".", ",") : "");
+  const [gross, setGross] = useState(editing?.grossAmount ? amountToInput(editing.grossAmount) : "");
   const [grossTouched, setGrossTouched] = useState(Boolean(editing));
 
   const activePlaces = useMemo(
@@ -167,7 +167,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     if (!space || kind !== "ingreso" || !categoryId || grossTouched) return;
     let cancelled = false;
     api.get<Suggestion>(`/api/spaces/${space.id}/transactions/suggest?categoryId=${encodeURIComponent(categoryId)}`)
-      .then((s) => !cancelled && setGross(s.lastGross ? String(s.lastGross).replace(".", ",") : ""))
+      .then((s) => !cancelled && setGross(s.lastGross ? amountToInput(s.lastGross) : ""))
       .catch(() => undefined);
     return () => {
       cancelled = true;
@@ -197,7 +197,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const parsed = parseAmount(amount);
-    if (!parsed) return setError("Escribe un monto válido, por ejemplo 12 500 o 12,50.");
+    if (!parsed) return setError("Escribe un monto válido, por ejemplo 12.500 o 12,50.");
     if (kind === "mover") {
       if (!from || !to) return setError("Elige de dónde sale y a dónde va el dinero.");
       if (from === to) return setError("El origen y el destino tienen que ser distintos.");
@@ -355,7 +355,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 placeholder="0"
                 maxLength={18}
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(amountChange(e))}
               />
             </div>
 
@@ -423,7 +423,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                         <label className="field grow">
                           <span>Monto bruto</span>
                           <input inputMode="decimal" maxLength={18} value={gross} placeholder={amount || "Igual al monto"}
-                                 onChange={(e) => { setGross(e.target.value); setGrossTouched(true); }} />
+                                 onChange={(e) => { setGross(amountChange(e)); setGrossTouched(true); }} />
                         </label>
                         <p className="tithe-amount" aria-live="polite">
                           Diezmo <strong className="figure">{money(titheAmount, currency, true)}</strong>

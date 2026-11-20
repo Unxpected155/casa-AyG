@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, messageOf, withPasskeyConfirm } from "../api";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
-import { currentMonth, monthLabel, money, parseAmount, shiftMonth, todayIso, type YearMonth } from "../format";
+import { amountChange, amountToInput, currentMonth, money, monthLabel, parseAmount, shiftMonth, todayIso, type YearMonth } from "../format";
 import { navigate } from "../router";
 import { useApp } from "../state";
 import type { ClosePreview, Household, Place } from "../types";
@@ -372,7 +372,7 @@ function Contribute({ familyId, myPlaces, homePlaces, onDone, onError }: PartPro
         </label>
         <label className="field">
           <span>Monto</span>
-          <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
+          <input inputMode="decimal" maxLength={18} value={amount} onChange={(e) => setAmount(amountChange(e))} placeholder="0" />
         </label>
         <button type="submit" className="button secondary" disabled={busy || !to}>Aportar</button>
       </form>
@@ -408,7 +408,7 @@ function Destination({ house, myPlaces, onDone, onError }: PartProps & { house: 
 }
 
 function SettingsForm({ familyId, house, onDone, onError }: PartProps & { familyId: string; house: Household }) {
-  const [floor, setFloor] = useState(String(house.settings.personalFloor));
+  const [floor, setFloor] = useState(amountToInput(house.settings.personalFloor));
   const [bonus, setBonus] = useState(house.settings.bonusPct);
   const [busy, setBusy] = useState(false);
 
@@ -438,7 +438,7 @@ function SettingsForm({ familyId, house, onDone, onError }: PartProps & { family
         <p className="hint">Los dos reciben lo mismo: un monto fijo cada mes, más un bono de lo que sobró.</p>
         <label className="field">
           <span>Monto fijo para cada quien</span>
-          <input inputMode="decimal" value={floor} onChange={(e) => setFloor(e.target.value)} />
+          <input inputMode="decimal" maxLength={18} value={floor} onChange={(e) => setFloor(amountChange(e))} />
         </label>
         <label className="field">
           <span>Bono habitual: {String(bonus).replace(".", ",")} % de lo que sobró</span>

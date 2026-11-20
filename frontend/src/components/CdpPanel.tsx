@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, messageOf } from "../api";
-import { dateLabel, money, parseAmount, todayIso } from "../format";
+import { amountChange, amountToInput, dateLabel, money, parseAmount, todayIso } from "../format";
 import { useApp } from "../state";
 import type { Place, Renewal } from "../types";
 
@@ -48,7 +48,7 @@ function CdpSettings({ place, places, onDone }: { place: Place; places: Place[];
   const [tax, setTax] = useState(decimal(c?.taxPct ?? 15));
   const [maturesOn, setMaturesOn] = useState(c?.maturesOn ?? "");
   const [payout, setPayout] = useState(c?.payoutPlace ?? payouts[0]?.id ?? "");
-  const [contribution, setContribution] = useState(decimal(c?.lastContribution));
+  const [contribution, setContribution] = useState(amountToInput(c?.lastContribution));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,7 +116,7 @@ function CdpSettings({ place, places, onDone }: { place: Place; places: Place[];
       <div className="field-row">
         <label className="field grow">
           <span>Aporte de cada mes (sugerido al renovar)</span>
-          <input inputMode="decimal" value={contribution} onChange={(e) => setContribution(e.target.value)} placeholder="200 000" />
+          <input inputMode="decimal" value={contribution} onChange={(e) => setContribution(amountChange(e))} placeholder="200.000" />
         </label>
         <div className="field">
           <span>Base de días</span>
@@ -139,7 +139,7 @@ function Renew({ place, onDone }: { place: Place; onDone: () => void }) {
   const { space, places } = useApp();
   const c = place.cdp!;
   const [rate, setRate] = useState(decimal(c.rate));
-  const [contribution, setContribution] = useState(decimal(c.lastContribution ?? 0));
+  const [contribution, setContribution] = useState(amountToInput(c.lastContribution ?? 0));
   const [tithe, setTithe] = useState(true);
   const [preview, setPreview] = useState<Renewal | null>(null);
   const [busy, setBusy] = useState(false);
@@ -190,7 +190,7 @@ function Renew({ place, onDone }: { place: Place; onDone: () => void }) {
         </label>
         <label className="field grow">
           <span>Le sumas este mes</span>
-          <input inputMode="decimal" value={contribution} onChange={(e) => setContribution(e.target.value)} />
+          <input inputMode="decimal" value={contribution} onChange={(e) => setContribution(amountChange(e))} />
         </label>
       </div>
       <label className="check">
