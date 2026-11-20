@@ -44,8 +44,8 @@ export function Places() {
   return (
     // Con un lugar abierto, el botón flotante taparía «Guardar»: se esconde mientras se edita.
     <Shell onAdd={editingId || distributeFrom || moving !== null ? undefined : () => setEntry(true)}>
-      <h1 className="page-title">{space?.kind === "FAMILIA" ? "Lugares de la casa" : "Tus lugares"}</h1>
-      <p className="hint">Cada lugar parte de lo que tenía el día que lo agregaste y suma lo que anotas.</p>
+      <h1 className="page-title">{space?.kind === "FAMILIA" ? "Cuentas de la casa" : "Tus cuentas"}</h1>
+      <p className="hint">Cada cuenta parte de lo que tenía el día que la agregaste y suma lo que anotas.</p>
 
       {rows.length > 0 && (
         <div className="places-head">
@@ -95,7 +95,7 @@ export function Places() {
 
       {rows.length === 0 && !adding && (
         <section className="empty">
-          <p className="empty-title">Todavía no hay lugares.</p>
+          <p className="empty-title">Todavía no hay cuentas.</p>
           <p>Empieza por tu cuenta principal, con lo que tiene hoy. Después agrega tus sobres, tu CDP o el efectivo.</p>
         </section>
       )}
@@ -104,7 +104,7 @@ export function Places() {
         ? <NewPlace places={places} onDone={(created) => { setAdding(false); if (created) touch(); }} />
         : (
           <button type="button" className="button secondary add-place" onClick={() => setAdding(true)}>
-            <Icon name="plus" size={18} /> Agregar un lugar
+            <Icon name="plus" size={18} /> Agregar una cuenta
           </button>
         ))}
 
@@ -176,8 +176,8 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
 
   return (
     <form className="place-form" onSubmit={submit} noValidate>
-      <h2 className="section-title">Lugar nuevo</h2>
-      <div className="segmented" role="group" aria-label="Tipo de lugar">
+      <h2 className="section-title">Cuenta nueva</h2>
+      <div className="segmented" role="group" aria-label="Tipo de cuenta">
         {KINDS.map((k) => (
           <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)}>{PLACE_KIND_LABEL[k]}</button>
         ))}
@@ -336,7 +336,7 @@ function Distribute({ from, places, onDone }: { from: Place; places: Place[]; on
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (parsed.length === 0) return setError("Escribe cuánto va a cada lugar.");
+    if (parsed.length === 0) return setError("Escribe cuánto va a cada cuenta.");
     if (invalid) return setError("Revisa los montos: tienen que ser mayores que cero.");
     setBusy(true);
     setError(null);

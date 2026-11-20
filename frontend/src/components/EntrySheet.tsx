@@ -265,7 +265,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     }
   };
 
-  const placeName = (id: string) => places.find((p) => p.id === id)?.name ?? "un lugar";
+  const placeName = (id: string) => places.find((p) => p.id === id)?.name ?? "una cuenta";
   const title = editingTransfer ? "Dinero movido" : editing ? "Editar movimiento" : preset ? `Pagar ${preset.description}` : "Anotar";
   const destinations = activePlaces.filter((p) => p.id !== from && (!fromPlace || p.currency === fromPlace.currency));
 
@@ -380,9 +380,9 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 )}
                 {activePlaces.length === 0 && (
                   <div className="notice">
-                    <p>Todo lo que anotas sale de un lugar o entra a uno. Primero agrega tu cuenta.</p>
+                    <p>Todo lo que anotas sale de una cuenta o entra a una. Primero agrega la tuya.</p>
                     <button type="button" className="button secondary small" onClick={() => { onClose(); navigate("/lugares"); }}>
-                      Agregar un lugar
+                      Agregar una cuenta
                     </button>
                   </div>
                 )}

@@ -221,7 +221,7 @@ public class GoalService {
         }
         for (UUID place : d.placeIds()) {
             if (places.requirePlace(spaceId, place, false) != d.currency()) {
-                throw new ConflictException("Los lugares de una meta tienen que ser de su misma moneda.");
+                throw new ConflictException("Las cuentas de una meta tienen que ser de su misma moneda.");
             }
         }
         for (Part p : d.parts()) {
@@ -241,7 +241,7 @@ public class GoalService {
                     .params(goalId, place, spaceId).update();
             }
         } catch (DuplicateKeyException e) {
-            throw new ConflictException("Ese lugar ya cuenta para otra meta: un lugar va a una sola meta.");
+            throw new ConflictException("Esa cuenta ya es de otra meta: cada cuenta va a una sola meta.");
         }
         for (int i = 0; i < d.parts().size(); i++) {
             Part p = d.parts().get(i);

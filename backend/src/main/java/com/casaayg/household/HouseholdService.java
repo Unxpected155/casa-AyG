@@ -109,7 +109,7 @@ public class HouseholdService {
             return;
         }
         if (places.requirePlace(personal, placeId, false) != Money.Currency.CRC) {
-            throw new ConflictException("El dinero personal llega en colones: elige un lugar en colones.");
+            throw new ConflictException("El dinero personal llega en colones: elige una cuenta en colones.");
         }
         jdbc.sql("INSERT INTO personal_destination (user_id, space_id, place_id) VALUES (?, ?, ?)")
             .params(CurrentUser.require(), personal, placeId).update();
@@ -126,7 +126,7 @@ public class HouseholdService {
         Money.Currency from = places.requirePlace(personal, fromPlace, false);
         Money.Currency to = places.requirePlace(familyId, toPlace, false);
         if (from != to) {
-            throw new ConflictException("El aporte va entre lugares de la misma moneda.");
+            throw new ConflictException("El aporte va entre cuentas de la misma moneda.");
         }
         Money money = new Money(amount, from);
         if (money.amount().signum() <= 0) {
@@ -191,7 +191,7 @@ public class HouseholdService {
         }
         if (places.requirePlace(familyId, fromPlace, false) != Money.Currency.CRC
                 || (restPlace != null && places.requirePlace(familyId, restPlace, false) != Money.Currency.CRC)) {
-            throw new ConflictException("El cierre del mes se hace en colones: elige lugares en colones.");
+            throw new ConflictException("El cierre del mes se hace en colones: elige cuentas en colones.");
         }
         if (month.isBefore(since(familyId))) {
             throw new ConflictException("La casa todavía no existía ese mes.");

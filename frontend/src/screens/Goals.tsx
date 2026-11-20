@@ -58,7 +58,7 @@ export function Goals() {
     <Shell>
       <div ref={list}>
         <h1 className="page-title">Metas</h1>
-        <p className="hint">El avance sale del saldo de los lugares que ligas a cada meta, como tu CDP o un sobre.</p>
+        <p className="hint">El avance sale del saldo de las cuentas que ligas a cada meta, como tu CDP o un sobre.</p>
         {error && <p className="form-error" role="alert">{error}</p>}
 
         {goals?.length === 0 && open !== "new" && (
@@ -119,7 +119,7 @@ function planText(g: Goal): string {
   if (g.target <= 0) return g.kind === "EMERGENCIA"
     ? "Cuando tengas un mes completo de gastos anotados, calculo cuánto necesitas."
     : "Sin objetivo todavía.";
-  if (g.placeIds.length === 0) return "Liga un lugar (tu CDP, un sobre) para ver el avance.";
+  if (g.placeIds.length === 0) return "Liga una cuenta (tu CDP, un sobre) para ver el avance.";
   if (g.monthlyNeeded != null) {
     const behind = g.monthlyPace > 0 && g.monthlyPace < g.monthlyNeeded;
     return `Aparta ${money(g.monthlyNeeded, g.currency)} al mes para llegar en ${when(g.targetDate!)}.`
@@ -279,8 +279,8 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
       </div>
 
       <fieldset className="chips">
-        <legend>Lugares donde junta el dinero</legend>
-        {options.length === 0 && <p className="muted small">Agrega primero un lugar en Lugares (tu CDP o un sobre).</p>}
+        <legend>Cuentas donde junta el dinero</legend>
+        {options.length === 0 && <p className="muted small">Agrega primero una cuenta en Cuentas (tu CDP o un sobre).</p>}
         <div className="chip-row wrap">
           {options.map((p) => (
             <button key={p.id} type="button" className="chip" aria-pressed={placeIds.includes(p.id)}

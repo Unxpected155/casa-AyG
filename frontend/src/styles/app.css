@@ -1820,3 +1820,24 @@ fieldset {
   min-height: 44px;
   flex: 1 1 auto;
 }
+
+/* ---------- Fechas en iPhone ----------
+   Safari dibuja input[type=date] con un ancho nativo propio que ignora el de su columna y se
+   sale de la tarjeta. Sin la apariencia nativa se ajusta al ancho; el selector sigue igual. */
+.field {
+  min-width: 0;
+}
+
+.field input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  line-height: 44px;
+}
+
+.field input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}

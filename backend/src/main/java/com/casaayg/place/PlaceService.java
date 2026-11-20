@@ -173,7 +173,7 @@ public class PlaceService {
             throw new IllegalArgumentException("origen y destino iguales");
         }
         if (requirePlace(spaceId, t.from(), false) != requirePlace(spaceId, t.to(), false)) {
-            throw new ConflictException("Solo se puede mover dinero entre lugares de la misma moneda.");
+            throw new ConflictException("Solo se puede mover dinero entre cuentas de la misma moneda.");
         }
         Money amount = new Money(t.amount(), Money.Currency.CRC); // valida rango y decimales
         if (amount.amount().signum() == 0) {
