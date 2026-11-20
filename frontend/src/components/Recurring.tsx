@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, messageOf } from "../api";
-import { dayMonthLabel, GROUP_LABEL, money, parseAmount, todayIso } from "../format";
+import { amountChange, amountToInput, dayMonthLabel, GROUP_LABEL, money, parseAmount, todayIso } from "../format";
 import { useApp } from "../state";
 import type { Currency, Recurring } from "../types";
 import { EntrySheet } from "./EntrySheet";
@@ -131,7 +131,7 @@ function RecurringForm({ item, onDone }: { item?: Recurring; onDone: () => void 
   const [categoryId, setCategoryId] = useState(item?.categoryId
     ?? expenseCategories.find((c) => c.name.toLowerCase().startsWith("servicios"))?.id ?? expenseCategories[0]?.id ?? "");
   const [day, setDay] = useState(item?.dueDay ? String(item.dueDay) : "");
-  const [amount, setAmount] = useState(item?.expectedAmount != null ? String(item.expectedAmount).replace(".", ",") : "");
+  const [amount, setAmount] = useState(item?.expectedAmount != null ? amountToInput(item.expectedAmount) : "");
   const [currency, setCurrency] = useState<Currency>(item?.currency ?? "CRC");
   const [placeId, setPlaceId] = useState(item?.placeId ?? "");
   const [before, setBefore] = useState(item?.notifyDaysBefore ?? 1);
@@ -199,7 +199,7 @@ function RecurringForm({ item, onDone }: { item?: Recurring; onDone: () => void 
         </label>
         <label className="field grow">
           <span>Monto aproximado (opcional)</span>
-          <input inputMode="decimal" value={amount} maxLength={18} onChange={(e) => setAmount(e.target.value)} placeholder="18 500" />
+          <input inputMode="decimal" value={amount} maxLength={18} onChange={(e) => setAmount(amountChange(e))} placeholder="18.500" />
         </label>
         <div className="field">
           <span>Moneda</span>

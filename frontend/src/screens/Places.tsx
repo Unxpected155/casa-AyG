@@ -5,7 +5,7 @@ import { CdpPanel, cdpDue } from "../components/CdpPanel";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
-import { money, parseAmount, PLACE_KIND_LABEL, todayIso } from "../format";
+import { amountChange, amountToInput, money, parseAmount, PLACE_KIND_LABEL, todayIso } from "../format";
 import { useApp } from "../state";
 import type { Currency, Place, PlaceKind } from "../types";
 
@@ -200,7 +200,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
       <div className="field-row split">
         <label className="field grow">
           <span>¿Cuánto tiene hoy?</span>
-          <input inputMode="decimal" value={opening} maxLength={18} onChange={(e) => setOpening(e.target.value)} placeholder="0" />
+          <input inputMode="decimal" value={opening} maxLength={18} onChange={(e) => setOpening(amountChange(e))} placeholder="0" />
         </label>
         <label className="field">
           <span>Al día</span>
@@ -234,7 +234,7 @@ function PlaceEditor({ place, places, onDone, onDistribute, onMove }: {
 }) {
   const { space } = useApp();
   const [name, setName] = useState(place.name);
-  const [opening, setOpening] = useState(String(place.openingBalance).replace(".", ","));
+  const [opening, setOpening] = useState(amountToInput(place.openingBalance));
   const [date, setDate] = useState(place.openingDate);
   const [parentId, setParentId] = useState(place.parentId ?? "");
   const [busy, setBusy] = useState(false);
@@ -283,7 +283,7 @@ function PlaceEditor({ place, places, onDone, onDistribute, onMove }: {
       <div className="field-row">
         <label className="field grow">
           <span>Saldo inicial</span>
-          <input inputMode="decimal" value={opening} maxLength={18} onChange={(e) => setOpening(e.target.value)} />
+          <input inputMode="decimal" value={opening} maxLength={18} onChange={(e) => setOpening(amountChange(e))} />
         </label>
         <label className="field">
           <span>Al día</span>
@@ -363,7 +363,7 @@ function Distribute({ from, places, onDone }: { from: Place; places: Place[]; on
               <span className="money-input">
                 <span aria-hidden="true">{p.currency === "USD" ? "$" : "₡"}</span>
                 <input inputMode="decimal" maxLength={18} placeholder="0" aria-label={`Monto para ${p.name}`}
-                       value={amounts[p.id] ?? ""} onChange={(e) => setAmounts({ ...amounts, [p.id]: e.target.value })} />
+                       value={amounts[p.id] ?? ""} onChange={(e) => setAmounts({ ...amounts, [p.id]: amountChange(e) })} />
               </span>
             </label>
           </li>
