@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { api, messageOf } from "../api";
 import { GROUP_LABEL, money, parseAmount, todayIso } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
+import { navigate } from "../router";
 import { useApp } from "../state";
 import type { Currency, Group, Place, Suggestion, Transaction, TransactionPage, Transfer } from "../types";
 import { orderedPlaces } from "./Balance";
@@ -283,7 +284,22 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
           </button>
         </div>
 
-        {editingTransfer ? (
+        {editing?.fromClose ? (
+          <div className="transfer-view">
+            <p className="overview-line">
+              <strong className="figure">{money(editing.amount, editing.currency, true)}</strong> · {editing.description}
+            </p>
+            <p className="hint">
+              Esto lo anotó el cierre del mes, así que no se cambia a mano. Si hubo un error, reabran el mes en «La casa»
+              y ciérrenlo de nuevo.
+            </p>
+            <div className="sheet-actions">
+              <button type="button" className="button secondary" onClick={() => { onClose(); navigate("/casa"); }}>
+                Ir a La casa
+              </button>
+            </div>
+          </div>
+        ) : editingTransfer ? (
           <div className="transfer-view">
             <p className="overview-line">
               <strong className="figure">{money(editingTransfer.amount, editingTransfer.currency, true)}</strong>{" "}
@@ -363,6 +379,9 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 {activePlaces.length > 0 && (
                   <PlaceChips legend={kind === "gasto" ? "Sale de" : "Entra a"} places={activePlaces}
                               selected={placeId ?? ""} onSelect={choosePlace} />
+                )}
+                {activePlaces.length > 0 && !placeId && (
+                  <p className="muted small">Sin lugar: se anota, pero no cambia el saldo de ninguno.</p>
                 )}
 
                 <fieldset className="chips">

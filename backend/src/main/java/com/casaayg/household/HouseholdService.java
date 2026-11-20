@@ -141,6 +141,32 @@ public class HouseholdService {
             new Description("Aporte de " + name), money, null, toPlace));
     }
 
+    /**
+     * Reabrir un mes cerrado: borra lo que el cierre creó (en la casa y en lo personal de cada
+     * quien) y el mes vuelve a quedar abierto. Solo el último mes cerrado.
+     */
+    @Transactional
+    public void reopen(UUID familyId, YearMonth month) {
+        requireFamily(familyId, true);
+        Integer latest = jdbc.sql("""
+                SELECT year * 100 + month FROM month_close WHERE space_id = ? ORDER BY year DESC, month DESC LIMIT 1""")
+            .param(familyId).query(Integer.class).optional().orElse(null);
+        int wanted = month.getYear() * 100 + month.getMonthValue();
+        if (latest == null || latest < wanted) {
+            throw new NotFoundException();
+        }
+        if (latest > wanted) {
+            throw new ConflictException("Solo se puede reabrir el último mes cerrado.");
+        }
+        jdbc.sql("SELECT household_reopen(?, ?::smallint, ?::smallint)")
+            .params(familyId, month.getYear(), month.getMonthValue()).query().singleValue();
+    }
+
+    private void link(UUID familyId, YearMonth month, UUID txId, UUID transferId) {
+        jdbc.sql("INSERT INTO month_close_item (space_id, year, month, tx_id, transfer_id) VALUES (?, ?, ?, ?, ?)")
+            .params(familyId, month.getYear(), month.getMonthValue(), txId, transferId).update();
+    }
+
     private YearMonth since(UUID familyId) {
         return YearMonth.from(jdbc.sql("SELECT created_at FROM space WHERE id = ?").param(familyId)
             .query(java.time.OffsetDateTime.class).single().atZoneSameInstant(COSTA_RICA));
@@ -198,16 +224,20 @@ public class HouseholdService {
                     rs.getBigDecimal(4), false))
                 .list();
             for (Partner m : members) {
-                transactions.create(familyId, new TransactionData(category, date,
+                UUID expense = transactions.create(familyId, new TransactionData(category, date,
                     new Description("Dinero personal de " + m.displayName() + " (" + label + ")"),
-                    new Money(p.perPerson(), Money.Currency.CRC), null, fromPlace));
-                jdbc.sql("SELECT household_pay_personal(?, ?, ?, ?, ?)")
-                    .params(familyId, m.userId(), p.perPerson(), date, "Dinero personal de " + label)
+                    new Money(p.perPerson(), Money.Currency.CRC), null, fromPlace)).id();
+                link(familyId, month, expense, null);
+                jdbc.sql("SELECT household_pay_personal(?, ?, ?, ?, ?, ?::smallint, ?::smallint)")
+                    .params(familyId, m.userId(), p.perPerson(), date, "Dinero personal de " + label,
+                        month.getYear(), month.getMonthValue())
                     .query().singleValue();
             }
         }
         if (restPlace != null && !restPlace.equals(fromPlace) && p.rest().signum() > 0) {
-            places.transfer(familyId, new NewTransfer(fromPlace, restPlace, date, p.rest(), "Lo que sobró de " + label));
+            UUID transfer = places.transfer(familyId,
+                new NewTransfer(fromPlace, restPlace, date, p.rest(), "Lo que sobró de " + label)).id();
+            link(familyId, month, null, transfer);
         }
         return compute(familyId, month, bonusPct);
     }

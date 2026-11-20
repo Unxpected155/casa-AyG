@@ -52,6 +52,8 @@ export interface Transaction {
   titheId: string | null;
   /** El pago fijo que se pagó con este movimiento. */
   recurringId: string | null;
+  /** Lo anotó el cierre del mes de la casa: no se edita a mano (se reabre el mes). */
+  fromClose: boolean;
 }
 
 export interface HistoryMonth {

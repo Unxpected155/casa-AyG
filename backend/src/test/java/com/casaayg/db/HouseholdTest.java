@@ -3,6 +3,7 @@ package com.casaayg.db;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -145,6 +146,108 @@ class HouseholdTest extends WebTestSupport {
         }
     }
 
+    @Test
+    void reabrirElMesDeshaceTodoYLoCerradoNoSeTocaAMano() throws Exception {
+        UUID betoSobre = place(beto, beto.personalSpace(), "Sobre libre", "0");
+        UUID conjunta = place(ana, family, "Cuenta conjunta", "0");
+        UUID fondo = place(ana, family, "Fondo", "0");
+        tx(ana, family, "Salario", "1000000", conjunta, "Salario");
+        tx(ana, family, "Supermercado", "300000", conjunta, "Súper");
+        tx(beto, beto.personalSpace(), "Supermercado", "1000", betoSobre, "Algo de Beto");
+        as(ana, put("/api/spaces/" + family + "/household/settings").content(toJson(Map.of(
+                "personalFloor", "15000", "bonusPct", "2.5")))).andExpect(status().isOk());
+        YearMonth m = YearMonth.from(TODAY);
+        as(ana, post("/api/spaces/" + family + "/household/close").content(closeBody(m, conjunta, fondo)))
+            .andExpect(status().isOk());
+        assertThat(balance(beto, beto.personalSpace(), betoSobre)).isEqualByComparingTo("31500"); // −1000 + 15 000 + 2,5 % de 700 000
+
+        // Lo que creó el cierre no se edita ni se borra a mano, ni en la casa ni en lo personal.
+        UUID homeExpense = txNamed(ana, family, "Dinero personal de Beto", m);
+        as(ana, delete("/api/spaces/" + family + "/transactions/" + homeExpense)).andExpect(status().isConflict());
+        UUID personalIncome = txNamed(beto, beto.personalSpace(), "Dinero personal de", m);
+        as(beto, delete("/api/spaces/" + beto.personalSpace() + "/transactions/" + personalIncome))
+            .andExpect(status().isConflict());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> transfers = JSON.readValue(as(ana, get("/api/spaces/" + family + "/transfers?year="
+                + m.getYear() + "&month=" + m.getMonthValue())).andExpect(status().isOk()).andReturn().getResponse()
+            .getContentAsString(), List.class);
+        assertThat(transfers).hasSize(1);
+        as(ana, delete("/api/spaces/" + family + "/transfers/" + transfers.get(0).get("id")))
+            .andExpect(status().isConflict());
+
+        // Nadie puede ligar un movimiento personal de la pareja a un cierre (para borrarlo al
+        // reabrir), ni pagarle dinero personal fuera de un cierre.
+        UUID betoOther = txNamed(beto, beto.personalSpace(), "Algo de Beto", m);
+        try (Connection app = asApp()) {
+            app.setAutoCommit(false);
+            TestData.actAs(app, ana.id());
+            try (var ps = app.prepareStatement(
+                    "INSERT INTO casaayg.month_close_item (space_id, year, month, tx_id) VALUES (?, ?, ?, ?)")) {
+                ps.setObject(1, family);
+                ps.setInt(2, m.getYear());
+                ps.setInt(3, m.getMonthValue());
+                ps.setObject(4, betoOther);
+                org.assertj.core.api.Assertions.assertThatThrownBy(ps::executeUpdate).isInstanceOf(java.sql.SQLException.class);
+            }
+            app.rollback();
+            TestData.actAs(app, ana.id());
+            try (var ps = app.prepareStatement(
+                    "SELECT casaayg.household_pay_personal(?, ?, 33750, current_date, 'x', ?::smallint, ?::smallint)")) {
+                ps.setObject(1, family);
+                ps.setObject(2, beto.id());
+                ps.setInt(3, m.getYear());
+                ps.setInt(4, m.getMonthValue());
+                org.assertj.core.api.Assertions.assertThatThrownBy(ps::executeQuery).isInstanceOf(java.sql.SQLException.class);
+            }
+            app.rollback();
+        }
+
+        // Reabrir pide passkey reciente; después todo vuelve a como estaba y se puede cerrar otra vez.
+        String reopen = "/api/spaces/" + family + "/household/close?year=" + m.getYear() + "&month=" + m.getMonthValue();
+        as(beto, delete(reopen), Duration.ofMinutes(10)).andExpect(status().isForbidden());
+        as(otro, delete(reopen)).andExpect(status().isNotFound());
+        as(beto, delete(reopen)).andExpect(status().isNoContent());
+        assertThat(balance(ana, family, conjunta)).isEqualByComparingTo("700000");
+        assertThat(balance(ana, family, fondo)).isEqualByComparingTo("0");
+        assertThat(balance(beto, beto.personalSpace(), betoSobre)).isEqualByComparingTo("-1000");
+        as(beto, delete(reopen)).andExpect(status().isNotFound());
+        as(ana, post("/api/spaces/" + family + "/household/close").content(closeBody(m, conjunta, null)))
+            .andExpect(status().isOk());
+    }
+
+    @Test
+    void soloSeReabreElUltimoMesCerrado() throws Exception {
+        try (Connection su = asSuperuser()) {
+            su.createStatement().execute("UPDATE casaayg.space SET created_at = now() - interval '45 days' WHERE id = '"
+                + family + "'");
+        }
+        UUID conjunta = place(ana, family, "Cuenta conjunta", "0");
+        as(ana, put("/api/spaces/" + family + "/household/settings").content(toJson(Map.of(
+                "personalFloor", "10000", "bonusPct", "0")))).andExpect(status().isOk());
+        YearMonth m = YearMonth.from(TODAY);
+        as(ana, post("/api/spaces/" + family + "/household/close").content(closeBody(m.minusMonths(1), conjunta, null)))
+            .andExpect(status().isOk());
+        as(ana, post("/api/spaces/" + family + "/household/close").content(closeBody(m, conjunta, null)))
+            .andExpect(status().isOk());
+        as(ana, delete("/api/spaces/" + family + "/household/close?year=" + m.minusMonths(1).getYear()
+            + "&month=" + m.minusMonths(1).getMonthValue())).andExpect(status().isConflict());
+        as(ana, delete("/api/spaces/" + family + "/household/close?year=" + m.getYear()
+            + "&month=" + m.getMonthValue())).andExpect(status().isNoContent());
+    }
+
+    @Test
+    void laHistoriaDeLaCasaEmpiezaCuandoSeCasaron() throws Exception {
+        YearMonth m = YearMonth.from(TODAY);
+        Map<String, Object> history = json(as(ana, get("/api/spaces/" + family + "/history?year=" + m.getYear()
+                + "&month=" + m.getMonthValue())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat((List<?>) history.get("months")).hasSize(1);
+        // Lo personal conserva sus seis meses.
+        Map<String, Object> personal = json(as(ana, get("/api/spaces/" + ana.personalSpace() + "/history?year="
+                + m.getYear() + "&month=" + m.getMonthValue())).andExpect(status().isOk()).andReturn().getResponse()
+            .getContentAsString());
+        assertThat((List<?>) personal.get("months")).hasSize(6);
+    }
+
     // --- utilidades ----------------------------------------------------------------------
 
     private String closeBody(YearMonth m, UUID from, UUID rest) {
@@ -182,6 +285,15 @@ class HouseholdTest extends WebTestSupport {
                 "date", TODAY.toString(), "description", description, "amount", amount, "currency", "CRC",
                 "placeId", place.toString()))))
             .andExpect(status().isCreated());
+    }
+
+    @SuppressWarnings("unchecked")
+    private UUID txNamed(TestData.AppUser user, UUID space, String prefix, YearMonth m) throws Exception {
+        Map<String, Object> page = json(as(user, get("/api/spaces/" + space + "/transactions?year=" + m.getYear()
+                + "&month=" + m.getMonthValue())).andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        return ((List<Map<String, Object>>) page.get("items")).stream()
+            .filter(t -> String.valueOf(t.get("description")).startsWith(prefix))
+            .map(t -> uuid(t.get("id"))).findFirst().orElseThrow();
     }
 
     @SuppressWarnings("unchecked")

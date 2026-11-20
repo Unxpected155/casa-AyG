@@ -72,7 +72,8 @@ public class TransactionService {
     public record TransactionView(UUID id, UUID categoryId, LocalDate date, String description,
                                   BigDecimal amount, Money.Currency currency, String paymentMethod,
                                   String source, UUID createdBy, boolean beforeMerge, UUID placeId,
-                                  BigDecimal grossAmount, UUID titheOf, UUID titheId, UUID recurringId) {}
+                                  BigDecimal grossAmount, UUID titheOf, UUID titheId, UUID recurringId,
+                                  boolean fromClose) {}
 
     /**
      * Lo que se sugiere al anotar: la categoría que se usó antes con esa descripción, el último
@@ -100,7 +101,8 @@ public class TransactionService {
     private static final String COLUMNS = """
         id, category_id, tx_date, description, amount, currency, payment_method, source,
         created_by, origin_space_id IS NOT NULL AS before_merge, place_id, gross_amount, tithe_of,
-        (SELECT d.id FROM transaction d WHERE d.tithe_of = transaction.id) AS tithe_id, recurring_id""";
+        (SELECT d.id FROM transaction d WHERE d.tithe_of = transaction.id) AS tithe_id, recurring_id,
+        EXISTS (SELECT 1 FROM month_close_item i WHERE i.tx_id = transaction.id) AS from_close""";
 
     @Transactional(readOnly = true)
     public Page list(UUID spaceId, YearMonth month, int page, int size) {
@@ -190,6 +192,7 @@ public class TransactionService {
     @Transactional
     public TransactionView update(UUID spaceId, UUID id, TransactionData data) {
         spaces.requireWritable(spaceId);
+        requireNotFromClose(id);
         boolean income = requireCategory(spaceId, data.categoryId());
         requirePlace(spaceId, data);
         requireTitheOnlyForIncome(income, data);
@@ -223,8 +226,17 @@ public class TransactionService {
     @Transactional
     public void delete(UUID spaceId, UUID id) {
         spaces.requireWritable(spaceId);
+        requireNotFromClose(id);
         if (jdbc.sql("DELETE FROM transaction WHERE id = ? AND space_id = ?").params(id, spaceId).update() == 0) {
             throw new NotFoundException();
+        }
+    }
+
+    /** Lo que creó el cierre del mes no se toca a mano: se deshace reabriendo el mes (V13). */
+    private void requireNotFromClose(UUID id) {
+        if (jdbc.sql("SELECT EXISTS (SELECT 1 FROM month_close_item WHERE tx_id = ?)").param(id)
+                .query(Boolean.class).single()) {
+            throw new ConflictException("Esto lo anotó el cierre del mes. Para cambiarlo, reabran el mes en «La casa».");
         }
     }
 
@@ -324,6 +336,6 @@ public class TransactionService {
             Money.Currency.valueOf(rs.getString("currency")), rs.getString("payment_method"),
             rs.getString("source"), rs.getObject("created_by", UUID.class), rs.getBoolean("before_merge"),
             rs.getObject("place_id", UUID.class), rs.getBigDecimal("gross_amount"), rs.getObject("tithe_of", UUID.class),
-            rs.getObject("tithe_id", UUID.class), rs.getObject("recurring_id", UUID.class));
+            rs.getObject("tithe_id", UUID.class), rs.getObject("recurring_id", UUID.class), rs.getBoolean("from_close"));
     }
 }
