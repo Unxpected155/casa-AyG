@@ -63,7 +63,7 @@ services:
       # servidor por encima del umbral de inactividad de Oracle Always Free (20 % de RAM).
       JAVA_TOOL_OPTIONS: -Xms1280m -Xmx1280m -XX:+AlwaysPreTouch
     # Solo los secretos que la app usa (no el del superusuario).
-    secrets: [db_owner_password, db_app_password, vapid_private_key, vapid_public_key]
+    secrets: [db_owner_password, db_app_password, vapid_private_key, vapid_public_key, tax_id_key]
     user: "10001:10001"
     read_only: true
     tmpfs: ["/tmp:size=64m"]
@@ -107,3 +107,6 @@ secrets:
     file: /etc/casa-ayg/secrets/vapid_private_key
   vapid_public_key:
     file: /etc/casa-ayg/secrets/vapid_public_key
+  # Llave del HMAC de las cédulas (facturas, ADR-006). Fuera de la BD y de los respaldos.
+  tax_id_key:
+    file: /etc/casa-ayg/secrets/tax_id_key

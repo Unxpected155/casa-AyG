@@ -84,6 +84,13 @@ fi
 chown root:10001 /etc/casa-ayg/secrets/vapid_private_key /etc/casa-ayg/secrets/vapid_public_key
 chmod 0440       /etc/casa-ayg/secrets/vapid_private_key /etc/casa-ayg/secrets/vapid_public_key
 
+echo "==> Llave de las cédulas para las facturas (se genera una sola vez)"
+# Si se pierde, cada persona vuelve a escribir su cédula; por eso no va en los respaldos.
+taxkey=/etc/casa-ayg/secrets/tax_id_key
+[[ -s $taxkey ]] || { openssl rand -hex 32 | tr -d '
+' > "$taxkey"; }
+chown root:10001 "$taxkey" && chmod 0440 "$taxkey"
+
 echo "==> Código (repo público) en /opt/casa-ayg"
 if [[ ! -d /opt/casa-ayg/.git ]]; then
   git clone --depth 1 https://github.com/Unxpected155/casa-AyG.git /opt/casa-ayg
