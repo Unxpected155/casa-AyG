@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -88,5 +89,15 @@ class HouseholdController {
         RecentAuthentication.require();
         return household.close(spaceId, YearMonth.of(body.year(), body.month()), body.bonusPct(), body.fromPlace(),
             body.restPlace());
+    }
+
+    /** Reabrir el último mes cerrado: deshace sus pagos. Passkey reciente, como cerrar. */
+    @DeleteMapping("/api/spaces/{spaceId}/household/close")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void reopen(@PathVariable UUID spaceId,
+                @RequestParam @Min(2000) @Max(2100) int year,
+                @RequestParam @Min(1) @Max(12) int month) {
+        RecentAuthentication.require();
+        household.reopen(spaceId, YearMonth.of(year, month));
     }
 }

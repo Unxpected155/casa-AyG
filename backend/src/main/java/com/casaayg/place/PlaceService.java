@@ -147,6 +147,10 @@ public class PlaceService {
     @Transactional
     public void deleteTransfer(UUID spaceId, UUID id) {
         spaces.requireWritable(spaceId);
+        if (jdbc.sql("SELECT EXISTS (SELECT 1 FROM month_close_item WHERE transfer_id = ?)").param(id)
+                .query(Boolean.class).single()) {
+            throw new ConflictException("Esto lo movió el cierre del mes. Para cambiarlo, reabran el mes en «La casa».");
+        }
         if (jdbc.sql("DELETE FROM transfer WHERE id = ? AND space_id = ?").params(id, spaceId).update() == 0) {
             throw new NotFoundException();
         }

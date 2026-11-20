@@ -83,7 +83,19 @@ public class HistoryService {
                 rs.getString("name"), rs.getString("category_group"), rs.getBigDecimal("amount").setScale(2, RoundingMode.HALF_UP),
                 rs.getBigDecimal("to_day").setScale(2, RoundingMode.HALF_UP)))
             .list();
-        return build(month, today, cells);
+        History history = build(month, today, cells);
+        // La casa no existía antes de casarse: esos meses no son "₡0", simplemente no van.
+        YearMonth since = jdbc.sql("""
+                SELECT created_at FROM space WHERE id = ? AND kind = 'FAMILIA'""")
+            .param(spaceId).query(java.time.OffsetDateTime.class).optional()
+            .map(t -> YearMonth.from(t.atZoneSameInstant(COSTA_RICA))).orElse(null);
+        if (since == null || !since.isAfter(first)) {
+            return history;
+        }
+        List<MonthTotals> kept = history.months().stream().filter(m -> !m.month().isBefore(since)).toList();
+        return new History(history.month(), history.partial(), history.elapsed(), history.baselineMonths(),
+            kept.isEmpty() ? history.months().subList(history.months().size() - 1, history.months().size()) : kept,
+            history.categories());
     }
 
     /** El cálculo, separado de la BD para probarlo con datos fijos. */

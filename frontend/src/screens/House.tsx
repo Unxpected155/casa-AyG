@@ -170,6 +170,24 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
   const isFuture = month.year > now.year || (month.year === now.year && month.month > now.month);
   const isCurrent = month.year === now.year && month.month === now.month;
 
+  const [confirmReopen, setConfirmReopen] = useState(false);
+  const latest = house.closes[0];
+  const isLatestClose = latest?.year === month.year && latest?.month === month.month;
+
+  const reopen = async () => {
+    setBusy(true);
+    onError(null);
+    try {
+      await withPasskeyConfirm(() => api.del(`/api/spaces/${familyId}/household/close?year=${month.year}&month=${month.month}`));
+      setConfirmReopen(false);
+      onDone(`${monthLabel(month)} quedó abierto otra vez.`);
+    } catch (e) {
+      onError({ tone: "error", text: messageOf(e, "No se pudo reabrir el mes.") });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const close = async () => {
     if (!preview || !from) return;
     setBusy(true);
@@ -202,9 +220,27 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
       </div>
 
       {preview?.closed ? (
-        <p className="lead">
-          Ya está cerrado: cada quien recibió <strong className="figure">{money(preview.closed.perPerson, "CRC")}</strong>.
-        </p>
+        <>
+          <p className="lead">
+            Ya está cerrado: cada quien recibió <strong className="figure">{money(preview.closed.perPerson, "CRC")}</strong>.
+          </p>
+          {isLatestClose && (confirmReopen ? (
+            <div className="stack">
+              <p className="notice">
+                Se borra lo que anotó el cierre: lo que recibió cada quien en lo personal, el gasto en la casa y lo que se
+                pasó a otro lugar. Después lo pueden cerrar de nuevo.
+              </p>
+              <div className="actions start">
+                <button type="button" className="button ghost danger" disabled={busy} onClick={reopen}>Sí, reabrir</button>
+                <button type="button" className="button ghost" onClick={() => setConfirmReopen(false)}>No</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="button ghost small" onClick={() => setConfirmReopen(true)}>
+              Reabrir {monthLabel(month).toLowerCase()}
+            </button>
+          ))}
+        </>
       ) : preview && (
         <>
           <dl className="close-sums">
@@ -255,7 +291,7 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
               <button type="button" className="button primary" disabled={busy || !from} onClick={close}>
                 Cerrar {monthLabel(month).toLowerCase()}
               </button>
-              <p className="hint">Se pide tu passkey. Un mes se cierra una sola vez.</p>
+              <p className="hint">Se pide tu passkey. Si se equivocan, lo pueden reabrir.</p>
             </>
           )}
         </>
