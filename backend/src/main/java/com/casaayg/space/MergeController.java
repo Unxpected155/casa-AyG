@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.casaayg.domain.Text.SpaceName;
+import com.casaayg.push.PushNotice;
 import com.casaayg.shared.security.RecentAuthentication;
 import com.casaayg.shared.web.ConflictException;
 import com.casaayg.shared.web.NotFoundException;
@@ -36,9 +38,11 @@ import jakarta.validation.constraints.Size;
 class MergeController {
 
     private final JdbcClient jdbc;
+    private final ApplicationEventPublisher events;
 
-    MergeController(JdbcClient jdbc) {
+    MergeController(JdbcClient jdbc, ApplicationEventPublisher events) {
         this.jdbc = jdbc;
+        this.events = events;
     }
 
     record MergeView(UUID id, String familyName, String status, boolean iAmRequester, String otherPerson,
@@ -65,6 +69,7 @@ class MergeController {
         SpaceName name = new SpaceName(body.familyName());
         UUID id = translate(() -> jdbc.sql("SELECT merge_propose(?, ?)")
             .params(body.partnerUsername(), name.value()).query(UUID.class).single());
+        tellOther(id, myName() + " propone unir sus finanzas en una casa. Confírmalo en Espacio familiar.", "/boda");
         return Map.of("id", id);
     }
 
@@ -78,6 +83,7 @@ class MergeController {
         if (family == null) {
             throw new ConflictException("La solicitud venció. Hay que proponerla de nuevo.");
         }
+        tellOther(id, myName() + " aceptó: ya comparten la casa.", "/casa");
         return Map.of("familySpaceId", family);
     }
 
@@ -86,6 +92,16 @@ class MergeController {
     @Transactional
     void decline(@PathVariable UUID id) {
         translate(() -> jdbc.sql("SELECT merge_decline(?)").param(id).query().singleValue());
+    }
+
+    /** Aviso a la otra persona de la propuesta, después de confirmar (ver PushNotice). */
+    private void tellOther(UUID request, String text, String url) {
+        jdbc.sql("SELECT merge_other_party(?)").param(request).query(UUID.class).optional()
+            .ifPresent(other -> events.publishEvent(new PushNotice(List.of(other), "Espacio familiar", text, url)));
+    }
+
+    private String myName() {
+        return jdbc.sql("SELECT display_name FROM app_user WHERE id = current_app_user()").query(String.class).single();
     }
 
     private static <T> T translate(java.util.function.Supplier<T> call) {

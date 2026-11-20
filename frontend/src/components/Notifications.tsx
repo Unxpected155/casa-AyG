@@ -98,7 +98,9 @@ export function Notifications() {
     <section className="block" aria-labelledby="push-title">
       <h2 id="push-title" className="section-title">Notificaciones</h2>
       <p className="muted">
-        Avisos como "tu CDP venció". Nunca llevan montos, porque se pueden ver con el teléfono bloqueado.
+        Te avisa de pagos fijos por vencer, un CDP que venció, el avance de tus metas, cuando una categoría llega al
+        80 % o al 100 % del presupuesto, y lo de la casa: cerrar el mes y lo que haga tu pareja. Nunca llevan montos,
+        porque se pueden ver con el teléfono bloqueado.
       </p>
       {message && <p className={message.tone === "ok" ? "form-ok" : "form-error"} role="status">{message.text}</p>}
       {state === "ios-install" && (

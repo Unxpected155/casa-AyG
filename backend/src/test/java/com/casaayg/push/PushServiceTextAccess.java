@@ -11,4 +11,14 @@ public final class PushServiceTextAccess {
     public static String recurringText(LocalDate today, List<String[]> items) {
         return PushService.recurringText(today, items);
     }
+
+    /** Cada elemento: {categoría, nivel, es de la casa}. */
+    public static String budgetText(List<Object[]> hits) {
+        return PushService.budgetText(hits.stream()
+            .map(h -> new PushService.BudgetHit((String) h[0], (Integer) h[1], (Boolean) h[2])).toList());
+    }
+
+    public static String closeReminderText(java.time.YearMonth month) {
+        return PushService.closeReminderText(month);
+    }
 }
