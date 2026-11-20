@@ -21,7 +21,6 @@ export function Plan() {
   useEffect(() => {
     if (!space) return;
     let cancelled = false;
-    setStatus(null);
     api.get<BudgetLine[]>(`/api/spaces/${space.id}/budgets/${month.year}/${month.month}`)
       .then((lines) => {
         if (cancelled) return;
@@ -34,6 +33,9 @@ export function Plan() {
       cancelled = true;
     };
   }, [space, month.year, month.month, version]);
+
+  // El aviso se limpia al cambiar de espacio o de mes; no con la recarga que sigue a guardar.
+  useEffect(() => setStatus(null), [space?.id, month.year, month.month]);
 
   if (!space) return <Shell withMonth><p>Cargando…</p></Shell>;
 

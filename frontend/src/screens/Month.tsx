@@ -71,7 +71,8 @@ export function Month() {
           </button>
         )}
         {summary && space?.kind === "PERSONAL" && hasHome && (
-          <button type="button" className="button ghost small history-link" onClick={() => navigate("/casa")}>
+          <button type="button" className="button ghost small history-link"
+                  onClick={() => { navigate("/casa"); window.history.replaceState({ focus: "aportar" }, ""); }}>
             <Icon name="home" size={18} /> Aportar a la casa
           </button>
         )}
