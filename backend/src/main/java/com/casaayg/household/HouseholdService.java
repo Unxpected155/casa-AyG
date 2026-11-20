@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import com.casaayg.domain.Money;
 import com.casaayg.domain.Text.Description;
 import com.casaayg.place.PlaceService;
 import com.casaayg.place.PlaceService.NewTransfer;
+import com.casaayg.push.PushNotice;
 import com.casaayg.shared.security.CurrentUser;
 import com.casaayg.shared.web.ConflictException;
 import com.casaayg.shared.web.NotFoundException;
@@ -39,12 +41,15 @@ public class HouseholdService {
     private final Spaces spaces;
     private final PlaceService places;
     private final TransactionService transactions;
+    private final ApplicationEventPublisher events;
 
-    HouseholdService(JdbcClient jdbc, Spaces spaces, PlaceService places, TransactionService transactions) {
+    HouseholdService(JdbcClient jdbc, Spaces spaces, PlaceService places, TransactionService transactions,
+                     ApplicationEventPublisher events) {
         this.jdbc = jdbc;
         this.spaces = spaces;
         this.places = places;
         this.transactions = transactions;
+        this.events = events;
     }
 
     public record Partner(UUID userId, String displayName, BigDecimal crc, BigDecimal usd, boolean me) {}
@@ -160,6 +165,20 @@ public class HouseholdService {
         }
         jdbc.sql("SELECT household_reopen(?, ?::smallint, ?::smallint)")
             .params(familyId, month.getYear(), month.getMonthValue()).query().singleValue();
+        tellPartner(familyId, myName() + " reabrió " + monthName(month) + ": se deshizo el dinero personal de ese mes.");
+    }
+
+    /** Aviso a la pareja (no a quien lo hizo), después de confirmar. Sin montos. */
+    private void tellPartner(UUID familyId, String text) {
+        List<UUID> others = jdbc.sql("SELECT user_id FROM space_member WHERE space_id = ? AND user_id <> current_app_user()")
+            .param(familyId).query(UUID.class).list();
+        if (!others.isEmpty()) {
+            events.publishEvent(new PushNotice(others, "La casa", text, "/casa"));
+        }
+    }
+
+    private static String monthName(YearMonth month) {
+        return month.getMonth().getDisplayName(java.time.format.TextStyle.FULL, Locale.forLanguageTag("es-CR"));
     }
 
     private void link(UUID familyId, YearMonth month, UUID txId, UUID transferId) {
@@ -239,6 +258,7 @@ public class HouseholdService {
                 new NewTransfer(fromPlace, restPlace, date, p.rest(), "Lo que sobró de " + label)).id();
             link(familyId, month, null, transfer);
         }
+        tellPartner(familyId, myName() + " cerró " + label + ": ya te llegó tu dinero personal.");
         return compute(familyId, month, bonusPct);
     }
 

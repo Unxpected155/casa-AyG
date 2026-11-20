@@ -21,6 +21,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
@@ -28,7 +31,11 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
  * V11, la casa al casarse. Un flujo realista: se casan, el salario entra a la casa, Ana
  * aporta de lo suyo, se cierra el mes con piso + bono, y cada quien solo ve el SALDO del otro.
  */
+@RecordApplicationEvents
 class HouseholdTest extends WebTestSupport {
+
+    @Autowired
+    ApplicationEvents events;
 
     static final LocalDate TODAY = LocalDate.now(java.time.ZoneId.of("America/Costa_Rica"));
 
@@ -247,6 +254,30 @@ class HouseholdTest extends WebTestSupport {
                 + m.getYear() + "&month=" + m.getMonthValue())).andExpect(status().isOk()).andReturn().getResponse()
             .getContentAsString());
         assertThat((List<?>) personal.get("months")).hasSize(6);
+    }
+
+    @Test
+    void alCerrarYReabrirSeLeAvisaALaParejaNoAQuienLoHizo() throws Exception {
+        UUID conjunta = place(ana, family, "Cuenta conjunta", "0");
+        tx(ana, family, "Salario", "100000", conjunta, "Salario");
+        as(ana, put("/api/spaces/" + family + "/household/settings").content(toJson(Map.of(
+                "personalFloor", "5000", "bonusPct", "0")))).andExpect(status().isOk());
+        YearMonth m = YearMonth.from(TODAY);
+        events.clear();
+        as(ana, post("/api/spaces/" + family + "/household/close").content(closeBody(m, conjunta, null)))
+            .andExpect(status().isOk());
+        List<com.casaayg.push.PushNotice> sent = events.stream(com.casaayg.push.PushNotice.class).toList();
+        assertThat(sent).hasSize(1);
+        assertThat(sent.get(0).to()).containsExactly(beto.id());
+        assertThat(sent.get(0).body()).startsWith("Ana cerró").doesNotContain("₡").doesNotContain("5000");
+
+        events.clear();
+        as(beto, delete("/api/spaces/" + family + "/household/close?year=" + m.getYear() + "&month=" + m.getMonthValue()))
+            .andExpect(status().isNoContent());
+        sent = events.stream(com.casaayg.push.PushNotice.class).toList();
+        assertThat(sent).hasSize(1);
+        assertThat(sent.get(0).to()).containsExactly(ana.id());
+        assertThat(sent.get(0).body()).startsWith("Beto reabrió");
     }
 
     // --- utilidades ----------------------------------------------------------------------

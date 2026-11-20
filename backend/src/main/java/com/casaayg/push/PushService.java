@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import com.casaayg.shared.db.AsUser;
 import com.casaayg.shared.security.CurrentUser;
@@ -121,6 +122,81 @@ public class PushService {
                 java.util.stream.Collectors.toList()))
             .forEach((user, items) -> notify(user, "Pagos por hacer", recurringText(today, items.stream()
                 .map(d -> new String[] {d.name(), d.dueDate().toString()}).toList()), "/"));
+    }
+
+    /**
+     * Mañana y tarde: las categorías de gasto que cruzaron el 80 % o el 100 % de lo planeado
+     * este mes. Un solo aviso por persona; cada nivel se avisa una vez.
+     */
+    @Scheduled(cron = "0 0 8,19 * * *", zone = "America/Costa_Rica")
+    public void warnBudgets() {
+        if (!sender.enabled()) {
+            return;
+        }
+        record Hit(UUID userId, String name, int level, boolean family) {}
+        List<Hit> hits = asUser.run(null, () -> jdbc.sql("SELECT user_id, category_name, level, family FROM budget_alerts(?)")
+            .param(LocalDate.now(COSTA_RICA))
+            .query((rs, n) -> new Hit(rs.getObject("user_id", UUID.class), rs.getString("category_name"),
+                rs.getInt("level"), rs.getBoolean("family"))).list());
+        hits.stream().collect(java.util.stream.Collectors.groupingBy(Hit::userId, java.util.LinkedHashMap::new,
+                java.util.stream.Collectors.toList()))
+            .forEach((user, items) -> notify(user, "Presupuesto", budgetText(items.stream()
+                .map(h -> new BudgetHit(h.name(), h.level(), h.family())).toList()), "/"));
+    }
+
+    record BudgetHit(String category, int level, boolean family) {}
+
+    /** "Supermercado va por el 80 % de lo planeado." / "En la casa, Ropa ya llegó al 100 %." */
+    static String budgetText(List<BudgetHit> hits) {
+        List<String> parts = new java.util.ArrayList<>();
+        for (BudgetHit h : hits) {
+            String where = h.family() ? "En la casa, " : "";
+            parts.add(where + h.category()
+                + (h.level() >= 100 ? " ya llegó al 100 % de lo planeado." : " va por el 80 % de lo planeado."));
+        }
+        String text = String.join(" ", parts);
+        return text.length() > 200 ? text.substring(0, 197) + "…" : text;
+    }
+
+    /** Los días 1 y 5: si la casa no ha cerrado el mes anterior, se lo recuerda a los dos. */
+    @Scheduled(cron = "0 0 8 1,5 * *", zone = "America/Costa_Rica")
+    public void remindMonthClose() {
+        if (!sender.enabled()) {
+            return;
+        }
+        record Due(UUID userId, int year, int month) {}
+        List<Due> due = asUser.run(null, () -> jdbc.sql("SELECT user_id, year, month FROM month_close_reminders(?)")
+            .param(LocalDate.now(COSTA_RICA))
+            .query((rs, n) -> new Due(rs.getObject("user_id", UUID.class), rs.getInt("year"), rs.getInt("month"))).list());
+        for (Due d : due) {
+            notify(d.userId(), "La casa", closeReminderText(java.time.YearMonth.of(d.year(), d.month())), "/casa");
+        }
+    }
+
+    static String closeReminderText(java.time.YearMonth month) {
+        return "Toca cerrar " + monthName(month) + ": así cada quien recibe su dinero personal.";
+    }
+
+    static String monthName(java.time.YearMonth month) {
+        return month.getMonth().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.forLanguageTag("es-CR"));
+    }
+
+    /**
+     * Avisos que nacen de algo que hizo alguien (ver {@link PushNotice}). Corre después de
+     * confirmar la transacción; un error al enviar no debe deshacer ni romper esa acción.
+     */
+    @TransactionalEventListener(fallbackExecution = true)
+    public void onNotice(PushNotice notice) {
+        if (!sender.enabled()) {
+            return;
+        }
+        for (UUID user : notice.to()) {
+            try {
+                notify(user, notice.title(), notice.body(), notice.url());
+            } catch (RuntimeException e) {
+                log.warn("No se pudo enviar un aviso: {}", e.getClass().getSimpleName());
+            }
+        }
     }
 
     /** Cada mañana: las metas que cruzaron 25, 50, 75 o 100 %. Solo el nombre y el %. */
