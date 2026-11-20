@@ -83,13 +83,13 @@ class TitheAndCdpTest extends WebTestSupport {
 
     @Test
     void sinBrutoElDiezmoSaleDelMontoYSoloLosIngresosLlevanDiezmo() throws Exception {
-        Map<String, Object> body = tx(salario, "50000", null, "Venta de bicicleta");
+        Map<String, Object> body = tx(salario, "50000", cuenta(), "Venta de bicicleta");
         body.put("tithe", true);
         UUID income = uuid(json(as(a, post(base(a) + "/transactions").content(toJson(body)))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id"));
         assertThat(new BigDecimal(String.valueOf(titheOf(income).get("amount")))).isEqualByComparingTo("5000");
 
-        Map<String, Object> expense = tx(supermercado, "1000", null, "Pan");
+        Map<String, Object> expense = tx(supermercado, "1000", cuenta(), "Pan");
         expense.put("tithe", true);
         as(a, post(base(a) + "/transactions").content(toJson(expense))).andExpect(status().isBadRequest());
         expense.remove("tithe");
@@ -99,7 +99,7 @@ class TitheAndCdpTest extends WebTestSupport {
 
     @Test
     void sugiereElUltimoSalarioBruto() throws Exception {
-        Map<String, Object> body = tx(salario, "900000", null, "Salario");
+        Map<String, Object> body = tx(salario, "900000", cuenta(), "Salario");
         body.put("grossAmount", "1000000");
         as(a, post(base(a) + "/transactions").content(toJson(body))).andExpect(status().isCreated());
         String s = as(a, get(base(a) + "/transactions/suggest?categoryId=" + salario))
@@ -193,6 +193,12 @@ class TitheAndCdpTest extends WebTestSupport {
         return as(user, put(base(user) + "/places/" + cdp + "/cdp").content(toJson(Map.of("rate", "2.85",
             "termDays", 30, "dayBasis", 360, "taxPct", "15", "maturesOn", maturesOn.toString(),
             "payoutPlace", payout.toString(), "lastContribution", "200000"))));
+    }
+
+    private UUID cuenta() throws Exception {
+        try (Connection su = asSuperuser()) {
+            return TestData.newPlace(su, a.personalSpace(), a.id());
+        }
     }
 
     private static Map<String, Object> tx(UUID category, String amount, UUID place, String description) {

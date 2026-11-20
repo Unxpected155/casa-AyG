@@ -66,10 +66,15 @@ class GoalTest extends WebTestSupport {
 
     @Test
     void elFondoDeEmergenciaUsaLosGastosRealesDeLosUltimos3Meses() throws Exception {
+        UUID cuenta;
+        try (Connection su = asSuperuser()) {
+            cuenta = TestData.newPlace(su, a.personalSpace(), a.id());
+        }
         for (int i = 1; i <= 3; i++) {
             LocalDate day = TODAY.withDayOfMonth(1).minusMonths(i);
             as(a, post(base(a) + "/transactions").content(toJson(Map.of("categoryId", supermercado.toString(),
-                "date", day.toString(), "description", "Súper", "amount", "300000", "currency", "CRC"))))
+                "date", day.toString(), "description", "Súper", "amount", "300000", "currency", "CRC",
+                "placeId", cuenta.toString()))))
                 .andExpect(status().isCreated());
         }
         Map<String, Object> body = new HashMap<>(Map.of("name", "Fondo de emergencia", "kind", "EMERGENCIA",

@@ -101,6 +101,21 @@ final class TestData {
         return id;
     }
 
+    /** Una cuenta en colones con saldo 0 desde hace un año (lo que anota una persona lleva lugar). */
+    static UUID newPlace(Connection c, UUID space, UUID by) throws SQLException {
+        UUID id = UUID.randomUUID();
+        try (var ps = c.prepareStatement("""
+                INSERT INTO place (id, space_id, created_by, name, kind, currency, opening_balance, opening_date)
+                VALUES (?, ?, ?, ?, 'BANCO', 'CRC', 0, CURRENT_DATE - 365)""")) {
+            ps.setObject(1, id);
+            ps.setObject(2, space);
+            ps.setObject(3, by);
+            ps.setString(4, "Cuenta " + id.toString().substring(0, 8));
+            ps.executeUpdate();
+        }
+        return id;
+    }
+
     static UUID newTransaction(Connection c, UUID space, UUID by, UUID category, String amount) throws SQLException {
         UUID id = UUID.randomUUID();
         try (var ps = c.prepareStatement(

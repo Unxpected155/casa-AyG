@@ -91,7 +91,7 @@ class TransactionController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     TransactionView create(@PathVariable UUID spaceId, @Valid @RequestBody TransactionRequest body) {
-        return transactions.create(spaceId, body.toData());
+        return transactions.createByPerson(spaceId, body.toData());
     }
 
     @PutMapping("/{id}")
