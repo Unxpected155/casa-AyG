@@ -140,7 +140,7 @@ export function Enroll() {
           </form>
         ) : (
           <div className="stack">
-            <p>Ahora entra con ella. Después, desde <strong>Cuenta</strong>, registra una segunda en otro dispositivo y guarda tus códigos de recuperación.</p>
+            <p>Ahora entra con ella. Después, desde <strong>Perfil</strong>, registra una segunda en otro dispositivo y guarda tus códigos de recuperación.</p>
             <button type="button" className="button primary large" onClick={enter} disabled={busy}>Entrar</button>
           </div>
         )}

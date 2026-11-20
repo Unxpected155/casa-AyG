@@ -99,6 +99,7 @@ public class HouseholdService {
                 ON CONFLICT (space_id) DO UPDATE SET personal_floor = EXCLUDED.personal_floor,
                                                      bonus_pct = EXCLUDED.bonus_pct, updated_at = now()""")
             .params(familyId, f, bonusPct).update();
+        tellPartner(familyId, myName() + " cambió el dinero personal de cada quien. Revísalo en La casa.");
         return settings(familyId);
     }
 

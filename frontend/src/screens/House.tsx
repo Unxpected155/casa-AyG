@@ -11,10 +11,11 @@ type Message = { tone: "ok" | "error"; text: string } | null;
 
 /** La casa: lo personal de cada quien (solo el saldo), aportes y el cierre del mes. */
 export function House() {
-  const { spaces, touch, version } = useApp();
+  const { spaces, touch, version, selectSpace } = useApp();
   const family = spaces.find((s) => s.kind === "FAMILIA" && !s.archived);
   const [house, setHouse] = useState<Household | null>(null);
   const [homePlaces, setHomePlaces] = useState<Place[]>([]);
+  const [homeLoaded, setHomeLoaded] = useState(false);
   const [myPlaces, setMyPlaces] = useState<Place[]>([]);
   const [message, setMessage] = useState<Message>(null);
   const [tick, setTick] = useState(0);
@@ -33,7 +34,8 @@ export function House() {
     }).catch((e) => !cancelled && setMessage({ tone: "error", text: messageOf(e, "No se pudo cargar la casa.") }));
     api.get<Place[]>(`/api/spaces/${family.id}/places`)
       .then((list) => !cancelled && setHomePlaces(list.filter((p) => !p.archived)))
-      .catch(() => !cancelled && setHomePlaces([]));
+      .catch(() => !cancelled && setHomePlaces([]))
+      .finally(() => !cancelled && setHomeLoaded(true));
     return () => {
       cancelled = true;
     };
@@ -88,7 +90,7 @@ export function House() {
           <section className="block" aria-labelledby="partners-title">
             <h2 id="partners-title" className="section-title">Lo personal de cada quien</h2>
             <ul className="rows">
-              {house.partners.map((p) => (
+              {[...house.partners].sort((a, b) => Number(b.me) - Number(a.me)).map((p) => (
                 <li key={p.userId} className="row">
                   <div className="row-main">
                     <span className="row-name">{p.me ? "Tú" : p.displayName}</span>
@@ -103,7 +105,11 @@ export function House() {
             <p className="hint">De tu pareja solo ves cuánto tiene, nunca en qué lo gasta.</p>
           </section>
 
-          <CloseMonth familyId={family.id} house={house} homePlaces={homePlaces} onDone={changed} onError={show} />
+          {homeLoaded && homePlaces.length === 0 ? (
+            <FirstSteps onGo={(route) => { selectSpace(family.id); navigate(route); }} />
+          ) : (
+            <CloseMonth familyId={family.id} house={house} homePlaces={homePlaces} onDone={changed} onError={show} />
+          )}
 
           <Contribute familyId={family.id} myPlaces={spendable(myPlaces)} homePlaces={homePlaces} onDone={changed} onError={show} />
 
@@ -132,6 +138,28 @@ export function House() {
         </>
       )}
     </Shell>
+  );
+}
+
+/** Una casa recién creada no tiene cuentas: primero eso, luego el monto fijo y el presupuesto. */
+function FirstSteps({ onGo }: { onGo: (route: "/lugares" | "/plan") => void }) {
+  return (
+    <section className="block" aria-labelledby="start-title">
+      <h2 id="start-title" className="section-title">Para empezar</h2>
+      <ol className="explain">
+        <li>
+          Agreguen la cuenta de la casa: la conjunta, donde entran los salarios.{" "}
+          <button type="button" className="button secondary small" onClick={() => onGo("/lugares")}>
+            Agregar la cuenta de la casa
+          </button>
+        </li>
+        <li>Pongan el monto fijo que recibe cada quien, en «Ajustes del dinero personal», aquí abajo.</li>
+        <li>
+          Si ya tenían presupuesto, súmenlo al de la casa.{" "}
+          <button type="button" className="button ghost small" onClick={() => onGo("/plan")}>Ir al Plan de la casa</button>
+        </li>
+      </ol>
+    </section>
   );
 }
 
