@@ -14,7 +14,8 @@ import { GROUPS, type Group, type Summary, type SummaryLine } from "../types";
 
 /** Pantalla principal: el mes como una página de libreta. */
 export function Month() {
-  const { space, month, version, places } = useApp();
+  const { space, spaces, month, version, places } = useApp();
+  const hasHome = spaces.some((s) => s.kind === "FAMILIA" && !s.archived);
   const dueCdps = places.filter((p) => !p.archived && cdpDue(p));
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +68,11 @@ export function Month() {
         {summary && space?.kind === "FAMILIA" && (
           <button type="button" className="button ghost small history-link" onClick={() => navigate("/casa")}>
             <Icon name="home" size={18} /> La casa: lo personal y el cierre del mes
+          </button>
+        )}
+        {summary && space?.kind === "PERSONAL" && hasHome && (
+          <button type="button" className="button ghost small history-link" onClick={() => navigate("/casa")}>
+            <Icon name="home" size={18} /> Aportar a la casa
           </button>
         )}
 
