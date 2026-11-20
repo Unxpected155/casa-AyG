@@ -1800,3 +1800,23 @@ fieldset {
   min-height: 44px;
   accent-color: var(--accent);
 }
+
+/* ---------- Editor de un lugar: saldo y fecha mitad y mitad ---------- */
+.place-form.inline .field-row,
+.place-form .field-row.split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.place-form.inline .field-row > .field,
+.place-form.inline .field-row input,
+.place-form .field-row.split > .field,
+.place-form .field-row.split input {
+  min-width: 0;
+  width: 100%;
+}
+
+.place-actions .button {
+  min-height: 44px;
+  flex: 1 1 auto;
+}

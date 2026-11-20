@@ -54,8 +54,9 @@ class PlacesTest extends WebTestSupport {
 
         tx(a, salario, "50000", "CRC", TODAY.minusDays(2), banco, "Salario");
         tx(a, supermercado, "20000", "CRC", TODAY.minusDays(1), banco, "Automercado");
-        // No cuentan: sin lugar, antes del saldo inicial y con fecha futura.
-        tx(a, supermercado, "999", "CRC", TODAY, null, "Sin lugar");
+        // Sin lugar no se puede anotar; y no cuentan: antes del saldo inicial y con fecha futura.
+        as(a, post(base(a) + "/transactions").content(toJson(txBody(supermercado, "999", "CRC", TODAY, null, "Sin lugar"))))
+            .andExpect(status().isConflict());
         tx(a, supermercado, "777", "CRC", TODAY.minusDays(20), banco, "Antes del saldo inicial");
         tx(a, supermercado, "555", "CRC", TODAY.plusDays(3), banco, "Futuro");
         as(a, post(base(a) + "/transfers").content(toJson(Map.of(

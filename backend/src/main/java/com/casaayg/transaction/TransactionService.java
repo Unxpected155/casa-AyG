@@ -168,12 +168,29 @@ public class TransactionService {
 
     @Transactional
     public TransactionView create(UUID spaceId, TransactionData data) {
+        return create(spaceId, data, false);
+    }
+
+    /**
+     * Lo que anota una persona (la API) siempre sale de un lugar o entra a uno: sin lugar, el
+     * saldo no cuadra con el banco. Se revisa después de la pertenencia, para que lo ajeno siga
+     * respondiendo 404. Lo que anota el sistema (cierre, CDP) ya trae su lugar.
+     */
+    @Transactional
+    public TransactionView createByPerson(UUID spaceId, TransactionData data) {
+        return create(spaceId, data, true);
+    }
+
+    private TransactionView create(UUID spaceId, TransactionData data, boolean placeRequired) {
         spaces.requireWritable(spaceId);
         boolean income = requireCategory(spaceId, data.categoryId());
         requirePlace(spaceId, data);
         requireTitheOnlyForIncome(income, data);
         if (data.recurringId() != null) {
             recurring.requireInSpace(spaceId, data.recurringId());
+        }
+        if (placeRequired) {
+            requirePlaceChosen(data);
         }
         UUID id = jdbc.sql("""
                 INSERT INTO transaction (space_id, created_by, category_id, tx_date, description, amount,
@@ -196,6 +213,7 @@ public class TransactionService {
         boolean income = requireCategory(spaceId, data.categoryId());
         requirePlace(spaceId, data);
         requireTitheOnlyForIncome(income, data);
+        requirePlaceChosen(data);
         int rows = jdbc.sql("""
                 UPDATE transaction SET category_id = ?, tx_date = ?, description = ?, amount = ?, currency = ?,
                                        payment_method = ?, place_id = ?, gross_amount = ?, updated_at = now()
@@ -280,6 +298,13 @@ public class TransactionService {
     }
 
     /** El lugar es del espacio y de la misma moneda que el movimiento (la BD lo vuelve a revisar). */
+    /** La última validación: así lo ajeno responde 404 y lo mal formado 400, como siempre. */
+    private static void requirePlaceChosen(TransactionData data) {
+        if (data.placeId() == null) {
+            throw new ConflictException("Elige el lugar: de dónde sale o a dónde entra el dinero.");
+        }
+    }
+
     private void requirePlace(UUID spaceId, TransactionData data) {
         if (data.placeId() != null && places.requirePlace(spaceId, data.placeId(), true) != data.money().currency()) {
             throw new ConflictException("La moneda no coincide con la del lugar.");

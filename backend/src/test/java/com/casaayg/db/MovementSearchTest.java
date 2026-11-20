@@ -28,6 +28,7 @@ class MovementSearchTest extends WebTestSupport {
     TestData.AppUser b;
     UUID transporte;
     UUID supermercado;
+    UUID cuenta;
 
     @BeforeEach
     void seed() throws Exception {
@@ -36,6 +37,7 @@ class MovementSearchTest extends WebTestSupport {
             b = TestData.adminCreateUser(su, "B");
             transporte = TestData.categoryNamed(su, a.personalSpace(), "Transporte");
             supermercado = TestData.categoryNamed(su, a.personalSpace(), "Supermercado");
+            cuenta = TestData.newPlace(su, a.personalSpace(), a.id());
         }
         tx(transporte, "Uber al centro", "3500", TODAY);
         tx(transporte, "UBER aeropuerto", "12000", TODAY);
@@ -93,7 +95,8 @@ class MovementSearchTest extends WebTestSupport {
 
     private void tx(UUID category, String description, String amount, LocalDate date) throws Exception {
         as(a, post("/api/spaces/" + a.personalSpace() + "/transactions").content(toJson(Map.of("categoryId", category.toString(),
-            "date", date.toString(), "description", description, "amount", amount, "currency", "CRC"))))
+            "date", date.toString(), "description", description, "amount", amount, "currency", "CRC",
+            "placeId", cuenta.toString()))))
             .andExpect(status().isCreated());
     }
 

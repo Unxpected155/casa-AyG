@@ -42,7 +42,8 @@ export function Places() {
   const readOnly = Boolean(space?.archived);
 
   return (
-    <Shell onAdd={() => setEntry(true)}>
+    // Con un lugar abierto, el botón flotante taparía «Guardar»: se esconde mientras se edita.
+    <Shell onAdd={editingId || distributeFrom || moving !== null ? undefined : () => setEntry(true)}>
       <h1 className="page-title">{space?.kind === "FAMILIA" ? "Lugares de la casa" : "Tus lugares"}</h1>
       <p className="hint">Cada lugar parte de lo que tenía el día que lo agregaste y suma lo que anotas.</p>
 
@@ -157,7 +158,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const amount = opening.trim() === "" ? "0" : parseAmount(opening);
-    if (!name.trim()) return setError("Ponle un nombre, por ejemplo BAC colones.");
+    if (!name.trim()) return setError("Ponle un nombre, por ejemplo «Cuenta principal».");
     if (!amount) return setError("Escribe el saldo de hoy, por ejemplo 250 000.");
     setBusy(true);
     setError(null);
@@ -186,7 +187,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
         <label className="field grow">
           <span>Nombre</span>
           <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)}
-                 placeholder={kind === "SOBRE" ? "Comida" : kind === "CDP" ? "CDP ahorro" : "BAC colones"} />
+                 placeholder={kind === "SOBRE" ? "Comida" : kind === "CDP" ? "Mi CDP" : kind === "EFECTIVO" ? "Billetera" : "Cuenta principal"} />
         </label>
         <div className="field">
           <span>Moneda</span>
@@ -196,7 +197,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
           </div>
         </div>
       </div>
-      <div className="field-row">
+      <div className="field-row split">
         <label className="field grow">
           <span>¿Cuánto tiene hoy?</span>
           <input inputMode="decimal" value={opening} maxLength={18} onChange={(e) => setOpening(e.target.value)} placeholder="0" />
@@ -375,7 +376,7 @@ function Distribute({ from, places, onDone }: { from: Place; places: Place[]; on
       <div className="field-row">
         <label className="field grow">
           <span>Nota (opcional)</span>
-          <input value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Pago de noviembre" />
+          <input value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Para el súper" />
         </label>
         <label className="field">
           <span>Fecha</span>

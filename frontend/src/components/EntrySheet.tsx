@@ -180,11 +180,8 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const titheBase = parsedGross ?? parseAmount(amount);
   const titheAmount = titheBase ? Math.round(Number(titheBase) * 10) / 100 : 0;
 
+  // El lugar es obligatorio: tocar el elegido no lo quita.
   const choosePlace = (p: Place) => {
-    if (p.id === placeId) {
-      setPlaceId(null);
-      return;
-    }
     setPlaceId(p.id);
     setCurrency(p.currency);
   };
@@ -206,6 +203,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
       if (from === to) return setError("El origen y el destino tienen que ser distintos.");
       if (parsed === "0" || Number(parsed) === 0) return setError("El monto tiene que ser mayor que cero.");
     } else {
+      if (!placeId) return setError(kind === "gasto" ? "Elige de dónde sale el dinero." : "Elige a dónde entra el dinero.");
       if (!categoryId) return setError("Elige una categoría.");
       if (!description.trim()) return setError("Agrega una descripción corta.");
       if (kind === "ingreso" && gross.trim() && !parsedGross) return setError("Revisa el monto bruto.");
@@ -373,15 +371,20 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 <label className="field">
                   <span>Descripción</span>
                   <input value={description} maxLength={200} onChange={(e) => setDescription(e.target.value)}
-                         placeholder={kind === "gasto" ? "Súper de la semana" : "Salario de noviembre"} />
+                         placeholder={kind === "gasto" ? "Súper de la semana" : "Salario del mes"} />
                 </label>
 
                 {activePlaces.length > 0 && (
                   <PlaceChips legend={kind === "gasto" ? "Sale de" : "Entra a"} places={activePlaces}
                               selected={placeId ?? ""} onSelect={choosePlace} />
                 )}
-                {activePlaces.length > 0 && !placeId && (
-                  <p className="muted small">Sin lugar: se anota, pero no cambia el saldo de ninguno.</p>
+                {activePlaces.length === 0 && (
+                  <div className="notice">
+                    <p>Todo lo que anotas sale de un lugar o entra a uno. Primero agrega tu cuenta.</p>
+                    <button type="button" className="button secondary small" onClick={() => { onClose(); navigate("/lugares"); }}>
+                      Agregar un lugar
+                    </button>
+                  </div>
                 )}
 
                 <fieldset className="chips">
@@ -440,7 +443,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 <label className="field grow">
                   <span>Nota (opcional)</span>
                   <input value={description} maxLength={200} onChange={(e) => setDescription(e.target.value)}
-                         placeholder="Ahorro de noviembre" />
+                         placeholder="Ahorro del mes" />
                 </label>
               )}
               <label className="field">

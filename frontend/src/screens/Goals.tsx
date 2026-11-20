@@ -190,7 +190,7 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim()) return setError("Ponle nombre a la meta, por ejemplo Casarnos.");
+    if (!name.trim()) return setError("Ponle nombre a la meta, por ejemplo «Comprar un carro».");
     const amount = kind === "NORMAL" ? parseAmount(target) : null;
     if (kind === "NORMAL" && !amount) return setError("Escribe cuánto quieres juntar.");
     const cleanParts = parts.filter((p) => p.name.trim() || p.amount.trim());
@@ -248,7 +248,7 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
       <div className="field-row">
         <label className="field grow">
           <span>Nombre</span>
-          <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Casarnos" />
+          <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="Comprar un carro" />
         </label>
         <div className="field">
           <span>Moneda</span>
@@ -296,7 +296,7 @@ function GoalForm({ goal, goals = [], onUp, onDown, onDone }: {
           <legend>Partes (opcional)</legend>
           {parts.map((p, i) => (
             <div key={i} className="field-row">
-              <input aria-label="Nombre de la parte" value={p.name} maxLength={60} placeholder="Luna de miel"
+              <input aria-label="Nombre de la parte" value={p.name} maxLength={60} placeholder="Prima"
                      onChange={(e) => setParts(parts.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
               <input aria-label="Monto de la parte" inputMode="decimal" value={p.amount} maxLength={18} placeholder="0"
                      onChange={(e) => setParts(parts.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)))} />

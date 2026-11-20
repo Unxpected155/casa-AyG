@@ -26,15 +26,18 @@ class HistoryApiTest extends WebTestSupport {
         TestData.AppUser a;
         TestData.AppUser b;
         UUID supermercado;
+        UUID cuenta;
         try (Connection su = asSuperuser()) {
             a = TestData.adminCreateUser(su, "A");
             b = TestData.adminCreateUser(su, "B");
             supermercado = TestData.categoryNamed(su, a.personalSpace(), "Supermercado");
+            cuenta = TestData.newPlace(su, a.personalSpace(), a.id());
         }
         LocalDate today = LocalDate.now();
         String base = "/api/spaces/" + a.personalSpace();
         as(a, post(base + "/transactions").content(toJson(Map.of("categoryId", supermercado.toString(),
-            "date", today.toString(), "description", "Súper", "amount", "1000", "currency", "CRC"))))
+            "date", today.toString(), "description", "Súper", "amount", "1000", "currency", "CRC",
+            "placeId", cuenta.toString()))))
             .andExpect(status().isCreated());
         UUID from = place(a, "BAC");
         UUID to = place(a, "Ahorros");

@@ -56,8 +56,13 @@ class RecurringPaymentTest extends WebTestSupport {
         Map<String, Object> row = month(a, tomorrow).stream().filter(r -> internet.toString().equals(r.get("id"))).findFirst().orElseThrow();
         assertThat(row).containsEntry("dueDate", tomorrow.toString()).containsEntry("paidTransactionId", null);
 
+        UUID cuenta;
+        try (Connection su = asSuperuser()) {
+            cuenta = TestData.newPlace(su, a.personalSpace(), a.id());
+        }
         Map<String, Object> pay = new HashMap<>(Map.of("categoryId", servicios.toString(), "date", tomorrow.toString(),
-            "description", "Internet", "amount", "18900", "currency", "CRC", "recurringId", internet.toString()));
+            "description", "Internet", "amount", "18900", "currency", "CRC", "recurringId", internet.toString(),
+            "placeId", cuenta.toString()));
         as(a, post(base(a) + "/transactions").content(toJson(pay))).andExpect(status().isCreated());
 
         row = month(a, tomorrow).stream().filter(r -> internet.toString().equals(r.get("id"))).findFirst().orElseThrow();

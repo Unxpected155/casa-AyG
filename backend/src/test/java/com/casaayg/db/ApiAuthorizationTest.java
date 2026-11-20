@@ -35,6 +35,7 @@ class ApiAuthorizationTest extends WebTestSupport {
     TestData.AppUser b;
     UUID categoryA;
     UUID transactionA;
+    UUID placeA;
 
     @BeforeEach
     void seed() throws Exception {
@@ -42,6 +43,7 @@ class ApiAuthorizationTest extends WebTestSupport {
             a = TestData.adminCreateUser(su, "A");
             b = TestData.adminCreateUser(su, "B");
             categoryA = TestData.categoryNamed(su, a.personalSpace(), "Supermercado");
+            placeA = TestData.newPlace(su, a.personalSpace(), a.id());
         }
         String created = as(a, post(tx(a.personalSpace())).content(toJson(newTx(categoryA, "12500.50", "CRC"))))
             .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
@@ -186,8 +188,8 @@ class ApiAuthorizationTest extends WebTestSupport {
         return "/api/spaces/" + space + "/transactions";
     }
 
-    private static Map<String, Object> newTx(UUID category, String amount, String currency) {
+    private Map<String, Object> newTx(UUID category, String amount, String currency) {
         return Map.of("categoryId", category.toString(), "date", LocalDate.now().withDayOfMonth(1).toString(),
-            "description", "Compra de prueba", "amount", amount, "currency", currency);
+            "description", "Compra de prueba", "amount", amount, "currency", currency, "placeId", placeA.toString());
     }
 }
