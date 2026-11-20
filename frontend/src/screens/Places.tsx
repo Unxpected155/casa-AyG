@@ -157,7 +157,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const amount = opening.trim() === "" ? "0" : parseAmount(opening);
-    if (!name.trim()) return setError("Ponle un nombre, por ejemplo BAC colones.");
+    if (!name.trim()) return setError("Ponle un nombre, por ejemplo «Cuenta principal».");
     if (!amount) return setError("Escribe el saldo de hoy, por ejemplo 250 000.");
     setBusy(true);
     setError(null);
@@ -186,7 +186,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
         <label className="field grow">
           <span>Nombre</span>
           <input value={name} maxLength={40} onChange={(e) => setName(e.target.value)}
-                 placeholder={kind === "SOBRE" ? "Comida" : kind === "CDP" ? "CDP ahorro" : "BAC colones"} />
+                 placeholder={kind === "SOBRE" ? "Comida" : kind === "CDP" ? "Mi CDP" : kind === "EFECTIVO" ? "Billetera" : "Cuenta principal"} />
         </label>
         <div className="field">
           <span>Moneda</span>
@@ -375,7 +375,7 @@ function Distribute({ from, places, onDone }: { from: Place; places: Place[]; on
       <div className="field-row">
         <label className="field grow">
           <span>Nota (opcional)</span>
-          <input value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Pago de noviembre" />
+          <input value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Para el súper" />
         </label>
         <label className="field">
           <span>Fecha</span>

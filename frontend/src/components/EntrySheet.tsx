@@ -371,7 +371,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 <label className="field">
                   <span>Descripción</span>
                   <input value={description} maxLength={200} onChange={(e) => setDescription(e.target.value)}
-                         placeholder={kind === "gasto" ? "Súper de la semana" : "Salario de noviembre"} />
+                         placeholder={kind === "gasto" ? "Súper de la semana" : "Salario del mes"} />
                 </label>
 
                 {activePlaces.length > 0 && (
@@ -443,7 +443,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 <label className="field grow">
                   <span>Nota (opcional)</span>
                   <input value={description} maxLength={200} onChange={(e) => setDescription(e.target.value)}
-                         placeholder="Ahorro de noviembre" />
+                         placeholder="Ahorro del mes" />
                 </label>
               )}
               <label className="field">
