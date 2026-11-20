@@ -39,7 +39,7 @@ export function Balance() {
         <p className="balance-line">¿Cuánto tienes hoy?</p>
         <p className="muted">Anota dónde está tu dinero (tu cuenta, tus sobres, tu CDP) y lo sumo por ti.</p>
         <button type="button" className="button secondary" onClick={() => navigate("/lugares")}>
-          Agregar mis lugares
+          Agregar mis cuentas
         </button>
       </section>
     );
@@ -59,7 +59,7 @@ export function Balance() {
           {hasCrc && hasUsd && " y "}
           {hasUsd && <strong className="figure">{money(usd, "USD")}</strong>}
         </span>
-        <span className="balance-more">{open ? "Ocultar el detalle" : "Ver por lugar"}</span>
+        <span className="balance-more">{open ? "Ocultar el detalle" : "Ver por cuenta"}</span>
       </button>
       {open && (
         <div id="balance-detail" className="balance-detail">
@@ -79,7 +79,7 @@ export function Balance() {
             ))}
           </ul>
           <button type="button" className="button ghost small" onClick={() => navigate("/lugares")}>
-            Administrar lugares
+            Administrar cuentas
           </button>
         </div>
       )}

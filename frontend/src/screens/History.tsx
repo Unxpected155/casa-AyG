@@ -90,7 +90,7 @@ export function History() {
             <h2 id="months-title" className="section-title">Los últimos 6 meses</h2>
             <MonthsChart months={data.months} />
             <MonthsTable months={data.months} />
-            <p className="muted small">Todo en colones; los dólares, al tipo de cambio del día de cada movimiento. El dinero movido entre tus lugares no cuenta.</p>
+            <p className="muted small">Todo en colones; los dólares, al tipo de cambio del día de cada movimiento. El dinero movido entre tus cuentas no se suma.</p>
           </section>
 
           <section className="block" aria-labelledby="cat-title">

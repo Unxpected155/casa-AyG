@@ -301,13 +301,13 @@ public class TransactionService {
     /** La última validación: así lo ajeno responde 404 y lo mal formado 400, como siempre. */
     private static void requirePlaceChosen(TransactionData data) {
         if (data.placeId() == null) {
-            throw new ConflictException("Elige el lugar: de dónde sale o a dónde entra el dinero.");
+            throw new ConflictException("Elige la cuenta: de dónde sale o a dónde entra el dinero.");
         }
     }
 
     private void requirePlace(UUID spaceId, TransactionData data) {
         if (data.placeId() != null && places.requirePlace(spaceId, data.placeId(), true) != data.money().currency()) {
-            throw new ConflictException("La moneda no coincide con la del lugar.");
+            throw new ConflictException("La moneda no coincide con la de la cuenta.");
         }
     }
 

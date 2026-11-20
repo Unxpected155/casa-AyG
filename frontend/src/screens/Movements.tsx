@@ -128,7 +128,7 @@ export function Movements() {
             </label>
             {places.length > 0 && (
               <label className="field grow">
-                <span>Lugar</span>
+                <span>Cuenta</span>
                 <select value={filters.placeId} onChange={(e) => setFilters({ ...filters, placeId: e.target.value })}>
                   <option value="">Todos</option>
                   {places.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -182,10 +182,10 @@ export function Movements() {
                               disabled={space?.archived}>
                         <span className="entry-text">
                           <span className="entry-desc">
-                            <Icon name="swap" size={16} /> {x.description ?? `A ${placeName(x.toPlace) ?? "otro lugar"}`}
+                            <Icon name="swap" size={16} /> {x.description ?? `A ${placeName(x.toPlace) ?? "otra cuenta"}`}
                           </span>
                           <span className="entry-meta">
-                            Movido de {placeName(x.fromPlace) ?? "un lugar"} a {placeName(x.toPlace) ?? "otro lugar"}
+                            Movido de {placeName(x.fromPlace) ?? "una cuenta"} a {placeName(x.toPlace) ?? "otra cuenta"}
                           </span>
                         </span>
                         <span className="entry-amount figure moved">{money(x.amount, x.currency, true)}</span>

@@ -240,7 +240,7 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
             <div className="stack">
               <p className="notice">
                 Se borra lo que anotó el cierre: lo que recibió cada quien en lo personal, el gasto en la casa y lo que se
-                pasó a otro lugar. Después lo pueden cerrar de nuevo.
+                pasó a otra cuenta. Después lo pueden cerrar de nuevo.
               </p>
               <div className="actions start">
                 <button type="button" className="button ghost danger" disabled={busy} onClick={reopen}>Sí, reabrir</button>
@@ -276,7 +276,7 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
           {preview.perPerson <= 0 ? (
             <p className="notice">Todavía no le toca nada a nadie: pongan el monto fijo en «Ajustes del dinero personal», más abajo.</p>
           ) : options.length === 0 ? (
-            <p className="notice">Agreguen primero un lugar en colones en la casa (por ejemplo, la cuenta conjunta).</p>
+            <p className="notice">Agreguen primero una cuenta en colones en la casa (por ejemplo, la cuenta conjunta).</p>
           ) : (
             <>
               <label className="field">
@@ -397,7 +397,7 @@ function Destination({ house, myPlaces, onDone, onError }: PartProps & { house: 
       <h2 id="dest-title" className="section-title">Dónde recibes tu dinero personal</h2>
       <p className="hint">Si no eliges, llega a tu cuenta principal en colones.</p>
       <label className="field">
-        <span>Lugar de tu espacio personal</span>
+        <span>Cuenta de tu espacio personal</span>
         <select value={house.myDestination ?? ""} onChange={(e) => void save(e.target.value)}>
           <option value="">Mi cuenta principal en colones</option>
           {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
