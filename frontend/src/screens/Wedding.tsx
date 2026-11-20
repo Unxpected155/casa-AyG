@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, messageOf, withPasskeyConfirm } from "../api";
 import { Shell } from "../components/Shell";
 import { navigate } from "../router";
@@ -37,6 +37,23 @@ export function Wedding() {
     }
   };
 
+  // Al aceptar, la app pasa sola al espacio de la casa: ahí es donde se sigue.
+  const joined = useRef<string | null>(null);
+  useEffect(() => {
+    if (joined.current && spaces.some((s) => s.id === joined.current)) {
+      selectSpace(joined.current);
+      joined.current = null;
+    }
+  }, [spaces, selectSpace]);
+
+  const approve = () => {
+    if (!pending) return;
+    void act(async () => {
+      const result = await api.post<{ familySpaceId: string }>(`/api/merge-requests/${pending.id}/approve`);
+      joined.current = result.familySpaceId;
+    }, "¡Listo! Ya comparten la casa.");
+  };
+
   const propose = (event: FormEvent) => {
     event.preventDefault();
     void act(() => api.post("/api/merge-requests", { partnerUsername: partner.trim().toLowerCase(), familyName: familyName.trim() }),
@@ -54,7 +71,7 @@ export function Wedding() {
           <p className="hint">Todo lo que registren ahí lo ven los dos. Cada quien conserva su espacio personal, que sigue siendo privado.</p>
           <div className="actions">
             <button type="button" className="button ghost" onClick={() => selectSpace(family.id)}>Ir al espacio familiar</button>
-            <button type="button" className="button secondary" onClick={() => navigate("/casa")}>Ver la casa</button>
+            <button type="button" className="button secondary" onClick={() => { selectSpace(family.id); navigate("/casa"); }}>Ver la casa</button>
           </div>
         </section>
       )}
@@ -70,7 +87,7 @@ export function Wedding() {
               Ahora no
             </button>
             <button type="button" className="button primary" disabled={busy}
-                    onClick={() => act(() => api.post(`/api/merge-requests/${pending.id}/approve`), "¡Listo! Ya comparten el espacio familiar.")}>
+                    onClick={approve}>
               Confirmar y unir
             </button>
           </div>

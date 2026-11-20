@@ -10,12 +10,27 @@ import { GROUP_LABEL, money, pct } from "../format";
 import { countUp, gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { navigate } from "../router";
 import { useApp } from "../state";
-import { GROUPS, type Group, type Summary, type SummaryLine } from "../types";
+import { GROUPS, type Group, type MergeRequest, type Summary, type SummaryLine } from "../types";
 
 /** Pantalla principal: el mes como una página de libreta. */
 export function Month() {
   const { space, spaces, month, version, places } = useApp();
   const hasHome = spaces.some((s) => s.kind === "FAMILIA" && !s.archived);
+  // Si alguien te propuso unir los espacios, se ve aquí (no solo en Perfil → Espacio familiar).
+  const [invite, setInvite] = useState<MergeRequest | null>(null);
+  useEffect(() => {
+    if (hasHome) {
+      setInvite(null);
+      return;
+    }
+    let cancelled = false;
+    api.get<MergeRequest[]>("/api/merge-requests")
+      .then((list) => !cancelled && setInvite(list.find((r) => r.status === "PENDIENTE" && !r.iAmRequester) ?? null))
+      .catch(() => !cancelled && setInvite(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [hasHome, version]);
   const dueCdps = places.filter((p) => !p.archived && cdpDue(p));
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +70,13 @@ export function Month() {
       <div ref={ledger} className="ledger" aria-busy={summary === null && !error}>
         {error && <p className="form-error" role="alert">{error}</p>}
         {summary === null && !error && <LedgerSkeleton />}
+
+        {invite && (
+          <p className="notice cdp-due">
+            <span><strong>{invite.otherPerson}</strong> te propone unir sus finanzas en «{invite.familyName}».</span>
+            <button type="button" className="button secondary small" onClick={() => navigate("/boda")}>Ver propuesta</button>
+          </p>
+        )}
 
         {summary && isCurrentMonth && dueCdps.map((p) => (
           <p key={p.id} className="notice cdp-due">
