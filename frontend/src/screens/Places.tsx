@@ -42,7 +42,8 @@ export function Places() {
   const readOnly = Boolean(space?.archived);
 
   return (
-    <Shell onAdd={() => setEntry(true)}>
+    // Con un lugar abierto, el botón flotante taparía «Guardar»: se esconde mientras se edita.
+    <Shell onAdd={editingId || distributeFrom || moving !== null ? undefined : () => setEntry(true)}>
       <h1 className="page-title">{space?.kind === "FAMILIA" ? "Lugares de la casa" : "Tus lugares"}</h1>
       <p className="hint">Cada lugar parte de lo que tenía el día que lo agregaste y suma lo que anotas.</p>
 
@@ -196,7 +197,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
           </div>
         </div>
       </div>
-      <div className="field-row">
+      <div className="field-row split">
         <label className="field grow">
           <span>¿Cuánto tiene hoy?</span>
           <input inputMode="decimal" value={opening} maxLength={18} onChange={(e) => setOpening(e.target.value)} placeholder="0" />
