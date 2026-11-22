@@ -6,7 +6,7 @@ $dir = Join-Path $PSScriptRoot "..\secrets"
 New-Item -ItemType Directory -Force $dir | Out-Null
 
 $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-foreach ($name in "db_superuser_password", "db_owner_password", "db_app_password") {
+foreach ($name in "db_superuser_password", "db_owner_password", "db_app_password", "tax_id_key") {
     $path = Join-Path $dir $name
     if (Test-Path $path) {
         Write-Host "Ya existe, no se toca: $name"
