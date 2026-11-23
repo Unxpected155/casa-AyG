@@ -87,6 +87,14 @@ export function Account() {
 
       {message && <p className={message.tone === "ok" ? "form-ok" : "form-error"} role="status">{message.text}</p>}
 
+      {/* Lo más importante de la seguridad va arriba, no a media página. */}
+      {me.recoveryCodesLeft === 0 && !codes && (
+        <p className="notice cdp-due">
+          <span>Todavía no tienes códigos de recuperación: sin ellos, perder tus dispositivos te deja fuera.</span>
+          <button type="button" className="button secondary small" onClick={newCodes} disabled={busy}>Generarlos</button>
+        </p>
+      )}
+
       <section className="block" aria-labelledby="pk-title">
         <h2 id="pk-title" className="section-title">Passkeys</h2>
         {passkeys.length < 2 && (
@@ -166,17 +174,9 @@ export function Account() {
           </button>
           {spaces.map((s) => (
             <button key={s.id} type="button" className="button ghost" onClick={() => exportSpace(s.id)} disabled={busy}>
-              <Icon name="download" size={18} /> Descargar todo de «{s.kind === "FAMILIA" ? "Familia" : s.name}»
+              <Icon name="download" size={18} /> Descargar todo de «{s.kind === "FAMILIA" ? "La casa" : s.name}»
             </button>
           ))}
-          <button type="button" className="button ghost" onClick={() => navigate("/boda")}>
-            <Icon name="rings" size={18} /> Espacio familiar
-          </button>
-          {spaces.some((s) => s.kind === "FAMILIA" && !s.archived) && (
-            <button type="button" className="button ghost" onClick={() => navigate("/casa")}>
-              <Icon name="home" size={18} /> La casa: dinero personal y cierre del mes
-            </button>
-          )}
           <button type="button" className="button ghost danger" onClick={exit}>
             <Icon name="logout" size={18} /> Cerrar sesión
           </button>
