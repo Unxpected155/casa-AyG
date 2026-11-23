@@ -2011,6 +2011,7 @@ fieldset {
   flex-wrap: wrap;
   gap: var(--s2);
   padding: var(--s2) 0 var(--s1);
+}
 
 /* ---------- Más ---------- */
 .menu-list {
@@ -2071,6 +2072,7 @@ fieldset {
   color: var(--on-accent);
   font-size: var(--t-xs);
   font-weight: 700;
+}
 
 /* ---------- Simulador de una meta («¿Y si…?») ---------- */
 .simulator {
