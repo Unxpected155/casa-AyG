@@ -1983,3 +1983,135 @@ fieldset {
 .change .muted {
   margin: 0;
 }
+
+/* ---------- Plan: categorías plegadas ---------- */
+.more-section > summary {
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  align-content: center;
+  cursor: pointer;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+  padding-top: var(--s3);
+}
+
+.more-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-section > summary .section-title {
+  margin: 0;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.category-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s2) 0 var(--s1);
+}
+
+/* ---------- Más ---------- */
+.menu-list {
+  list-style: none;
+  margin: var(--s4) 0 var(--s6);
+  padding: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  min-height: 72px;
+  padding: var(--s3) var(--s1);
+  border-bottom: 1px solid var(--rule);
+}
+
+.menu-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+
+.menu-text {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.menu-title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-weight: 600;
+  font-size: var(--t-md);
+}
+
+.menu-detail {
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+}
+
+.count-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--t-xs);
+  font-weight: 700;
+}
+
+/* ---------- Simulador de una meta («¿Y si…?») ---------- */
+.simulator {
+  margin-top: var(--s2);
+}
+
+.simulator > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.simulator-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--s3);
+  padding: var(--s3) 0;
+}
+
+.simulator-fields > .field,
+.simulator-fields input {
+  min-width: 0;
+  width: 100%;
+}
+
+.simulator-result {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunk);
+  border-radius: var(--radius);
+}
+
+.simulator-result p {
+  margin: 0;
+}
