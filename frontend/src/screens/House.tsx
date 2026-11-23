@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, messageOf, withPasskeyConfirm } from "../api";
+import { isReserved } from "../components/Balance";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
 import { amountChange, amountToInput, currentMonth, money, monthLabel, parseAmount, shiftMonth, todayIso, type YearMonth } from "../format";
@@ -188,10 +189,12 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
   const [preview, setPreview] = useState<ClosePreview | null>(null);
   const [busy, setBusy] = useState(false);
   const options = crcOnly(homePlaces);
+  // El dinero personal no sale de lo apartado (un CDP a plazo, el sobre de una meta).
+  const sources = options.filter((p) => !isReserved(p));
   const source = options.find((p) => p.id === from);
 
   useEffect(() => {
-    if (!from && options[0]) setFrom(options[0].id);
+    if (!from && sources[0]) setFrom(sources[0].id);
   }, [options.length]);
   // Si cambian el bono habitual en los ajustes, el cierre lo toma.
   useEffect(() => setBonusPct(house.settings.bonusPct), [house.settings.bonusPct]);
@@ -313,7 +316,7 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
               <label className="field">
                 <span>Sale de</span>
                 <select value={from} onChange={(e) => setFrom(e.target.value)}>
-                  {options.map((p) => <option key={p.id} value={p.id}>{p.name} · {money(p.balance, "CRC")}</option>)}
+                  {sources.map((p) => <option key={p.id} value={p.id}>{p.name} · {money(p.balance, "CRC")}</option>)}
                 </select>
               </label>
               {preview.rest > 0 && (
