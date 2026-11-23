@@ -1,6 +1,6 @@
 package com.casaayg.invoice;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
@@ -42,7 +42,10 @@ public class TokenCipher {
             c.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(128, iv));
             c.updateAAD(AAD);
             byte[] sealed = c.doFinal(token.getBytes(StandardCharsets.UTF_8));
-            return ByteBuffer.allocate(iv.length + sealed.length).put(iv).put(sealed).array();
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            out.writeBytes(iv);
+            out.writeBytes(sealed);
+            return out.toByteArray();
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("no se pudo cifrar", e);
         }
@@ -50,6 +53,9 @@ public class TokenCipher {
 
     public String decrypt(byte[] data) {
         require();
+        if (data == null || data.length < 29 || data.length > 4096) {
+            throw new IllegalStateException("no se pudo descifrar");
+        }
         try {
             Cipher c = Cipher.getInstance("AES/GCM/NoPadding");
             c.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(128, data, 0, 12));

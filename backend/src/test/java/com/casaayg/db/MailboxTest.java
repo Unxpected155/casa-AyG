@@ -50,6 +50,9 @@ import com.casaayg.push.PushNotice;
 @RecordApplicationEvents
 @Import(MailboxTest.Fakes.class)
 @org.springframework.test.context.TestPropertySource(properties = "casaayg.invoices.check-cooldown=0s")
+// Este contexto (con Gmail falso) tiene su propio pool: se cierra al terminar para no pasar el
+// límite de conexiones del rol de la app en la BD de pruebas.
+@org.springframework.test.annotation.DirtiesContext
 class MailboxTest extends WebTestSupport {
 
     static final String ANA_CEDULA = "199999999";
