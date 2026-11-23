@@ -54,6 +54,37 @@ class SavingsTest extends WebTestSupport {
     }
 
     @Test
+    void elPresupuestoDeAhorroSeCumpleConLaTransferencia() throws Exception {
+        try (Connection su = asSuperuser()) {
+            UUID space = ana.personalSpace();
+            UUID ahorro = TestData.newCategory(su, space, ana.id(), "Ahorro", "AHORRO");
+            UUID budget = UUID.randomUUID();
+            try (var ps = su.prepareStatement("INSERT INTO budget (id, space_id, created_by, year, month) VALUES (?, ?, ?, 2026, 9)")) {
+                ps.setObject(1, budget);
+                ps.setObject(2, space);
+                ps.setObject(3, ana.id());
+                ps.executeUpdate();
+            }
+            try (var ps = su.prepareStatement(
+                    "INSERT INTO budget_line (space_id, budget_id, category_id, planned_amount) VALUES (?, ?, ?, 200000)")) {
+                ps.setObject(1, space);
+                ps.setObject(2, budget);
+                ps.setObject(3, ahorro);
+                ps.executeUpdate();
+            }
+        }
+        transfer(banco, cdp, "200000");
+        Map<String, Object> s = summary();
+        Map<?, ?> line = ((java.util.List<?>) s.get("categories")).stream().map(l -> (Map<?, ?>) l)
+            .filter(l -> "Ahorro".equals(l.get("name"))).findFirst().orElseThrow();
+        assertThat(new BigDecimal(String.valueOf(line.get("spentCrc")))).isEqualByComparingTo("200000");
+        assertThat(line.get("status")).isEqualTo("AL_LIMITE");
+        // Pero no es gasto, ni se cuenta dos veces en el %.
+        assertThat(num(s, "expenses", "crc")).isEqualByComparingTo("300000");
+        assertThat(num(s, "percentOfIncome", "AHORRO")).isEqualByComparingTo("20.0");
+    }
+
+    @Test
     void renovarElCdpCuentaSoloElAporte() throws Exception {
         // Vence: el capital vuelve al banco y sale otra vez con 150 000 más.
         transfer(cdp, banco, "500000");
