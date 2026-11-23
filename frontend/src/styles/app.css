@@ -348,7 +348,7 @@
 
 .entry-button {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: var(--s3);
   width: 100%;
@@ -608,13 +608,16 @@
   background: var(--paper-sunk);
 }
 
+/* Fantasma: la acción menos importante, pero SIEMPRE se ve tocable (texto de acción y borde
+   fino), nunca como texto suelto. */
 .button.ghost {
-  color: var(--ink-soft);
+  color: var(--accent-ink);
+  border-color: var(--rule-strong);
   padding: 0 var(--s3);
 }
 
 .button.ghost:hover:not(:disabled) {
-  color: var(--ink);
+  border-color: var(--accent-ink);
   background: var(--paper-sunk);
 }
 
@@ -622,10 +625,17 @@
   color: var(--over);
 }
 
+.button.ghost.danger {
+  border-color: color-mix(in oklch, var(--over) 45%, var(--rule-strong));
+}
+
+.button.ghost.danger:hover:not(:disabled) {
+  border-color: var(--over);
+}
+
 .button.small {
   min-height: 36px;
   font-size: var(--t-sm);
-  font-weight: 500;
 }
 
 .button.large {
@@ -693,9 +703,13 @@
   font-size: var(--t-sm);
 }
 
+/* Se abre ahí mismo: se lee como enlace (subrayado), no como nota. */
 details.more summary {
   cursor: pointer;
-  color: var(--ink-soft);
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
   font-size: var(--t-sm);
   min-height: 44px;
   display: flex;
@@ -1060,9 +1074,11 @@ body.sheet-open {
 }
 
 .balance-more {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: var(--t-sm);
   font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* Disponible / apartado: debajo del total, más chico, para no competir con él. */
@@ -1119,6 +1135,31 @@ body.sheet-open {
 
 .row-button:disabled {
   cursor: default;
+}
+
+/* Las filas que se abren o se editan llevan un chevron al final: se ven tocables, no como
+   texto. Abierta (aria-expanded), apunta hacia abajo. */
+.row-button:not(:disabled)::after,
+.entry-button:not(:disabled)::after {
+  content: "";
+  flex: none;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  margin-left: var(--s1);
+  border-right: 2px solid var(--ink-soft);
+  border-bottom: 2px solid var(--ink-soft);
+  transform: rotate(-45deg);
+  transition: transform 160ms var(--ease-out);
+}
+
+.row-button[aria-expanded="true"]::after {
+  transform: rotate(45deg);
+}
+
+.row-button:not(:disabled):hover,
+.row-button:not(:disabled):active {
+  background: var(--accent-wash);
 }
 
 .row-button:focus-visible {
@@ -1518,7 +1559,6 @@ fieldset {
 /* ---------- Historia ---------- */
 .history-link {
   justify-self: start;
-  padding-left: 0;
 }
 
 .changed {

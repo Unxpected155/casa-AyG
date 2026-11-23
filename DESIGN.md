@@ -20,6 +20,7 @@ Estrategia: **Restrained**. Neutros teñidos hacia el cálido + un acento terrac
 | `--ink` | `oklch(0.25 0.02 55)` | `oklch(0.93 0.018 85)` | Texto |
 | `--ink-soft` | `oklch(0.45 0.025 60)` | `oklch(0.75 0.022 80)` | Texto secundario (≥ 4.5:1) |
 | `--accent` | `oklch(0.55 0.135 40)` | `oklch(0.73 0.12 48)` | Terracota: acción principal, selección |
+| `--accent-ink` | `oklch(0.5 0.135 40)` | `oklch(0.76 0.12 48)` | Texto de acción sobre papel (≥ 4.5:1) |
 | `--on-accent` | `oklch(0.985 0.012 85)` | `oklch(0.2 0.02 50)` | Texto sobre el acento |
 | `--ok` | `oklch(0.5 0.09 128)` | `oklch(0.76 0.1 125)` | Oliva: vas bien |
 | `--near` | `oklch(0.52 0.1 72)` | `oklch(0.8 0.11 80)` | Ocre: cerca del límite |
@@ -44,7 +45,9 @@ El estado nunca va solo en color: siempre con texto o ícono.
 
 - **Renglón de categoría:** nombre (sans), gastado / planeado (serifa tabular), y debajo una línea fina que se llena como subrayado a lápiz con el color de estado.
 - **Asiento de movimiento:** fecha agrupada, descripción, categoría, quién lo registró (iniciales) y monto alineado a la derecha.
-- **Botón principal:** terracota sólido. Secundario: tinta con borde. Fantasma: solo texto.
+- **Botón principal:** terracota sólido. Secundario: tinta con borde. Fantasma: texto de acción (`--accent-ink`) con borde fino (`--rule-strong`); nunca solo texto, para que no se confunda con un párrafo.
+- **Enlaces que abren algo ahí mismo** («Ver por cuenta», «Tengo un código…»): texto de acción subrayado.
+- **Filas que se tocan** (cuentas, movimientos, historia, metas): chevron «›» al final; apunta abajo cuando la fila está abierta.
 - **Hoja inferior** (no modal): sube desde abajo; el monto es el primer campo y el más grande.
 - Todo control tiene estados: normal, hover, foco visible (anillo terracota 2 px), activo, deshabilitado, cargando, error.
 
