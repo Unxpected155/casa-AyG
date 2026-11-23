@@ -1982,3 +1982,44 @@ fieldset {
 .change .muted {
   margin: 0;
 }
+
+/* ---------- Simulador de una meta («¿Y si…?») ---------- */
+.simulator {
+  margin-top: var(--s2);
+}
+
+.simulator > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.simulator-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--s3);
+  padding: var(--s3) 0;
+}
+
+.simulator-fields > .field,
+.simulator-fields input {
+  min-width: 0;
+  width: 100%;
+}
+
+.simulator-result {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunk);
+  border-radius: var(--radius);
+}
+
+.simulator-result p {
+  margin: 0;
+}
