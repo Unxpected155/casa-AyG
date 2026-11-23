@@ -1963,3 +1963,22 @@ fieldset {
 .mailbox {
   margin-top: var(--s6);
 }
+
+/* ---------- Cambios recientes de la casa ---------- */
+.change {
+  display: grid;
+  gap: var(--s1);
+}
+
+.change-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1) var(--s2);
+  overflow-wrap: anywhere;
+}
+
+.change .muted {
+  margin: 0;
+}
