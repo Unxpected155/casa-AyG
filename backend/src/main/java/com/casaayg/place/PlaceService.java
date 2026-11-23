@@ -17,6 +17,7 @@ import com.casaayg.domain.Text.PlaceName;
 import com.casaayg.shared.security.CurrentUser;
 import com.casaayg.shared.web.ConflictException;
 import com.casaayg.shared.web.NotFoundException;
+import com.casaayg.household.ChangeLog;
 import com.casaayg.space.Spaces;
 
 /**
@@ -34,9 +35,12 @@ public class PlaceService {
     private final JdbcClient jdbc;
     private final Spaces spaces;
 
-    PlaceService(JdbcClient jdbc, Spaces spaces) {
+    private final ChangeLog changes;
+
+    PlaceService(JdbcClient jdbc, Spaces spaces, ChangeLog changes) {
         this.jdbc = jdbc;
         this.spaces = spaces;
+        this.changes = changes;
     }
 
     public record NewPlace(PlaceName name, Kind kind, Money opening, LocalDate openingDate, UUID parentId) {}
@@ -158,6 +162,7 @@ public class PlaceService {
         if (jdbc.sql("DELETE FROM transfer WHERE id = ? AND space_id = ?").params(id, spaceId).update() == 0) {
             throw new NotFoundException();
         }
+        changes.tellOwners(spaceId);
     }
 
     /**

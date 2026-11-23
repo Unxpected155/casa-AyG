@@ -20,6 +20,7 @@ import com.casaayg.recurring.RecurringService;
 import com.casaayg.shared.security.CurrentUser;
 import com.casaayg.shared.web.ConflictException;
 import com.casaayg.shared.web.NotFoundException;
+import com.casaayg.household.ChangeLog;
 import com.casaayg.space.Spaces;
 
 @Service
@@ -31,8 +32,11 @@ public class TransactionService {
     private final Spaces spaces;
     private final PlaceService places;
     private final RecurringService recurring;
+    private final ChangeLog changes;
 
-    TransactionService(JdbcClient jdbc, Spaces spaces, PlaceService places, RecurringService recurring) {
+    TransactionService(JdbcClient jdbc, Spaces spaces, PlaceService places, RecurringService recurring,
+                       ChangeLog changes) {
+        this.changes = changes;
         this.jdbc = jdbc;
         this.spaces = spaces;
         this.places = places;
@@ -249,6 +253,7 @@ public class TransactionService {
         } else if (tithe != null) {
             jdbc.sql("DELETE FROM transaction WHERE id = ? AND space_id = ?").params(tithe, spaceId).update();
         }
+        changes.tellOwners(spaceId);
         return find(spaceId, id);
     }
 
@@ -259,6 +264,7 @@ public class TransactionService {
         if (jdbc.sql("DELETE FROM transaction WHERE id = ? AND space_id = ?").params(id, spaceId).update() == 0) {
             throw new NotFoundException();
         }
+        changes.tellOwners(spaceId);
     }
 
     /** Lo que creó el cierre del mes no se toca a mano: se deshace reabriendo el mes (V13). */

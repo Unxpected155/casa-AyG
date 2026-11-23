@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, messageOf, withPasskeyConfirm } from "../api";
 import { isReserved } from "../components/Balance";
+import { Changes } from "../components/Changes";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
 import { amountChange, amountToInput, currentMonth, money, monthLabel, parseAmount, shiftMonth, todayIso, type YearMonth } from "../format";
@@ -117,6 +118,8 @@ export function House() {
           <Destination house={house} myPlaces={myPlaces} onDone={changed} onError={show} />
 
           <SettingsForm familyId={family.id} house={house} onDone={changed} onError={show} />
+
+          <Changes spaceId={family.id} />
 
           {house.closes.length > 0 && (
             <section className="block" aria-labelledby="closes-title">
