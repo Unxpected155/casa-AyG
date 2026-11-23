@@ -232,6 +232,8 @@ export interface Summary {
   income: Totals;
   expenses: Totals;
   percentOfIncome: Partial<Record<Group, number>>;
+  /** Lo ahorrado (movido a un CDP o a una meta): no es gasto, pero cuenta en el % de ahorro. */
+  saved: Totals;
 }
 
 export interface BudgetLine {
@@ -294,6 +296,8 @@ export interface ClosePreview {
   month: number;
   income: number;
   expenses: number;
+  /** Lo movido a un CDP o a una meta de la casa ese mes: sale antes de calcular lo que sobró. */
+  saved: number;
   surplus: number;
   personalFloor: number;
   bonusPct: number;

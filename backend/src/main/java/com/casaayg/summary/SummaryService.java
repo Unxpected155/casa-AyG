@@ -42,7 +42,7 @@ public class SummaryService {
 
     public record Summary(YearMonth month, BigDecimal usdSellRate, boolean missingRates, List<CategoryLine> categories,
                           Map<CategoryGroup, Totals> byGroup, Totals income, Totals expenses,
-                          Map<CategoryGroup, BigDecimal> percentOfIncome) {}
+                          Map<CategoryGroup, BigDecimal> percentOfIncome, Totals saved) {}
 
     @Transactional(readOnly = true)
     public Summary month(UUID spaceId, YearMonth month) {
@@ -50,8 +50,23 @@ public class SummaryService {
         BigDecimal rate = jdbc.sql("SELECT usd_sell_rate(?)").param(month.atEndOfMonth())
             .query(BigDecimal.class).optional().orElse(null);
 
-        List<CategoryLine> lines = new ArrayList<>();
         boolean[] missing = {false};
+        // Lo ahorrado: dinero movido a un CDP o a la cuenta de una meta (V18). No es un gasto.
+        BigDecimal[] moved = {BigDecimal.ZERO, BigDecimal.ZERO};
+        jdbc.sql("SELECT currency, amount FROM period_savings(?, ?, ?)")
+            .params(spaceId, month.atDay(1), month.plusMonths(1).atDay(1))
+            .query(rs -> {
+                moved["USD".equals(rs.getString(1).strip()) ? 1 : 0] = rs.getBigDecimal(2);
+            });
+        BigDecimal savedUsd = moved[1].add(rate == null ? BigDecimal.ZERO
+            : moved[0].divide(rate, 2, RoundingMode.HALF_UP));
+        missing[0] |= rate == null && moved[0].signum() != 0;
+        Totals saved = new Totals(moved[0], moved[1], savedUsd);
+
+        List<CategoryLine> lines = new ArrayList<>();
+        // La línea «Ahorro» del presupuesto mide lo que se movió a un CDP o a una meta: así un
+        // plan de «ahorrar ₡200 000» se cumple con la transferencia (ya no se ahorra con un gasto).
+        boolean[] savingsInLine = {false};
         jdbc.sql("""
                 WITH tx AS (
                     SELECT category_id, currency, amount,
@@ -83,12 +98,20 @@ public class SummaryService {
                 // lo planeado en colones da exactamente 100 %, sin redondeos de conversión.
                 BigDecimal spentCrc = rs.getBigDecimal("spent_crc");
                 BigDecimal spentUsd = rs.getBigDecimal("spent_usd");
+                BigDecimal lineUsd = totalUsd;
+                if (!savingsInLine[0] && "AHORRO".equals(rs.getString("category_group"))
+                        && "ahorro".equalsIgnoreCase(rs.getString("name").strip())) {
+                    savingsInLine[0] = true;
+                    spentCrc = spentCrc.add(moved[0]);
+                    spentUsd = spentUsd.add(moved[1]);
+                    lineUsd = totalUsd.add(savedUsd);
+                }
                 BigDecimal spentAsCrc = rate == null ? spentCrc
                     : spentCrc.add(spentUsd.multiply(rate)).setScale(2, RoundingMode.HALF_UP);
                 BigDecimal remaining = planned.signum() == 0 ? null : planned.subtract(spentAsCrc);
                 lines.add(new CategoryLine(rs.getObject("id", UUID.class), rs.getString("name"),
                     CategoryGroup.valueOf(rs.getString("category_group")), planned, plannedUsd,
-                    spentCrc, spentUsd, totalUsd, remaining, status(planned, spentAsCrc)));
+                    spentCrc, spentUsd, lineUsd, remaining, status(planned, spentAsCrc)));
             });
 
         Map<CategoryGroup, Totals> byGroup = new EnumMap<>(CategoryGroup.class);
@@ -97,15 +120,24 @@ public class SummaryService {
         }
         Totals income = byGroup.get(CategoryGroup.INGRESO);
         Totals expenses = sum(lines.stream().filter(l -> l.group() != CategoryGroup.INGRESO).toList());
+        if (savingsInLine[0]) {
+            // Lo ahorrado está en la línea «Ahorro», pero no es un gasto.
+            expenses = new Totals(expenses.crc().subtract(saved.crc()), expenses.usd().subtract(saved.usd()),
+                expenses.totalUsd().subtract(saved.totalUsd()));
+        }
+
 
         Map<CategoryGroup, BigDecimal> percent = new EnumMap<>(CategoryGroup.class);
         if (income.totalUsd().signum() > 0) {
             for (CategoryGroup group : List.of(CategoryGroup.NECESIDAD, CategoryGroup.DESEO, CategoryGroup.AHORRO)) {
-                percent.put(group, byGroup.get(group).totalUsd().multiply(HUNDRED)
-                    .divide(income.totalUsd(), 1, RoundingMode.HALF_UP));
+                BigDecimal amount = byGroup.get(group).totalUsd();
+                if (group == CategoryGroup.AHORRO && !savingsInLine[0]) {
+                    amount = amount.add(savedUsd);
+                }
+                percent.put(group, amount.multiply(HUNDRED).divide(income.totalUsd(), 1, RoundingMode.HALF_UP));
             }
         }
-        return new Summary(month, rate, missing[0], lines, byGroup, income, expenses, percent);
+        return new Summary(month, rate, missing[0], lines, byGroup, income, expenses, percent, saved);
     }
 
     private static Totals sum(List<CategoryLine> lines) {

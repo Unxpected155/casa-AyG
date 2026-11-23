@@ -112,7 +112,7 @@ class MergeAndSummaryTest extends WebTestSupport {
             UUID space = pareja1.personalSpace();
             UUID salario = TestData.categoryNamed(su, space, "Salario");
             UUID super_ = TestData.categoryNamed(su, space, "Supermercado");
-            UUID ahorro = TestData.categoryNamed(su, space, "Ahorro");
+            UUID ahorro = TestData.newCategory(su, space, pareja1.id(), "Ahorro", "AHORRO");
             insertTx(su, space, salario, day, "1000000.00", "CRC"); // 2000 USD
             insertTx(su, space, super_, day, "250000.00", "CRC");   // 500 USD
             insertTx(su, space, super_, day, "100.00", "USD");      // 100 USD

@@ -31,7 +31,7 @@ class AvisosTest extends PostgresTestBase {
             a = TestData.adminCreateUser(su, "A");
             b = TestData.adminCreateUser(su, "B");
             supermercado = TestData.categoryNamed(su, a.personalSpace(), "Supermercado");
-            ahorro = TestData.categoryNamed(su, a.personalSpace(), "Ahorro");
+            ahorro = TestData.newCategory(su, a.personalSpace(), a.id(), "Ahorro", "AHORRO");
             UUID budget = UUID.randomUUID();
             exec(su, "INSERT INTO budget (id, space_id, created_by, year, month) VALUES (?, ?, ?, ?, ?)",
                 budget, a.personalSpace(), a.id(), TODAY.getYear(), TODAY.getMonthValue());

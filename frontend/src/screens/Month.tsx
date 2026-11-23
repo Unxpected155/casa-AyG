@@ -182,7 +182,9 @@ function MonthFlow({ summary }: { summary: Summary }) {
   // Se redondea antes de restar, para que la frase cuadre a la vista (sin ₡1 de diferencia).
   const inCrc = Math.round(summary.income.crc);
   const outCrc = Math.round(summary.expenses.crc);
-  const left = inCrc - outCrc;
+  // Lo apartado (al CDP o a una meta) no se gastó, pero tampoco está libre: se resta aparte.
+  const savedCrc = Math.round(summary.saved.crc);
+  const left = inCrc - outCrc - savedCrc;
   const { income, expenses } = summary;
   return (
     <>
@@ -191,9 +193,12 @@ function MonthFlow({ summary }: { summary: Summary }) {
           <>
             Entraron <span className="figure">{money(inCrc, "CRC")}</span> y salieron{" "}
             <strong data-count className="figure">{money(outCrc, "CRC")}</strong>
+            {savedCrc > 0 && <>; apartaste <span className="figure">{money(savedCrc, "CRC")}</span></>}
             {left >= 0
               ? <>: te quedan <strong className="figure">{money(left, "CRC")}</strong> del mes.</>
-              : <>: gastaste <strong className="figure">{money(-left, "CRC")}</strong> más de lo que entró.</>}
+              : savedCrc > 0
+                ? <>: entre gastos y ahorro van <strong className="figure">{money(-left, "CRC")}</strong> más de lo que entró.</>
+                : <>: gastaste <strong className="figure">{money(-left, "CRC")}</strong> más de lo que entró.</>}
           </>
         ) : (
           <>Van <strong data-count className="figure">{money(outCrc, "CRC")}</strong> en gastos este mes.</>
@@ -231,6 +236,15 @@ function GroupSection({ group, lines, showIdle }: { group: Group; lines: Summary
 /** Lo que dice cada renglón: claro con el dinero, sin alarmar (PRODUCT.md, principio 2). */
 function statusText(line: SummaryLine): string | null {
   const left = Math.abs(line.remainingCrc ?? 0);
+  if (line.group === "AHORRO") {
+    switch (line.status) {
+      case "OK":
+      case "CERCA": return `faltan ${money(left, "CRC")} por apartar`;
+      case "AL_LIMITE": return "ahorro del mes cumplido";
+      case "EXCEDIDO": return `apartaste ${money(left, "CRC")} más de lo planeado`;
+      default: return null;
+    }
+  }
   switch (line.status) {
     case "CERCA": return `quedan ${money(left, "CRC")}`;
     case "AL_LIMITE": return "justo lo planeado";
@@ -250,7 +264,10 @@ function CategoryRow({ line, income }: { line: SummaryLine; income: boolean }) {
     ? (line.plannedCrc - line.remainingCrc) / line.plannedCrc
     : 0;
   const fill = Math.min(ratio, 1);
+  // En el ahorro, llegar o pasarse es bueno: verde, sin alarma.
+  const savedEnough = line.group === "AHORRO" && (line.status === "EXCEDIDO" || line.status === "AL_LIMITE");
   const tone = income ? "income"
+    : savedEnough ? "ok"
     : line.status === "EXCEDIDO" ? "over"
     : line.status === "CERCA" ? "near"
     : line.status === "AL_LIMITE" ? "full"
@@ -281,7 +298,7 @@ function CategoryRow({ line, income }: { line: SummaryLine; income: boolean }) {
       )}
       {text && (
         <span className={`row-status ${tone}`}>
-          <Icon name={line.status === "AL_LIMITE" ? "check" : "alert"} size={14} /> {text}
+          <Icon name={line.status === "AL_LIMITE" || savedEnough ? "check" : "alert"} size={14} /> {text}
         </span>
       )}
     </li>

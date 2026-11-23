@@ -63,7 +63,8 @@ public class HouseholdService {
                             List<Closed> closes, String since) {}
 
     /** Lo que pasaría al cerrar un mes. {@code rest}: lo que queda en la casa después de pagar. */
-    public record ClosePreview(int year, int month, BigDecimal income, BigDecimal expenses, BigDecimal surplus,
+    public record ClosePreview(int year, int month, BigDecimal income, BigDecimal expenses, BigDecimal saved,
+                               BigDecimal surplus,
                                BigDecimal personalFloor, BigDecimal bonusPct, BigDecimal bonus, BigDecimal perPerson,
                                int members, BigDecimal rest, Closed closed) {}
 
@@ -272,6 +273,11 @@ public class HouseholdService {
                  WHERE t.space_id = ? AND t.currency = 'CRC' AND t.tx_date >= ? AND t.tx_date < ?""")
             .params(familyId, month.atDay(1), month.plusMonths(1).atDay(1))
             .query((rs, n) -> new Flow(rs.getBigDecimal(1), rs.getBigDecimal(2))).single();
+        // Lo que se movió a un CDP o a una meta de la casa: lo ahorrado sale ANTES de calcular lo
+        // que sobra (el bono es un % de lo que queda después de gastos y ahorros).
+        BigDecimal saved = jdbc.sql("SELECT COALESCE(sum(amount), 0) FROM period_savings(?, ?, ?) WHERE currency = 'CRC'")
+            .params(familyId, month.atDay(1), month.plusMonths(1).atDay(1))
+            .query(BigDecimal.class).single();
         Closed closed = jdbc.sql("""
                 SELECT year, month, surplus, bonus_pct, per_person FROM month_close
                  WHERE space_id = ? AND year = ? AND month = ?""")
@@ -285,18 +291,18 @@ public class HouseholdService {
         }
         int members = jdbc.sql("SELECT count(*) FROM space_member WHERE space_id = ?").param(familyId)
             .query(Integer.class).single();
-        return calculate(month, flow.income(), flow.expenses(), s.personalFloor(), pct, members, closed);
+        return calculate(month, flow.income(), flow.expenses(), saved, s.personalFloor(), pct, members, closed);
     }
 
     /** El cálculo, sin BD: bono = % de lo que sobró (a colones enteros), igual para cada miembro. */
-    static ClosePreview calculate(YearMonth month, BigDecimal income, BigDecimal expenses, BigDecimal floor,
-                                  BigDecimal pct, int members, Closed closed) {
-        BigDecimal surplus = income.subtract(expenses);
+    static ClosePreview calculate(YearMonth month, BigDecimal income, BigDecimal expenses, BigDecimal saved,
+                                  BigDecimal floor, BigDecimal pct, int members, Closed closed) {
+        BigDecimal surplus = income.subtract(expenses).subtract(saved);
         BigDecimal bonus = surplus.signum() > 0
             ? surplus.multiply(pct).divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP) : BigDecimal.ZERO;
         BigDecimal perPerson = floor.add(bonus).setScale(2, RoundingMode.HALF_UP);
         BigDecimal rest = surplus.subtract(perPerson.multiply(BigDecimal.valueOf(members))).max(BigDecimal.ZERO);
-        return new ClosePreview(month.getYear(), month.getMonthValue(), income, expenses, surplus, floor, pct,
+        return new ClosePreview(month.getYear(), month.getMonthValue(), income, expenses, saved, surplus, floor, pct,
             bonus, perPerson, members, rest, closed);
     }
 
