@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.casaayg.domain.Money;
 import com.casaayg.domain.Text.Description;
+import com.casaayg.shared.web.ConflictException;
 import com.casaayg.shared.web.NotFoundException;
 import com.casaayg.transaction.TransactionService;
 import com.casaayg.transaction.TransactionService.TransactionData;
@@ -68,7 +69,8 @@ public class InvoiceInbox {
             .list();
     }
 
-    private record Row(String clave, LocalDate date, String merchant, Money.Currency currency, BigDecimal total) {}
+    private record Row(String clave, LocalDate date, String merchant, Money.Currency currency, BigDecimal total,
+                       boolean refund) {}
 
     /**
      * Se vuelve un movimiento en {@code spaceId} (personal o de la casa), con la fecha, el monto
@@ -77,12 +79,20 @@ public class InvoiceInbox {
     @Transactional
     public TransactionView confirm(UUID id, UUID spaceId, UUID categoryId, UUID placeId, String description) {
         Row r = jdbc.sql("""
-                SELECT clave, issued_on, merchant, currency, total FROM invoice_inbox
+                SELECT clave, issued_on, merchant, currency, total, kind = 'NOTA_CREDITO' FROM invoice_inbox
                  WHERE id = ? AND status = 'PENDIENTE' FOR UPDATE""")
             .param(id)
             .query((rs, n) -> new Row(rs.getString(1), rs.getObject(2, LocalDate.class), rs.getString(3),
-                Money.Currency.valueOf(rs.getString(4).strip()), rs.getBigDecimal(5)))
+                Money.Currency.valueOf(rs.getString(4).strip()), rs.getBigDecimal(5), rs.getBoolean(6)))
             .optional().orElseThrow(NotFoundException::new);
+        // Una compra es un gasto y una devolución un ingreso: con la categoría equivocada el
+        // saldo se movería al revés. (Si la categoría no es de ese espacio, responde 404 abajo.)
+        Boolean income = jdbc.sql("SELECT category_group = 'INGRESO' FROM category WHERE id = ? AND space_id = ?")
+            .params(categoryId, spaceId).query(Boolean.class).optional().orElse(null);
+        if (income != null && income != r.refund()) {
+            throw new ConflictException(r.refund() ? "Una devolución se anota en una categoría de ingreso."
+                : "Una compra se anota en una categoría de gasto, no de ingreso.");
+        }
         String text = description == null || description.isBlank() ? r.merchant() : description;
         TransactionView tx = transactions.createFromInvoice(spaceId, new TransactionData(categoryId, r.date(),
             new Description(text), new Money(r.total(), r.currency()), null, placeId), r.clave());

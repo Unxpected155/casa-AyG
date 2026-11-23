@@ -78,7 +78,8 @@ function InvoiceCard({ invoice, spaces, fallbackSpace, onDone }: {
       api.get<Place[]>(`/api/spaces/${spaceId}/places`),
     ]).then(([c, p]) => {
       if (cancelled) return;
-      setCategories(c.filter((x) => x.active));
+      // Una compra va a un gasto; una devolución (nota de crédito), a un ingreso.
+      setCategories(c.filter((x) => x.active && (x.group === "INGRESO") === (invoice.kind === "NOTA_CREDITO")));
       const usable = p.filter((x) => !x.archived && x.currency === invoice.currency);
       setPlaces(usable);
       setCategoryId((current) => (c.some((x) => x.id === current) ? current : ""));
@@ -88,7 +89,7 @@ function InvoiceCard({ invoice, spaces, fallbackSpace, onDone }: {
     return () => {
       cancelled = true;
     };
-  }, [spaceId, invoice.currency]);
+  }, [spaceId, invoice.currency, invoice.kind]);
 
   const sortedCategories = useMemo(() => [...categories].sort((a, b) => a.name.localeCompare(b.name, "es")), [categories]);
   const refund = invoice.kind === "NOTA_CREDITO";

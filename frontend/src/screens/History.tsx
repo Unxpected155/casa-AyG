@@ -50,7 +50,7 @@ export function History() {
           <section className="block" aria-labelledby="changed-title">
             <h2 id="changed-title" className="section-title">Qué cambió contra tu promedio</h2>
             {data.baselineMonths === 0 ? (
-              <p className="muted">Con un mes más de datos te muestro qué cambió contra tu promedio.</p>
+              <p className="muted">Todavía hay un solo mes: la comparación aparece desde el próximo.</p>
             ) : (
               <>
                 <p className="hint">

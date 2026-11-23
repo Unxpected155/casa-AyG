@@ -95,8 +95,13 @@ export function Account() {
         </p>
       )}
 
-      <section className="block" aria-labelledby="pk-title">
-        <h2 id="pk-title" className="section-title">Passkeys</h2>
+      <details className="block more-section">
+        <summary>
+          <span id="pk-title" className="section-title">Passkeys</span>
+          <span className="muted small">
+            {passkeys.length === 1 ? "1 dispositivo: agrega otro por si lo pierdes" : `${passkeys.length} dispositivos`}
+          </span>
+        </summary>
         {passkeys.length < 2 && (
           <p className="notice">
             Tienes una sola passkey. Registra otra en un segundo dispositivo para no quedarte fuera si pierdes este.
@@ -129,14 +134,19 @@ export function Account() {
             <Icon name="plus" size={18} /> Agregar passkey
           </button>
         </div>
-      </section>
+      </details>
 
       <Notifications />
 
       <TaxId />
 
-      <section className="block" aria-labelledby="rc-title">
-        <h2 id="rc-title" className="section-title">Códigos de recuperación</h2>
+      <details className="block more-section" open={codes ? true : undefined}>
+        <summary>
+          <span id="rc-title" className="section-title">Códigos de recuperación</span>
+          <span className="muted small">
+            {me.recoveryCodesLeft === 0 ? "No tienes: genéralos" : `Te quedan ${me.recoveryCodesLeft}`}
+          </span>
+        </summary>
         {codes ? (
           <div className="codes">
             <p>Guárdalos fuera del teléfono: en papel o en tu gestor de contraseñas. <strong>No se vuelven a mostrar.</strong></p>
@@ -164,7 +174,7 @@ export function Account() {
             </button>
           </>
         )}
-      </section>
+      </details>
 
       <section className="block" aria-labelledby="ses-title">
         <h2 id="ses-title" className="section-title">Sesiones y datos</h2>

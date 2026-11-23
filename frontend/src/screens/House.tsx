@@ -56,6 +56,7 @@ export function House() {
       const target = document.getElementById("contrib-title");
       if (!target) return;
       window.history.replaceState(null, "");
+      target.closest("details")?.setAttribute("open", "");
       target.scrollIntoView({ block: "start", behavior: "smooth" });
     });
   }, [house, myPlaces.length, homePlaces.length]);
@@ -122,8 +123,11 @@ export function House() {
           <Changes spaceId={family.id} />
 
           {house.closes.length > 0 && (
-            <section className="block" aria-labelledby="closes-title">
-              <h2 id="closes-title" className="section-title">Meses cerrados</h2>
+            <details className="block more-section">
+              <summary>
+                <span id="closes-title" className="section-title">Meses cerrados</span>
+                <span className="muted small">{house.closes.length === 1 ? "1 mes" : `${house.closes.length} meses`}</span>
+              </summary>
               <ul className="rows">
                 {house.closes.map((c) => (
                   <li key={`${c.year}-${c.month}`} className="row">
@@ -137,7 +141,7 @@ export function House() {
                   </li>
                 ))}
               </ul>
-            </section>
+            </details>
           )}
         </>
       )}
@@ -391,9 +395,11 @@ function Contribute({ familyId, myPlaces, homePlaces, onDone, onError }: PartPro
   if (myPlaces.length === 0 || homePlaces.length === 0) return null;
 
   return (
-    <section className="block" aria-labelledby="contrib-title">
-      <h2 id="contrib-title" className="section-title">Aportar a la casa</h2>
-      <p className="hint">Pasa dinero de lo tuyo a la casa: queda como gasto tuyo y como ingreso de la casa.</p>
+    <details className="block more-section" id="contrib">
+      <summary>
+        <span id="contrib-title" className="section-title">Aportar a la casa</span>
+        <span className="muted small">Pasa dinero de lo tuyo a la casa: gasto tuyo, ingreso de la casa.</span>
+      </summary>
       <form className="stack" onSubmit={submit}>
         <label className="field">
           <span>De lo tuyo</span>
@@ -413,7 +419,7 @@ function Contribute({ familyId, myPlaces, homePlaces, onDone, onError }: PartPro
         </label>
         <button type="submit" className="button secondary" disabled={busy || !to}>Aportar</button>
       </form>
-    </section>
+    </details>
   );
 }
 
@@ -430,9 +436,13 @@ function Destination({ house, myPlaces, onDone, onError }: PartProps & { house: 
   };
   if (options.length === 0) return null;
   return (
-    <section className="block" aria-labelledby="dest-title">
-      <h2 id="dest-title" className="section-title">Dónde recibes tu dinero personal</h2>
-      <p className="hint">Si no eliges, llega a tu cuenta principal en colones.</p>
+    <details className="block more-section">
+      <summary>
+        <span id="dest-title" className="section-title">Dónde recibes tu dinero personal</span>
+        <span className="muted small">
+          {options.find((p) => p.id === house.myDestination)?.name ?? "En tu cuenta principal en colones"}
+        </span>
+      </summary>
       <label className="field">
         <span>Cuenta de tu espacio personal</span>
         <select value={house.myDestination ?? ""} onChange={(e) => void save(e.target.value)}>
@@ -440,7 +450,7 @@ function Destination({ house, myPlaces, onDone, onError }: PartProps & { house: 
           {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </label>
-    </section>
+    </details>
   );
 }
 

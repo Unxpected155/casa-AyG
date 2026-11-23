@@ -45,6 +45,7 @@ export function Changes({ spaceId }: { spaceId: string }) {
   const { session, version } = useApp();
   const me = session.kind === "ready" ? session.me.id : null;
   const [items, setItems] = useState<Change[] | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +66,7 @@ export function Changes({ spaceId }: { spaceId: string }) {
         <p className="hint">Cuando alguno edite o borre algo de la casa, aquí queda quién lo hizo y qué cambió.</p>
       ) : (
         <ul className="rows">
-          {items.map((c, i) => {
+          {items.slice(0, showAll ? items.length : 5).map((c, i) => {
             const who = c.actor === me ? "Tú" : c.actorName;
             const name = c.entity === "TRANSFERENCIA"
               ? `la transferencia de ${c.before.desde ?? "una cuenta"} a ${c.before.hacia ?? "otra"}`
@@ -90,6 +91,11 @@ export function Changes({ spaceId }: { spaceId: string }) {
             );
           })}
         </ul>
+      )}
+      {items.length > 5 && (
+        <button type="button" className="button ghost small" onClick={() => setShowAll(!showAll)}>
+          {showAll ? "Ver menos" : `Ver los ${items.length} cambios`}
+        </button>
       )}
     </section>
   );

@@ -113,6 +113,20 @@ class InvoiceInboxTest extends WebTestSupport {
     }
 
     @Test
+    void unaCompraNoSeAnotaComoIngreso() throws Exception {
+        inbox.add(ana.id(), invoice("3101999999", "1000.00"));
+        String id = idOfFirst(ana);
+        UUID salario;
+        try (Connection su = asSuperuser()) {
+            salario = TestData.categoryNamed(su, ana.personalSpace(), "Salario");
+        }
+        as(ana, post("/api/invoices/" + id + "/confirm").content(confirm(ana.personalSpace(), salario, banco)))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.detail").value("Una compra se anota en una categoría de gasto, no de ingreso."));
+        as(ana, get("/api/invoices")).andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
     void descartadaNoVuelveAEntrar() throws Exception {
         VerifiedInvoice v = invoice("3101999999", "1000.00");
         inbox.add(ana.id(), v);
