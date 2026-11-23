@@ -55,17 +55,17 @@ export function Shell({ children, withMonth = false, onAdd }: ShellProps) {
                 aria-pressed={s.id === space?.id}
                 onClick={() => selectSpace(s.id)}
               >
-                {s.kind === "FAMILIA" ? "Familia" : s.name}
+                {s.kind === "FAMILIA" ? "La casa" : s.name}
                 {s.archived && <span className="tag">archivado</span>}
               </button>
             ))}
           </div>
         )}
-        {/* Cuenta va arriba: la barra de abajo queda para lo del día a día. */}
-        <a className="account-link icon-button" href="/cuenta" aria-label="Perfil"
-           aria-current={route === "/cuenta" ? "page" : undefined}
-           onClick={(e) => { e.preventDefault(); navigate("/cuenta"); }}>
-          <Icon name="user" />
+        {/* «Más» va arriba: la barra de abajo queda para lo del día a día. */}
+        <a className="account-link icon-button" href="/mas" aria-label="Más: la casa, facturas, historia y perfil"
+           aria-current={route === "/mas" ? "page" : undefined}
+           onClick={(e) => { e.preventDefault(); navigate("/mas"); }}>
+          <Icon name="menu" />
         </a>
       </header>
 
@@ -86,7 +86,7 @@ export function Shell({ children, withMonth = false, onAdd }: ShellProps) {
       <main className="page" ref={page} id="contenido">
         {space?.archived && (
           <p className="notice">
-            Este espacio quedó archivado al unirse al espacio familiar. Es de solo lectura.
+            Este espacio quedó archivado al unirse a la casa. Es de solo lectura.
           </p>
         )}
         {children}

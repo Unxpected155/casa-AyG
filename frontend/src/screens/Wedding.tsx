@@ -10,7 +10,7 @@ export function Wedding() {
   const { spaces, reloadSession, selectSpace } = useApp();
   const [requests, setRequests] = useState<MergeRequest[] | null>(null);
   const [partner, setPartner] = useState("");
-  const [familyName, setFamilyName] = useState("Casa A&G");
+  const [familyName, setFamilyName] = useState("La casa");
   const [message, setMessage] = useState<{ tone: "ok" | "error"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -62,16 +62,15 @@ export function Wedding() {
 
   return (
     <Shell>
-      <h1 className="page-title">Espacio familiar</h1>
+      <h1 className="page-title">La casa</h1>
       {message && <p className={message.tone === "ok" ? "form-ok" : "form-error"} role="status">{message.text}</p>}
 
       {family && (
         <section className="block">
-          <p className="lead">Comparten «{family.name}» con {family.members.map((m) => m.displayName).join(" y ")}.</p>
+          <p className="lead">Comparten la casa: {family.members.map((m) => m.displayName).join(" y ")}.</p>
           <p className="hint">Todo lo que registren ahí lo ven los dos. Cada quien conserva su espacio personal, que sigue siendo privado.</p>
           <div className="actions">
-            <button type="button" className="button ghost" onClick={() => selectSpace(family.id)}>Ir al espacio familiar</button>
-            <button type="button" className="button secondary" onClick={() => { selectSpace(family.id); navigate("/casa"); }}>Ver la casa</button>
+            <button type="button" className="button secondary" onClick={() => { selectSpace(family.id); navigate("/casa"); }}>Ir a la casa</button>
           </div>
         </section>
       )}
@@ -107,7 +106,7 @@ export function Wedding() {
 
       {!family && !pending && requests !== null && (
         <section className="block">
-          <p className="lead">Cuando se casen, pueden unir sus espacios en uno familiar.</p>
+          <p className="lead">Cuando se casen, pueden crear la casa: un espacio que comparten los dos.</p>
           <WhatHappens />
           <form className="stack" onSubmit={propose}>
             <label className="field">
@@ -116,7 +115,7 @@ export function Wedding() {
                      onChange={(e) => setPartner(e.target.value)} required />
             </label>
             <label className="field">
-              <span>Nombre del espacio familiar</span>
+              <span>Cómo le llaman a su casa</span>
               <input value={familyName} maxLength={60} onChange={(e) => setFamilyName(e.target.value)} required />
             </label>
             <button type="submit" className="button primary" disabled={busy}>Proponer unir los espacios</button>
@@ -130,7 +129,7 @@ export function Wedding() {
 function WhatHappens() {
   return (
     <ul className="explain">
-      <li>Se crea un espacio familiar, vacío, donde los dos ven y registran todo. Ahí entran los salarios.</li>
+      <li>Se crea la casa, vacía, donde los dos ven y registran todo. Ahí entran los salarios.</li>
       <li>Cada quien conserva su espacio personal, privado: del otro solo se ve cuánto tiene, nunca en qué lo gasta.</li>
       <li>Al cerrar cada mes, la casa le da a cada quien lo mismo: un monto fijo más un bono de lo que sobró.</li>
       <li>Si alguien quiere poner de lo suyo, lo aporta a la casa.</li>
