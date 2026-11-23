@@ -57,6 +57,17 @@ public class CategoryService {
     @Transactional
     public void update(UUID spaceId, UUID id, CategoryName name, CategoryGroup group, boolean active) {
         spaces.requireWritable(spaceId);
+        // El signo de cada movimiento sale del grupo: pasar de gasto a ingreso (o al revés) con
+        // movimientos anotados cambiaría los saldos de las cuentas hacia atrás.
+        Boolean flips = jdbc.sql("""
+                SELECT (c.category_group = 'INGRESO') <> (? = 'INGRESO')
+                       AND EXISTS (SELECT 1 FROM transaction t WHERE t.category_id = c.id AND t.space_id = c.space_id)
+                  FROM category c WHERE c.id = ? AND c.space_id = ?""")
+            .params(group.name(), id, spaceId).query(Boolean.class).optional().orElseThrow(NotFoundException::new);
+        if (flips) {
+            throw new ConflictException("Esta categoría ya tiene movimientos: pasarla entre ingreso y gasto cambiaría "
+                + "tus saldos pasados. Crea una categoría nueva.");
+        }
         int rows = jdbc.sql("UPDATE category SET name = ?, category_group = ?, active = ? WHERE id = ? AND space_id = ?")
             .params(name.value(), group.name(), active, id, spaceId)
             .update();
