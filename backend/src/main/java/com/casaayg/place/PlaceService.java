@@ -45,7 +45,8 @@ public class PlaceService {
                                boolean archived) {}
 
     public record PlaceView(UUID id, String name, Kind kind, Money.Currency currency, BigDecimal openingBalance,
-                            LocalDate openingDate, UUID parentId, boolean archived, BigDecimal balance, Cdp cdp) {}
+                            LocalDate openingDate, UUID parentId, boolean archived, BigDecimal balance, Cdp cdp,
+                            String goalName) {}
 
     /** Datos de un CDP (null en los demás lugares; sus campos quedan null hasta configurarlo). */
     public record Cdp(BigDecimal rate, Integer termDays, Integer dayBasis, BigDecimal taxPct, LocalDate maturesOn,
@@ -64,7 +65,10 @@ public class PlaceService {
         SELECT p.id, p.name, p.kind, p.currency, p.opening_balance, p.opening_date, p.parent_id, p.archived,
                p.cdp_rate, p.cdp_term_days, p.cdp_day_basis, p.cdp_tax_pct, p.cdp_matures_on, p.cdp_payout_place,
                p.cdp_last_contribution,
-               place_balance(p.id, current_date) AS balance
+               place_balance(p.id, current_date) AS balance,
+               -- La meta para la que está apartado (si alguna): ese dinero no está "disponible".
+               (SELECT g.name FROM goal_place gp JOIN goal g ON g.id = gp.goal_id AND g.space_id = gp.space_id
+                 WHERE gp.place_id = p.id AND g.status IN ('ACTIVA', 'PAUSADA')) AS goal_name
           FROM place p""";
 
     @Transactional(readOnly = true)
@@ -222,7 +226,7 @@ public class PlaceService {
         return new PlaceView(rs.getObject("id", UUID.class), rs.getString("name"), kind,
             Money.Currency.valueOf(rs.getString("currency")), rs.getBigDecimal("opening_balance"),
             rs.getObject("opening_date", LocalDate.class), rs.getObject("parent_id", UUID.class),
-            rs.getBoolean("archived"), rs.getBigDecimal("balance"), cdp);
+            rs.getBoolean("archived"), rs.getBigDecimal("balance"), cdp, rs.getString("goal_name"));
     }
 
     private static TransferView mapTransfer(ResultSet rs, int n) throws SQLException {
