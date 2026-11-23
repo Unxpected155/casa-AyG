@@ -1936,6 +1936,21 @@ fieldset {
   white-space: nowrap;
 }
 
+/* La marca de la firma: con texto e ícono (el estado nunca va solo en color). */
+.invoice-trust {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  margin: 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--near);
+}
+
+.invoice-trust.ok {
+  color: var(--ok);
+}
+
 .invoice-fields {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

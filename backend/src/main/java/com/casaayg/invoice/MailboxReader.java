@@ -138,7 +138,8 @@ class MailboxReader {
             if (owner.isEmpty()) {
                 record(messageId, clave, hasInvoice, hasResponse, "AJENA", null);
             } else if (inbox.add(owner.get(), v)) {
-                record(messageId, clave, hasInvoice, hasResponse, "NUEVA", null);
+                // Sin verificar: se anota quién firmó (dato público) para configurar las autoridades.
+                record(messageId, clave, hasInvoice, hasResponse, "NUEVA", v.diagnostic());
                 events.publishEvent(new PushNotice(List.of(owner.get()), "Casa A&G",
                     "Llegó una factura nueva para revisar.", "/facturas"));
                 added = true;

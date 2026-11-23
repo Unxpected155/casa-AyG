@@ -26,8 +26,9 @@ public class InvoiceInbox {
     /** Dónde se anotó la última factura de ese mismo comercio (para sugerirlo). */
     public record Suggestion(UUID spaceId, UUID categoryId, UUID placeId) {}
 
+    /** {@code verified}: la firma se confirmó contra una autoridad de confianza. */
     public record Pending(UUID id, String kind, LocalDate date, String merchant, Money.Currency currency,
-                          BigDecimal total, Suggestion suggestion) {}
+                          BigDecimal total, boolean verified, Suggestion suggestion) {}
 
     private final JdbcClient jdbc;
     private final TransactionService transactions;
@@ -39,8 +40,9 @@ public class InvoiceInbox {
 
     /** Lo llama la lectura del buzón, sin sesión. false = esa factura ya había entrado. */
     public boolean add(UUID owner, VerifiedInvoice v) {
-        return Boolean.TRUE.equals(jdbc.sql("SELECT invoice_inbox_add(?, ?, ?, ?, ?, ?, ?, ?)")
-            .params(owner, v.clave(), v.kind().name(), v.date(), v.merchant(), v.emisorId(), v.currency(), v.total())
+        return Boolean.TRUE.equals(jdbc.sql("SELECT invoice_inbox_add(?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            .params(owner, v.clave(), v.kind().name(), v.date(), v.merchant(), v.emisorId(), v.currency(), v.total(),
+                v.signatureVerified())
             .query(Boolean.class).single());
     }
 
@@ -48,7 +50,7 @@ public class InvoiceInbox {
     public List<Pending> pending() {
         return jdbc.sql("""
                 SELECT i.id, i.kind, i.issued_on, i.merchant, i.currency, i.total,
-                       s.space_id, s.category_id, s.place_id
+                       s.space_id, s.category_id, s.place_id, i.signature_verified
                   FROM invoice_inbox i
                   LEFT JOIN LATERAL (
                        SELECT t.space_id, t.category_id, t.place_id
@@ -61,7 +63,7 @@ public class InvoiceInbox {
                  LIMIT 100""")
             .query((rs, n) -> new Pending(rs.getObject(1, UUID.class), rs.getString(2),
                 rs.getObject(3, LocalDate.class), rs.getString(4), Money.Currency.valueOf(rs.getString(5).strip()),
-                rs.getBigDecimal(6), rs.getObject(7) == null ? null
+                rs.getBigDecimal(6), rs.getBoolean(10), rs.getObject(7) == null ? null
                     : new Suggestion(rs.getObject(7, UUID.class), rs.getObject(8, UUID.class), rs.getObject(9, UUID.class))))
             .list();
     }
