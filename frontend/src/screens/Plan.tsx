@@ -136,11 +136,17 @@ export function Plan() {
         </div>
         <p className="hint">Cuánto planean gastar o ahorrar este mes en cada categoría, en colones.</p>
 
-        {GROUPS.filter((g) => g !== "INGRESO").map((group) => (
+        {GROUPS.filter((g) => g !== "INGRESO").map((group) => {
+          const items = categories.filter((c) => c.group === group && plannable(c, planned));
+          if (items.length === 0) return null;
+          return (
           <div key={group} className="plan-group">
             <h3 className="group-title">{GROUP_LABEL[group]}</h3>
+            {group === "AHORRO" && (
+              <p className="hint small">Se cumple moviendo dinero a tu CDP o a una meta (en Cuentas → Mover dinero).</p>
+            )}
             <ul className="rows">
-              {categories.filter((c) => c.group === group && c.active).map((c) => (
+              {items.map((c) => (
                 <li key={c.id} className="row plan-row">
                   <label htmlFor={`p-${c.id}`} className="row-name">{c.name}</label>
                   <span className="money-input">
@@ -159,7 +165,8 @@ export function Plan() {
               ))}
             </ul>
           </div>
-        ))}
+          );
+        })}
 
         {status && <p className={status.tone === "ok" ? "form-ok" : "form-error"} role="status">{status.text}</p>}
         {!readOnly && (
@@ -180,6 +187,14 @@ export function Plan() {
       <Categories categories={categories} readOnly={readOnly} spaceId={space.id} onChange={touch} />
     </Shell>
   );
+}
+
+/**
+ * Qué se planea: las categorías en uso, las que ya tienen algo planeado (aunque se hayan
+ * desactivado) y «Ahorro», que se cumple con transferencias aunque ya no sea un gasto.
+ */
+function plannable(c: Category, planned: Record<string, string>): boolean {
+  return c.active || Boolean(planned[c.id]) || (c.group === "AHORRO" && c.name.trim().toLowerCase() === "ahorro");
 }
 
 /** Categorías de la casa misma: no se traen de lo personal. */
@@ -225,9 +240,12 @@ function Categories({ categories, readOnly, spaceId, onChange }: {
   };
 
   return (
-    <section className="plan" aria-labelledby="cat-title">
-      <h2 id="cat-title" className="section-title">Categorías</h2>
-      {GROUPS.map((g) => (
+    <details className="plan more-section">
+      <summary>
+        <span className="section-title">Editar categorías</span>
+        <span className="muted small">{categories.filter((c) => c.active).length} en uso · toca una para cambiarla</span>
+      </summary>
+      {GROUPS.map((g) => categories.some((c) => c.group === g) && (
         <div key={g} className="plan-group">
           <h3 className="group-title">{GROUP_LABEL[g]}</h3>
           <ul className="rows">
@@ -254,13 +272,14 @@ function Categories({ categories, readOnly, spaceId, onChange }: {
         </form>
       )}
       {error && <p className="form-error" role="alert">{error}</p>}
-    </section>
+    </details>
   );
 }
 
 function CategoryItem({ category, base, readOnly, onChange }: {
   category: Category; base: string; readOnly: boolean; onChange: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(category.name);
   const [confirm, setConfirm] = useState(false);
@@ -293,7 +312,7 @@ function CategoryItem({ category, base, readOnly, onChange }: {
 
   return (
     <li className={`row category-item ${category.active ? "" : "inactive"}`}>
-      <div className="row-main">
+      <div className="category-line">
         {editing ? (
           <form className="inline-edit" onSubmit={(e) => { e.preventDefault(); void update({ name: name.trim() }); }}>
             <label className="visually-hidden" htmlFor={`n-${category.id}`}>Nombre</label>
@@ -304,13 +323,17 @@ function CategoryItem({ category, base, readOnly, onChange }: {
             </button>
           </form>
         ) : (
-          <span className="row-name">
-            {category.name}
-            {!category.active && <span className="tag">desactivada</span>}
-          </span>
+          <button type="button" className="row-main row-button category-toggle" aria-expanded={open}
+                  onClick={() => setOpen(!open)} disabled={readOnly}>
+            <span className="row-name">
+              {category.name}
+              {!category.active && <span className="tag">desactivada</span>}
+            </span>
+          </button>
         )}
-        {!readOnly && !editing && (
-          <span className="row-tools">
+      </div>
+      {!readOnly && !editing && open && (
+          <div className="row-tools category-tools">
             <button type="button" className="button ghost small" onClick={() => setEditing(true)}>Renombrar</button>
             <button type="button" className="button ghost small" onClick={() => void update({ active: !category.active })}>
               {category.active ? "Desactivar" : "Activar"}
@@ -321,13 +344,12 @@ function CategoryItem({ category, base, readOnly, onChange }: {
                 <button type="button" className="button ghost small" onClick={() => setConfirm(false)}>No</button>
               </span>
             ) : (
-              <button type="button" className="icon-button" aria-label={`Borrar ${category.name}`} onClick={() => setConfirm(true)}>
-                <Icon name="trash" size={18} />
+              <button type="button" className="button ghost small danger" onClick={() => setConfirm(true)}>
+                <Icon name="trash" size={16} /> Borrar
               </button>
             )}
-          </span>
+          </div>
         )}
-      </div>
       {error && <p className="form-error small" role="alert">{error}</p>}
     </li>
   );
