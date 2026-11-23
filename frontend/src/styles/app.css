@@ -38,7 +38,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 var(--s3);
   border: 1px solid var(--rule);
   border-radius: 999px;
@@ -460,7 +460,7 @@
 
 .money-input input {
   width: 8.5rem;
-  min-height: 40px;
+  min-height: 44px;
   border: 0;
   background: transparent;
   text-align: right;
@@ -633,8 +633,9 @@
   border-color: var(--over);
 }
 
+/* Pequeño de letra, pero el dedo necesita 44 px igual (PRODUCT.md). */
 .button.small {
-  min-height: 36px;
+  min-height: 44px;
   font-size: var(--t-sm);
 }
 
