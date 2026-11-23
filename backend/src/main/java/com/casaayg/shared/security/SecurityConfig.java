@@ -113,6 +113,8 @@ public class SecurityConfig {
                 .requestMatchers(POST, "/webauthn/register/options", "/webauthn/register").access(enrollOrRecentPasskey())
                 // El borrado de Spring permite borrar la ÚLTIMA passkey: se usa el de /api/me.
                 .requestMatchers(DELETE, "/webauthn/register/**").denyAll()
+                // Google vuelve aquí sin la cookie (SameSite=Strict): solo redirige a la pantalla.
+                .requestMatchers(GET, "/api/invoices/oauth/callback").permitAll()
                 .requestMatchers("/api/**").access(passkeySession())
                 .anyRequest().denyAll())
             .webAuthn(webAuthn -> webAuthn

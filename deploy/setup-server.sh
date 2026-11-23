@@ -87,9 +87,16 @@ chmod 0440       /etc/casa-ayg/secrets/vapid_private_key /etc/casa-ayg/secrets/v
 echo "==> Llave de las cédulas para las facturas (se genera una sola vez)"
 # Si se pierde, cada persona vuelve a escribir su cédula; por eso no va en los respaldos.
 taxkey=/etc/casa-ayg/secrets/tax_id_key
-[[ -s $taxkey ]] || { openssl rand -hex 32 | tr -d '
-' > "$taxkey"; }
+[[ -s $taxkey ]] || { openssl rand -hex 32 | tr -d '\n' > "$taxkey"; }
 chown root:10001 "$taxkey" && chmod 0440 "$taxkey"
+
+echo "==> Buzón de facturas: llave del token (una sola vez) y lugar para el cliente de Google"
+gmailkey=/etc/casa-ayg/secrets/gmail_token_key
+[[ -s $gmailkey ]] || { openssl rand -hex 32 | tr -d '\n' > "$gmailkey"; }
+# El JSON del cliente OAuth lo copia la persona; mientras tanto, vacío (el buzón queda apagado).
+[[ -e /etc/casa-ayg/secrets/google_oauth_client ]] || : > /etc/casa-ayg/secrets/google_oauth_client
+chown root:10001 "$gmailkey" /etc/casa-ayg/secrets/google_oauth_client
+chmod 0440 "$gmailkey" /etc/casa-ayg/secrets/google_oauth_client
 
 echo "==> Código (repo público) en /opt/casa-ayg"
 if [[ ! -d /opt/casa-ayg/.git ]]; then

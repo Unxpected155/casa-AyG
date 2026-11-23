@@ -59,11 +59,14 @@ services:
       CASAAYG_ORIGINS: https://${PUBLIC_HOST}
       # Contacto que exige VAPID: el propio sitio (los servicios de push lo usan si hay problemas).
       CASAAYG_PUSH_SUBJECT: https://${PUBLIC_HOST}
+      # Cédula con que firma Hacienda sus respuestas (se confirma con la primera factura real).
+      CASAAYG_HACIENDA_ID: ${HACIENDA_ID:-}
       # Heap fijo y reservado al arrancar: sin redimensionar la memoria en caliente y con el
       # servidor por encima del umbral de inactividad de Oracle Always Free (20 % de RAM).
       JAVA_TOOL_OPTIONS: -Xms1280m -Xmx1280m -XX:+AlwaysPreTouch
     # Solo los secretos que la app usa (no el del superusuario).
-    secrets: [db_owner_password, db_app_password, vapid_private_key, vapid_public_key, tax_id_key]
+    secrets: [db_owner_password, db_app_password, vapid_private_key, vapid_public_key, tax_id_key,
+              gmail_token_key, google_oauth_client]
     user: "10001:10001"
     read_only: true
     tmpfs: ["/tmp:size=64m"]
@@ -110,3 +113,9 @@ secrets:
   # Llave del HMAC de las cédulas (facturas, ADR-006). Fuera de la BD y de los respaldos.
   tax_id_key:
     file: /etc/casa-ayg/secrets/tax_id_key
+  # Buzón de facturas (ADR-006): llave del token cifrado y el cliente OAuth de Google Cloud
+  # (el JSON que se descarga allá; nunca va al repo ni al chat).
+  gmail_token_key:
+    file: /etc/casa-ayg/secrets/gmail_token_key
+  google_oauth_client:
+    file: /etc/casa-ayg/secrets/google_oauth_client
