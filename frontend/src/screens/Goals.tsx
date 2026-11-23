@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { api, messageOf } from "../api";
 import { Icon } from "../components/Icon";
+import { GoalSimulator } from "../components/GoalSimulator";
 import { Shell } from "../components/Shell";
 import { amountChange, amountToInput, money, parseAmount, pct } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
@@ -152,6 +153,7 @@ function GoalRow({ goal: g, goals, open, readOnly, onToggle, onUp, onDown, onDon
               role="meter" aria-label={`${g.name}: ${pct(g.percent)}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={g.percent} />
       </div>
       <p className="goal-plan">{planText(g)}</p>
+      {g.target > 0 && g.status !== "CUMPLIDA" && g.status !== "ARCHIVADA" && <GoalSimulator goal={g} />}
       {g.kind === "EMERGENCIA" && g.monthlyExpenses > 0 && (
         <p className="muted small">{g.emergencyMonths} meses de tus gastos ({money(g.monthlyExpenses, g.currency)} al mes en promedio).</p>
       )}
