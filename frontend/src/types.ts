@@ -142,6 +142,8 @@ export interface Place {
   balance: number;
   /** Solo en un CDP; sus campos quedan null hasta configurarlo. */
   cdp: CdpData | null;
+  /** La meta para la que está apartado este dinero (si alguna). */
+  goalName: string | null;
 }
 
 export interface CdpData {

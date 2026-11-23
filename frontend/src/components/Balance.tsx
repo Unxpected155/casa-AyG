@@ -27,6 +27,14 @@ export function totals(places: Place[]): { crc: number; usd: number } {
   );
 }
 
+/**
+ * Apartado: lo que ya tiene dueño y no conviene gastar. El dinero de una cuenta ligada a una
+ * meta (sobre de la boda) y el de un CDP (está a plazo). Lo demás está disponible.
+ */
+export function isReserved(place: Place): boolean {
+  return place.goalName !== null || place.kind === "CDP";
+}
+
 /** "Hoy tienes…": la primera línea de la libreta. El desglose se abre ahí mismo, sin modal. */
 export function Balance() {
   const { places } = useApp();
@@ -46,6 +54,7 @@ export function Balance() {
   }
 
   const { crc, usd } = totals(places);
+  const reserved = totals(places.filter(isReserved));
   const hasUsd = rows.some((r) => r.place.currency === "USD");
   const hasCrc = rows.some((r) => r.place.currency === "CRC");
 
@@ -61,6 +70,23 @@ export function Balance() {
         </span>
         <span className="balance-more">{open ? "Ocultar el detalle" : "Ver por cuenta"}</span>
       </button>
+      {(reserved.crc !== 0 || reserved.usd !== 0) && (
+        <dl className="balance-split">
+          <div>
+            <dt>Disponible</dt>
+            <dd className="figure">
+              {hasCrc && money(crc - reserved.crc, "CRC")}{hasCrc && hasUsd && " y "}{hasUsd && money(usd - reserved.usd, "USD")}
+            </dd>
+          </div>
+          <div>
+            <dt>Apartado para metas y CDP</dt>
+            <dd className="figure muted">
+              {[reserved.crc !== 0 && money(reserved.crc, "CRC"), reserved.usd !== 0 && money(reserved.usd, "USD")]
+                .filter(Boolean).join(" y ")}
+            </dd>
+          </div>
+        </dl>
+      )}
       {open && (
         <div id="balance-detail" className="balance-detail">
           <ul className="rows">
@@ -70,6 +96,7 @@ export function Balance() {
                   <span className="row-name">
                     {place.name}
                     {showKind(place) && <span className="tag">{PLACE_KIND_LABEL[place.kind]}</span>}
+                    {place.goalName && <span className="tag">Para {place.goalName}</span>}
                   </span>
                   <span className={`figure${place.balance < 0 ? " negative" : ""}`}>
                     {money(place.balance, place.currency, true)}

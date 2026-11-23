@@ -62,6 +62,13 @@ class GoalTest extends WebTestSupport {
         assertThat(num(g, "monthlyPace")).isEqualByComparingTo("66666.67"); // 200 000 en los últimos 3 meses
         assertThat(g.get("eta")).isNotNull();
         assertThat((List<?>) g.get("parts")).hasSize(2);
+
+        // La cuenta dice para qué meta está apartada; la otra no (ese dinero está disponible).
+        List<?> places = JSON.readValue(as(a, get(base(a) + "/places")).andReturn().getResponse().getContentAsString(),
+            List.class);
+        Map<String, Object> goalOf = new java.util.HashMap<>();
+        places.forEach(p -> goalOf.put(String.valueOf(((Map<?, ?>) p).get("id")), ((Map<?, ?>) p).get("goalName")));
+        assertThat(goalOf).containsEntry(cdp.toString(), "Casarnos").containsEntry(bcr.toString(), null);
     }
 
     @Test

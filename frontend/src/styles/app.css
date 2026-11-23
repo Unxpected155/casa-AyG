@@ -1065,6 +1065,24 @@ body.sheet-open {
   font-weight: 600;
 }
 
+/* Disponible / apartado: debajo del total, más chico, para no competir con él. */
+.balance-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  margin: var(--s2) 0 0;
+}
+
+.balance-split dt {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.balance-split dd {
+  margin: 0;
+  font-weight: 600;
+}
+
 .balance-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
