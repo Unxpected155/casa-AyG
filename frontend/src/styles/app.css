@@ -1982,3 +1982,33 @@ fieldset {
 .change .muted {
   margin: 0;
 }
+
+/* ---------- Plan: categorías plegadas ---------- */
+.more-section > summary {
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  align-content: center;
+  cursor: pointer;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+  padding-top: var(--s3);
+}
+
+.more-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.more-section > summary .section-title {
+  margin: 0;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.category-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding: var(--s2) 0 var(--s1);
+}
