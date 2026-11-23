@@ -134,8 +134,9 @@ export function Month() {
             <section className="overview" aria-label="Resumen del mes">
               <MonthFlow summary={summary} />
               <p className="overview-detail">
-                Todo en dólares: <span className="figure">{money(summary.expenses.totalUsd, "USD")}</span> en gastos
-                {summary.income.totalUsd > 0 && <> de <span className="figure">{money(summary.income.totalUsd, "USD")}</span></>}.
+                Si todo fuera en dólares:
+                {summary.income.totalUsd > 0 && <> entraron <span className="figure">{money(summary.income.totalUsd, "USD")}</span> y</>}
+                {" "}salieron <span className="figure">{money(summary.expenses.totalUsd, "USD")}</span>.
               </p>
               <IncomeSplit summary={summary} />
               <button type="button" className="button ghost small history-link" onClick={() => navigate("/historia")}>

@@ -42,12 +42,13 @@ export function History() {
 
   return (
     <Shell withMonth>
+      <h1 className="page-title">Historia</h1>
       {error && <p className="form-error" role="alert">{error}</p>}
       {!data && !error && <div className="skeleton" aria-hidden="true"><div className="sk-line wide" /><div className="sk-row" /><div className="sk-row" /></div>}
       {data && (
         <>
           <section className="block" aria-labelledby="changed-title">
-            <h2 id="changed-title" className="section-title">Qué cambió</h2>
+            <h2 id="changed-title" className="section-title">Qué cambió contra tu promedio</h2>
             {data.baselineMonths === 0 ? (
               <p className="muted">Con un mes más de datos te muestro qué cambió contra tu promedio.</p>
             ) : (
@@ -154,7 +155,7 @@ function MonthsChart({ months }: { months: HistoryMonth[] }) {
       <figcaption className="chart-readout" aria-live="polite">
         <strong>{monthLabel({ year: Number(m.month.slice(0, 4)), month: Number(m.month.slice(5, 7)) })}</strong>:{" "}
         entró <span className="figure">{money(m.income, "CRC")}</span>, salió <span className="figure">{money(m.expenses, "CRC")}</span>
-        {m.savingsRate != null && <>; ahorraste el <strong className="figure">{m.savingsRate} %</strong></>}.
+        {m.savingsRate != null && <>; te sobró el <strong className="figure">{m.savingsRate} %</strong></>}.
       </figcaption>
     </figure>
   );
@@ -172,7 +173,7 @@ function MonthsTable({ months }: { months: HistoryMonth[] }) {
     <table className="months-table">
       <caption className="visually-hidden">Últimos 6 meses</caption>
       <thead>
-        <tr><th scope="col">Mes</th><th scope="col">Entró</th><th scope="col">Salió</th><th scope="col">Ahorro</th></tr>
+        <tr><th scope="col">Mes</th><th scope="col">Entró</th><th scope="col">Salió</th><th scope="col">Sobró</th></tr>
       </thead>
       <tbody>
         {[...months].reverse().map((m) => (

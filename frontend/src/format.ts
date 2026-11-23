@@ -1,15 +1,18 @@
 import type { ChangeEvent } from "react";
 import type { Currency, Group, PlaceKind } from "./types";
 
-const crc = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 });
-const crcCents = new Intl.NumberFormat("es-CR", { style: "currency", currency: "CRC", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const usd = new Intl.NumberFormat("es-CR", { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const percent = new Intl.NumberFormat("es-CR", { maximumFractionDigits: 0 });
 
+/**
+ * Un monto para mostrar, con punto de miles y coma decimal, igual que al escribirlo:
+ * ₡1.234.567 · ₡950.179,50 · $1.234,56. Los dólares siempre con dos decimales.
+ */
 export function money(amount: number, currency: Currency, exact = false): string {
-  if (currency === "USD") return usd.format(amount);
-  // Exacto: con céntimos solo si los hay, y entonces siempre dos (₡950 179,50, nunca ₡950 179,5).
-  return exact && !Number.isInteger(Math.round(amount * 100) / 100) ? crcCents.format(amount) : crc.format(amount);
+  // Exacto: con céntimos solo si los hay, y entonces siempre dos (₡950.179,50, nunca ₡950.179,5).
+  const cents = currency === "USD" || (exact && !Number.isInteger(Math.round(amount * 100) / 100));
+  const [int, dec] = Math.abs(amount).toFixed(cents ? 2 : 0).split(".");
+  const body = groupThousands(int ?? "0") + (dec ? `,${dec}` : "");
+  return `${amount < 0 && body.replace(/[.,0]/g, "") !== "" ? "-" : ""}${currency === "USD" ? "$" : "₡"}${body}`;
 }
 
 export function pct(value: number): string {
