@@ -71,10 +71,10 @@ export function House() {
       <Shell>
         <h1 className="page-title">La casa</h1>
         <section className="empty">
-          <p className="empty-title">Todavía no tienen espacio familiar.</p>
-          <p>Cuando se casen, lo crean entre los dos desde «Espacio familiar».</p>
+          <p className="empty-title">Todavía no tienen la casa.</p>
+          <p>Cuando se casen, la crean entre los dos: cada quien conserva lo suyo y comparten lo de la casa.</p>
           <button type="button" className="button secondary" onClick={() => navigate("/boda")}>
-            <Icon name="rings" size={18} /> Ir a espacio familiar
+            <Icon name="rings" size={18} /> Crear la casa
           </button>
         </section>
       </Shell>
@@ -84,7 +84,7 @@ export function House() {
   return (
     <Shell>
       <h1 className="page-title">La casa</h1>
-      <p className="hint">Todo el dinero entra a «{family.name}». De ahí sale lo personal de cada quien al cerrar el mes.</p>
+      <p className="hint">Todo el dinero entra a la casa. De ahí sale lo personal de cada quien al cerrar el mes.</p>
       {message && <p id="casa-status" className={message.tone === "ok" ? "form-ok" : "form-error"} role="status">{message.text}</p>}
 
       {house && (

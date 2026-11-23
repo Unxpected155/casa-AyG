@@ -11,6 +11,7 @@ import { Plan } from "./screens/Plan";
 import { Wedding } from "./screens/Wedding";
 import { House } from "./screens/House";
 import { Invoices } from "./screens/Invoices";
+import { More } from "./screens/More";
 import { Privacy } from "./screens/Privacy";
 import { useApp } from "./state";
 
@@ -44,6 +45,7 @@ export function App() {
     case "/historia": return <History />;
     case "/casa": return <House />;
     case "/facturas": return <Invoices />;
+    case "/mas": return <More />;
     default: return <Month />;
   }
 }
