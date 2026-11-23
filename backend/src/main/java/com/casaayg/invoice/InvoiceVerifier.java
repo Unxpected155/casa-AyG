@@ -51,8 +51,10 @@ import org.w3c.dom.NodeList;
  * Una factura pasa solo si TODO esto se cumple:
  * <ol>
  *   <li>Es FacturaElectronica o NotaCreditoElectronica, del esquema de Hacienda.</li>
- *   <li>Tiene UNA firma, hija de la raíz, que firma el documento COMPLETO (sin "wrapping"),
- *       con un certificado que encadena a una autoridad de confianza y que es del emisor.</li>
+ *   <li>Tiene UNA firma válida, hija de la raíz, que firma el documento COMPLETO (sin
+ *       "wrapping") y cuyo certificado es del emisor. Si además encadena a una autoridad de
+ *       confianza, queda «verificada»; si no, pasa igual sin esa marca (modo práctico: la
+ *       persona revisa cada factura antes de anotarla).</li>
  *   <li>La clave de 50 dígitos coincide con el emisor y el consecutivo.</li>
  *   <li>El MensajeHacienda está firmado por Hacienda, es de la misma clave, del mismo emisor
  *       y receptor, por el mismo total, y dice ACEPTADO.</li>
@@ -86,16 +88,6 @@ public final class InvoiceVerifier {
 
     public VerifiedInvoice verify(byte[] invoiceXml, byte[] haciendaXml) throws InvoiceRejected {
         Document doc = SafeXml.parse(invoiceXml);
-        if (anchors.isEmpty() || haciendaId.isEmpty()) {
-            // Sin autoridades no pasa nada; se anota quién firmó, para poder configurarlas.
-            String hacienda;
-            try {
-                hacienda = signerInfo(SafeXml.parse(haciendaXml));
-            } catch (InvoiceRejected e) {
-                hacienda = "?";
-            }
-            throw new InvoiceRejected("sin-configurar", "factura " + signerInfo(doc) + " | hacienda " + hacienda);
-        }
         Element root = doc.getDocumentElement();
         VerifiedInvoice.Kind kind = switch (String.valueOf(root.getLocalName())) {
             case "FacturaElectronica" -> VerifiedInvoice.Kind.FACTURA;
@@ -149,19 +141,28 @@ public final class InvoiceVerifier {
             throw new InvoiceRejected("emisor");
         }
 
-        X509Certificate signer = verifySignature(doc, Date.from(issued));
-        if (!signerId(signer).equals(emisorId)) {
+        Signed signed = verifySignature(doc, Date.from(issued));
+        if (!signerId(signed.cert()).equals(emisorId)) {
             throw new InvoiceRejected("firmante");
         }
 
-        verifyHacienda(haciendaXml, clave, emisorId, receptorId, total, issued);
+        Signed hacienda = verifyHacienda(haciendaXml, clave, emisorId, receptorId, total, issued);
 
+        // Verificada = las dos firmas encadenan a una autoridad de confianza y la respuesta la
+        // firmó Hacienda. Si no, igual pasa (la revisa la persona), con los datos públicos de
+        // quién firmó para poder configurar las autoridades.
+        boolean verified = signed.trusted() && hacienda.trusted() && !haciendaId.isEmpty();
+        String diagnostic = verified ? null
+            : "factura " + signerInfo(doc) + " | hacienda " + signerInfo(hacienda.doc());
         return new VerifiedInvoice(kind, clave, issued.atZone(CR).toLocalDate(), merchant, emisorId, receptorId,
-            currency, total.setScale(2, RoundingMode.HALF_UP));
+            currency, total.setScale(2, RoundingMode.HALF_UP), verified, diagnostic);
     }
 
-    private void verifyHacienda(byte[] xml, String clave, String emisorId, String receptorId, BigDecimal total,
-                                Instant issued) throws InvoiceRejected {
+    /** Una firma válida (el documento no se cambió) y si su certificado es de una autoridad de confianza. */
+    private record Signed(X509Certificate cert, boolean trusted, Document doc) {}
+
+    private Signed verifyHacienda(byte[] xml, String clave, String emisorId, String receptorId, BigDecimal total,
+                                  Instant issued) throws InvoiceRejected {
         Document doc = SafeXml.parse(xml);
         Element root = doc.getDocumentElement();
         if (!"MensajeHacienda".equals(root.getLocalName())) {
@@ -170,8 +171,11 @@ public final class InvoiceVerifier {
         requireNamespace(root, "mensajeHacienda");
         // Hacienda responde después de emitida la factura: su firma se valida a la fecha de hoy.
         Instant now = clock.instant();
-        X509Certificate signer = verifySignature(doc, Date.from(now.isAfter(issued) ? now : issued));
-        if (!signerId(signer).equals(haciendaId)) {
+        Signed signed = verifySignature(doc, Date.from(now.isAfter(issued) ? now : issued));
+        // Con la cédula de Hacienda configurada, una respuesta firmada por OTRA entidad de
+        // confianza es un engaño: se rechaza. Sin configurar, solo queda sin verificar.
+        boolean byHacienda = !haciendaId.isEmpty() && signerId(signed.cert()).equals(haciendaId);
+        if (!haciendaId.isEmpty() && signed.trusted() && !byHacienda) {
             throw new InvoiceRejected("hacienda-firmante", signerInfo(doc));
         }
         if (!text(root, "Clave").equals(clave)) {
@@ -189,11 +193,12 @@ public final class InvoiceVerifier {
         if (amount(text(root, "TotalFactura")).compareTo(total) != 0) {
             throw new InvoiceRejected("hacienda-total");
         }
+        return new Signed(signed.cert(), signed.trusted() && byHacienda, doc);
     }
 
     // --- firma -------------------------------------------------------------------------------
 
-    private X509Certificate verifySignature(Document doc, Date at) throws InvoiceRejected {
+    private Signed verifySignature(Document doc, Date at) throws InvoiceRejected {
         Element root = doc.getDocumentElement();
         NodeList all = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "Signature");
         if (all.getLength() != 1 || all.item(0).getParentNode() != root) {
@@ -220,7 +225,7 @@ public final class InvoiceVerifier {
             if (!whole || !signature.validate(ctx) || selector.signer == null) {
                 throw new InvoiceRejected("firma", signerInfo(doc));
             }
-            return selector.signer;
+            return new Signed(selector.signer, selector.trusted, doc);
         } catch (InvoiceRejected e) {
             throw e.detail() == null ? new InvoiceRejected(e.getMessage(), signerInfo(doc)) : e;
         } catch (Exception e) {
@@ -249,11 +254,15 @@ public final class InvoiceVerifier {
         }
     }
 
-    /** Toma el certificado del KeyInfo SOLO si encadena a una autoridad de confianza. */
+    /**
+     * Toma el certificado del KeyInfo para validar la firma (que el documento no se cambió) y
+     * anota si encadena a una autoridad de confianza. Sin autoridades, nunca es de confianza.
+     */
     private static final class ChainKeySelector extends KeySelector {
         private final Set<TrustAnchor> anchors;
         private final Date at;
         X509Certificate signer;
+        boolean trusted;
 
         ChainKeySelector(Set<TrustAnchor> anchors, Date at) {
             this.anchors = anchors;
@@ -280,16 +289,20 @@ public final class InvoiceVerifier {
                 throw new KeySelectorException("certificados");
             }
             X509Certificate leaf = certs.getFirst();
-            try {
-                X509CertSelector target = new X509CertSelector();
-                target.setCertificate(leaf);
-                PKIXBuilderParameters params = new PKIXBuilderParameters(anchors, target);
-                params.setRevocationEnabled(false);
-                params.setDate(at);
-                params.addCertStore(CertStore.getInstance("Collection", new CollectionCertStoreParameters(certs)));
-                CertPathBuilder.getInstance("PKIX").build(params);
-            } catch (Exception e) {
-                throw new KeySelectorException("cadena");
+            trusted = false;
+            if (!anchors.isEmpty()) {
+                try {
+                    X509CertSelector target = new X509CertSelector();
+                    target.setCertificate(leaf);
+                    PKIXBuilderParameters params = new PKIXBuilderParameters(anchors, target);
+                    params.setRevocationEnabled(false);
+                    params.setDate(at);
+                    params.addCertStore(CertStore.getInstance("Collection", new CollectionCertStoreParameters(certs)));
+                    CertPathBuilder.getInstance("PKIX").build(params);
+                    trusted = true;
+                } catch (Exception e) {
+                    trusted = false;
+                }
             }
             boolean[] usage = leaf.getKeyUsage();
             if (usage != null && !(usage[0] || usage[1])) {

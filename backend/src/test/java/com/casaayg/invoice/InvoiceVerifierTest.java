@@ -56,6 +56,8 @@ class InvoiceVerifierTest {
         assertThat(v.currency()).isEqualTo("CRC");
         assertThat(v.total()).isEqualByComparingTo("11300.00");
         assertThat(v.receptorId()).isEqualTo(RECEPTOR);
+        assertThat(v.signatureVerified()).isTrue();
+        assertThat(v.diagnostic()).isNull();
     }
 
     @Test
@@ -91,8 +93,11 @@ class InvoiceVerifierTest {
     }
 
     @Test
-    void unaAutoridadQueNoEsDeConfianzaSeRechaza() throws Exception {
-        rejected(TestPki.sign(factura(), comercioPirata), TestPki.sign(mensaje(), hacienda), "firma");
+    void unaAutoridadQueNoEsDeConfianzaPasaPeroSinVerificar() throws Exception {
+        // Modo práctico: la persona revisa cada factura; solo no lleva la marca de verificada.
+        VerifiedInvoice v = verifier.verify(TestPki.sign(factura(), comercioPirata), TestPki.sign(mensaje(), hacienda));
+        assertThat(v.signatureVerified()).isFalse();
+        assertThat(v.diagnostic()).contains("CN=CA pirata").doesNotContain(RECEPTOR);
     }
 
     @Test
@@ -230,14 +235,18 @@ class InvoiceVerifierTest {
     }
 
     @Test
-    void sinAutoridadesConfiguradasNadaPasa() throws Exception {
-        InvoiceVerifier empty = new InvoiceVerifier(List.of(), HACIENDA, Clock.systemUTC());
-        assertThatThrownBy(() -> empty.verify(TestPki.sign(factura(), comercio), TestPki.sign(mensaje(), hacienda)))
-            .isInstanceOf(InvoiceRejected.class).hasMessage("sin-configurar")
-            // Anota quién firmó (datos públicos del certificado) para configurar las autoridades.
-            .satisfies(e -> assertThat(((InvoiceRejected) e).detail())
-                .contains("CN=CA raiz").contains("firmante=CPJ-" + EMISOR).contains("firmante=CPJ-" + HACIENDA)
-                .doesNotContain(RECEPTOR));
+    void sinAutoridadesConfiguradasPasaSinVerificarYAnotaQuienFirmo() throws Exception {
+        InvoiceVerifier empty = new InvoiceVerifier(List.of(), "", Clock.systemUTC());
+        VerifiedInvoice v = empty.verify(TestPki.sign(factura(), comercio), TestPki.sign(mensaje(), hacienda));
+        assertThat(v.signatureVerified()).isFalse();
+        // Datos públicos del certificado, para configurar las autoridades; nunca la cédula del receptor.
+        assertThat(v.diagnostic()).contains("CN=CA raiz").contains("firmante=CPJ-" + EMISOR)
+            .contains("firmante=CPJ-" + HACIENDA).doesNotContain(RECEPTOR);
+        // Lo demás se sigue exigiendo: alterar el monto rompe la firma igual.
+        byte[] tampered = new String(TestPki.sign(factura(), comercio), StandardCharsets.UTF_8)
+            .replace("11300.00000", "1130.00000").getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> empty.verify(tampered, TestPki.sign(mensaje().replace("11300.00000", "1130.00000"), hacienda)))
+            .isInstanceOf(InvoiceRejected.class).hasMessage("firma");
     }
 
     // --- utilidades -----------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, messageOf } from "../api";
+import { Icon } from "../components/Icon";
 import { Mailbox } from "../components/Mailbox";
 import { Shell } from "../components/Shell";
 import { dayLabel, money } from "../format";
@@ -13,6 +14,8 @@ export interface PendingInvoice {
   merchant: string;
   currency: Currency;
   total: number;
+  /** La firma se confirmó contra la autoridad oficial. */
+  verified: boolean;
   suggestion: { spaceId: string; categoryId: string; placeId: string } | null;
 }
 
@@ -39,7 +42,7 @@ export function Invoices() {
     <Shell>
       <h1 className="page-title">Por revisar</h1>
       <p className="muted">
-        Facturas electrónicas que llegaron a tu nombre. Ya se comprobó que son auténticas: tú decides dónde van.
+        Facturas electrónicas a tu nombre que Hacienda aceptó. Nada se anota solo: tú decides dónde va cada una.
       </p>
       {error && <p className="form-error" role="alert">{error}</p>}
       {items && items.length === 0 && <p className="empty">No hay facturas por revisar.</p>}
@@ -112,6 +115,11 @@ function InvoiceCard({ invoice, spaces, fallbackSpace, onDone }: {
         <span className="invoice-merchant">{invoice.merchant}</span>
         <span className="invoice-total figure">{money(invoice.total, invoice.currency, true)}</span>
       </div>
+      <p className={`invoice-trust${invoice.verified ? " ok" : ""}`}>
+        {invoice.verified
+          ? <><Icon name="check" size={16} /> Firma verificada</>
+          : <><Icon name="alert" size={16} /> Revisa que reconozcas esta compra</>}
+      </p>
       <p className="muted small">
         {dayLabel(invoice.date)}
         {refund && <> · <strong>Devolución</strong> (nota de crédito): anótala como ingreso o descártala.</>}

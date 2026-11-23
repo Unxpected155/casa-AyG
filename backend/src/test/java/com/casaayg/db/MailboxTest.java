@@ -110,6 +110,7 @@ class MailboxTest extends WebTestSupport {
 
     static TestPki.Signer comercio;
     static TestPki.Signer hacienda;
+    static TestPki.Signer comercioDesconocido;
 
     @TestConfiguration
     static class Fakes {
@@ -124,6 +125,9 @@ class MailboxTest extends WebTestSupport {
             TestPki.Signer ca = pki.authority("raiz");
             comercio = pki.issue(ca, "raiz", "comercio", "CPJ-" + InvoiceSamples.EMISOR, "digitalSignature");
             hacienda = pki.issue(ca, "raiz", "hacienda", "CPJ-" + InvoiceSamples.HACIENDA, "digitalSignature");
+            TestPki.Signer otra = pki.authority("otra");
+            comercioDesconocido = pki.issue(otra, "otra", "comerciodesconocido", "CPJ-" + InvoiceSamples.EMISOR,
+                "digitalSignature");
             return new InvoiceVerifier(List.of(ca.cert()), InvoiceSamples.HACIENDA, Clock.systemUTC());
         }
     }
@@ -236,6 +240,22 @@ class MailboxTest extends WebTestSupport {
 
         // Lo ya leído no se vuelve a procesar.
         as(ana, post("/api/invoices/mailbox/check")).andExpect(jsonPath("$.read").value(0));
+    }
+
+    @Test
+    void unaFirmaDeOtraAutoridadLlegaPorRevisarSinLaMarcaDeVerificada() throws Exception {
+        connectFully();
+        int n = ++seq;
+        message("m1", attach(TestPki.sign(InvoiceSamples.factura(n, ANA_CEDULA, "2500.00"), comercioDesconocido)),
+            attach(TestPki.sign(InvoiceSamples.mensaje(n, ANA_CEDULA, "2500.00"), hacienda)));
+        as(ana, post("/api/invoices/mailbox/check")).andExpect(jsonPath("$.added").value(1));
+        as(ana, get("/api/invoices")).andExpect(jsonPath("$[0].verified").value(false));
+        try (Connection su = asSuperuser(); var rs = su.createStatement().executeQuery(
+                "SELECT result, detail FROM mailbox_message WHERE message_id = 'm1'")) {
+            rs.next();
+            assertThat(rs.getString(1)).isEqualTo("NUEVA");
+            assertThat(rs.getString(2)).contains("CN=CA otra").doesNotContain(ANA_CEDULA);
+        }
     }
 
     @Test
