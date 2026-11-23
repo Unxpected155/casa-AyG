@@ -1841,3 +1841,63 @@ fieldset {
   text-align: left;
   margin: 0;
 }
+
+/* ---------- Facturas por revisar ---------- */
+.invoice-list {
+  list-style: none;
+  margin: var(--s4) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s4);
+}
+
+.invoice {
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s4);
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.invoice-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.invoice-merchant {
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.invoice-total {
+  white-space: nowrap;
+}
+
+.invoice-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--s3);
+}
+
+.invoice-fields > .field,
+.invoice-fields select {
+  min-width: 0;
+  width: 100%;
+}
+
+.invoice .actions {
+  justify-content: flex-end;
+}
+
+/* ---------- Privacidad (pública) ---------- */
+.privacy {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding: var(--s6) var(--s4) var(--s8);
+  display: grid;
+  gap: var(--s3);
+}

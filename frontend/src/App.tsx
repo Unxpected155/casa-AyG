@@ -10,6 +10,8 @@ import { Places } from "./screens/Places";
 import { Plan } from "./screens/Plan";
 import { Wedding } from "./screens/Wedding";
 import { House } from "./screens/House";
+import { Invoices } from "./screens/Invoices";
+import { Privacy } from "./screens/Privacy";
 import { useApp } from "./state";
 
 export function App() {
@@ -18,11 +20,14 @@ export function App() {
 
   // La sesión decide a dónde se puede ir: sin sesión, al login; con código, a registrar passkey.
   useEffect(() => {
+    if (route === "/privacidad") return;
     if (session.kind === "anonymous" && route !== "/login") navigate("/login", true);
     if (session.kind === "enrolling" && route !== "/registrar") navigate("/registrar", true);
     if (session.kind === "ready" && (route === "/login" || route === "/registrar")) navigate("/", true);
   }, [session.kind, route]);
 
+  // Pública: se ve con o sin sesión.
+  if (route === "/privacidad") return <Privacy />;
   if (session.kind === "loading") {
     return <div className="boot" aria-busy="true"><span className="boot-mark">Casa A&amp;G</span></div>;
   }
@@ -38,6 +43,7 @@ export function App() {
     case "/metas": return <Goals />;
     case "/historia": return <History />;
     case "/casa": return <House />;
+    case "/facturas": return <Invoices />;
     default: return <Month />;
   }
 }

@@ -31,6 +31,17 @@ export function Month() {
       cancelled = true;
     };
   }, [hasHome, version]);
+  // Facturas electrónicas que llegaron a mi nombre y esperan que las anote o descarte.
+  const [pendingInvoices, setPendingInvoices] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    api.get<unknown[]>("/api/invoices")
+      .then((list) => !cancelled && setPendingInvoices(list.length))
+      .catch(() => !cancelled && setPendingInvoices(0));
+    return () => {
+      cancelled = true;
+    };
+  }, [version]);
   const dueCdps = places.filter((p) => !p.archived && cdpDue(p));
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +86,15 @@ export function Month() {
           <p className="notice cdp-due">
             <span><strong>{invite.otherPerson}</strong> te propone unir sus finanzas en «{invite.familyName}».</span>
             <button type="button" className="button secondary small" onClick={() => navigate("/boda")}>Ver propuesta</button>
+          </p>
+        )}
+
+        {pendingInvoices > 0 && (
+          <p className="notice cdp-due">
+            <span>
+              {pendingInvoices === 1 ? "Tienes una factura por revisar." : `Tienes ${pendingInvoices} facturas por revisar.`}
+            </span>
+            <button type="button" className="button secondary small" onClick={() => navigate("/facturas")}>Revisar</button>
           </p>
         )}
 

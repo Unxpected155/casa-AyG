@@ -168,7 +168,7 @@ public class TransactionService {
 
     @Transactional
     public TransactionView create(UUID spaceId, TransactionData data) {
-        return create(spaceId, data, false);
+        return create(spaceId, data, false, "MANUAL", null);
     }
 
     /**
@@ -178,10 +178,20 @@ public class TransactionService {
      */
     @Transactional
     public TransactionView createByPerson(UUID spaceId, TransactionData data) {
-        return create(spaceId, data, true);
+        return create(spaceId, data, true, "MANUAL", null);
     }
 
-    private TransactionView create(UUID spaceId, TransactionData data, boolean placeRequired) {
+    /**
+     * Una factura electrónica confirmada por su dueño: como si la anotara la persona, más la
+     * fuente y la clave de Hacienda (la BD impide la misma factura dos veces en un espacio).
+     */
+    @Transactional
+    public TransactionView createFromInvoice(UUID spaceId, TransactionData data, String clave) {
+        return create(spaceId, data, true, "FACTURA", clave);
+    }
+
+    private TransactionView create(UUID spaceId, TransactionData data, boolean placeRequired, String source,
+                                   String dedupHash) {
         spaces.requireWritable(spaceId);
         boolean income = requireCategory(spaceId, data.categoryId());
         requirePlace(spaceId, data);
@@ -194,11 +204,12 @@ public class TransactionService {
         }
         UUID id = jdbc.sql("""
                 INSERT INTO transaction (space_id, created_by, category_id, tx_date, description, amount,
-                                         currency, payment_method, source, place_id, gross_amount, recurring_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'MANUAL', ?, ?, ?) RETURNING id""")
+                                         currency, payment_method, source, dedup_hash, place_id, gross_amount,
+                                         recurring_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""")
             .params(spaceId, CurrentUser.require(), data.categoryId(), data.date(), data.description().value(),
-                data.money().amount(), data.money().currency().name(), data.paymentMethod(), data.placeId(),
-                income ? data.gross() : null, data.recurringId())
+                data.money().amount(), data.money().currency().name(), data.paymentMethod(), source, dedupHash,
+                data.placeId(), income ? data.gross() : null, data.recurringId())
             .query(UUID.class).single();
         if (data.tithe()) {
             insertTithe(spaceId, id, data);
