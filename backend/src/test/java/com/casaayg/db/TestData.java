@@ -88,6 +88,20 @@ final class TestData {
         }
     }
 
+    static UUID newCategory(Connection c, UUID space, UUID by, String name, String group) throws SQLException {
+        UUID id = UUID.randomUUID();
+        try (var ps = c.prepareStatement(
+                "INSERT INTO category (id, space_id, created_by, name, category_group) VALUES (?, ?, ?, ?, ?)")) {
+            ps.setObject(1, id);
+            ps.setObject(2, space);
+            ps.setObject(3, by);
+            ps.setString(4, name);
+            ps.setString(5, group);
+            ps.executeUpdate();
+        }
+        return id;
+    }
+
     static UUID newCategory(Connection c, UUID space, UUID by, String name) throws SQLException {
         UUID id = UUID.randomUUID();
         try (var ps = c.prepareStatement(

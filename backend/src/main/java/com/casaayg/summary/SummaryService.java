@@ -42,7 +42,7 @@ public class SummaryService {
 
     public record Summary(YearMonth month, BigDecimal usdSellRate, boolean missingRates, List<CategoryLine> categories,
                           Map<CategoryGroup, Totals> byGroup, Totals income, Totals expenses,
-                          Map<CategoryGroup, BigDecimal> percentOfIncome) {}
+                          Map<CategoryGroup, BigDecimal> percentOfIncome, Totals saved) {}
 
     @Transactional(readOnly = true)
     public Summary month(UUID spaceId, YearMonth month) {
@@ -98,14 +98,29 @@ public class SummaryService {
         Totals income = byGroup.get(CategoryGroup.INGRESO);
         Totals expenses = sum(lines.stream().filter(l -> l.group() != CategoryGroup.INGRESO).toList());
 
+        // Lo ahorrado: dinero movido a un CDP o a la cuenta de una meta (V18). No es un gasto.
+        BigDecimal[] moved = {BigDecimal.ZERO, BigDecimal.ZERO};
+        jdbc.sql("SELECT currency, amount FROM period_savings(?, ?, ?)")
+            .params(spaceId, month.atDay(1), month.plusMonths(1).atDay(1))
+            .query(rs -> {
+                moved["USD".equals(rs.getString(1).strip()) ? 1 : 0] = rs.getBigDecimal(2);
+            });
+        BigDecimal savedUsd = moved[1].add(rate == null ? BigDecimal.ZERO
+            : moved[0].divide(rate, 2, RoundingMode.HALF_UP));
+        missing[0] |= rate == null && moved[0].signum() != 0;
+        Totals saved = new Totals(moved[0], moved[1], savedUsd);
+
         Map<CategoryGroup, BigDecimal> percent = new EnumMap<>(CategoryGroup.class);
         if (income.totalUsd().signum() > 0) {
             for (CategoryGroup group : List.of(CategoryGroup.NECESIDAD, CategoryGroup.DESEO, CategoryGroup.AHORRO)) {
-                percent.put(group, byGroup.get(group).totalUsd().multiply(HUNDRED)
-                    .divide(income.totalUsd(), 1, RoundingMode.HALF_UP));
+                BigDecimal amount = byGroup.get(group).totalUsd();
+                if (group == CategoryGroup.AHORRO) {
+                    amount = amount.add(savedUsd);
+                }
+                percent.put(group, amount.multiply(HUNDRED).divide(income.totalUsd(), 1, RoundingMode.HALF_UP));
             }
         }
-        return new Summary(month, rate, missing[0], lines, byGroup, income, expenses, percent);
+        return new Summary(month, rate, missing[0], lines, byGroup, income, expenses, percent, saved);
     }
 
     private static Totals sum(List<CategoryLine> lines) {

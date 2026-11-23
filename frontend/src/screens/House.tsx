@@ -286,6 +286,9 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
           <dl className="close-sums">
             <div><dt>Entró</dt><dd className="figure">{money(preview.income, "CRC")}</dd></div>
             <div><dt>Salió</dt><dd className="figure">{money(preview.expenses, "CRC")}</dd></div>
+            {preview.saved !== 0 && (
+              <div><dt>Se ahorró</dt><dd className="figure">{money(preview.saved, "CRC")}</dd></div>
+            )}
             <div><dt>Sobró</dt><dd className={`figure${preview.surplus < 0 ? " negative" : ""}`}>{money(preview.surplus, "CRC")}</dd></div>
           </dl>
 
