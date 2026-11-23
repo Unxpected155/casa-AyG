@@ -46,6 +46,11 @@ casaayg:
     session-absolute: 7d
     session-code: 10m
     force-hsts: ${CASAAYG_FORCE_HSTS:false}
+  invoices:
+    # Cédula jurídica con que firma Hacienda sus respuestas (MensajeHacienda). Vacía = no pasa nada.
+    hacienda-id: ${CASAAYG_HACIENDA_ID:}
+    # Leer el buzón de facturas (se apaga en los tests).
+    mailbox-enabled: ${CASAAYG_MAILBOX_ENABLED:true}
   exchange-rate:
     # Tipo de cambio de referencia del BCCR, publicado por Hacienda (sin token).
     enabled: ${CASAAYG_EXCHANGE_RATE_ENABLED:true}

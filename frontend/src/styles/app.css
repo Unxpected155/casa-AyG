@@ -1919,3 +1919,7 @@ fieldset {
   display: grid;
   gap: var(--s3);
 }
+
+.mailbox {
+  margin-top: var(--s6);
+}

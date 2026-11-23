@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, messageOf } from "../api";
+import { Mailbox } from "../components/Mailbox";
 import { Shell } from "../components/Shell";
 import { dayLabel, money } from "../format";
 import { useApp } from "../state";
@@ -48,6 +49,7 @@ export function Invoices() {
                        onDone={() => done(i.id)} />
         ))}
       </ul>
+      <Mailbox onRead={() => void load()} />
     </Shell>
   );
 }

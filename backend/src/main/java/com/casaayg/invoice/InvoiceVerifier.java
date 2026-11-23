@@ -85,10 +85,17 @@ public final class InvoiceVerifier {
     }
 
     public VerifiedInvoice verify(byte[] invoiceXml, byte[] haciendaXml) throws InvoiceRejected {
-        if (anchors.isEmpty() || haciendaId.isEmpty()) {
-            throw new InvoiceRejected("sin-configurar");
-        }
         Document doc = SafeXml.parse(invoiceXml);
+        if (anchors.isEmpty() || haciendaId.isEmpty()) {
+            // Sin autoridades no pasa nada; se anota quién firmó, para poder configurarlas.
+            String hacienda;
+            try {
+                hacienda = signerInfo(SafeXml.parse(haciendaXml));
+            } catch (InvoiceRejected e) {
+                hacienda = "?";
+            }
+            throw new InvoiceRejected("sin-configurar", "factura " + signerInfo(doc) + " | hacienda " + hacienda);
+        }
         Element root = doc.getDocumentElement();
         VerifiedInvoice.Kind kind = switch (String.valueOf(root.getLocalName())) {
             case "FacturaElectronica" -> VerifiedInvoice.Kind.FACTURA;
@@ -165,7 +172,7 @@ public final class InvoiceVerifier {
         Instant now = clock.instant();
         X509Certificate signer = verifySignature(doc, Date.from(now.isAfter(issued) ? now : issued));
         if (!signerId(signer).equals(haciendaId)) {
-            throw new InvoiceRejected("hacienda-firmante");
+            throw new InvoiceRejected("hacienda-firmante", signerInfo(doc));
         }
         if (!text(root, "Clave").equals(clave)) {
             throw new InvoiceRejected("hacienda-clave");
@@ -211,13 +218,13 @@ public final class InvoiceVerifier {
                 }
             }
             if (!whole || !signature.validate(ctx) || selector.signer == null) {
-                throw new InvoiceRejected("firma");
+                throw new InvoiceRejected("firma", signerInfo(doc));
             }
             return selector.signer;
         } catch (InvoiceRejected e) {
-            throw e;
+            throw e.detail() == null ? new InvoiceRejected(e.getMessage(), signerInfo(doc)) : e;
         } catch (Exception e) {
-            throw new InvoiceRejected("firma");
+            throw new InvoiceRejected("firma", signerInfo(doc));
         }
     }
 
@@ -291,6 +298,57 @@ public final class InvoiceVerifier {
             signer = leaf;
             Key key = leaf.getPublicKey();
             return () -> key;
+        }
+    }
+
+    /** Qué es un adjunto, sin verificarlo: un comprobante o una respuesta de Hacienda, y su clave. */
+    public record Peek(boolean response, String clave) {}
+
+    public static java.util.Optional<Peek> peek(byte[] xml) {
+        try {
+            Element root = SafeXml.parse(xml).getDocumentElement();
+            String name = String.valueOf(root.getLocalName());
+            boolean response = name.equals("MensajeHacienda");
+            if (!response && !name.equals("FacturaElectronica") && !name.equals("NotaCreditoElectronica")) {
+                return java.util.Optional.empty();
+            }
+            String ns = root.getNamespaceURI();
+            if (ns == null || !ns.startsWith(NS_PREFIX)) {
+                return java.util.Optional.empty();
+            }
+            String clave = text(root, "Clave");
+            return clave.matches("506[0-9]{47}") ? java.util.Optional.of(new Peek(response, clave)) : java.util.Optional.empty();
+        } catch (InvoiceRejected e) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    /**
+     * Datos PÚBLICOS del certificado que firmó (sin validarlo): la autoridad que lo emitió y el
+     * SERIALNUMBER del firmante. Sirve para configurar las autoridades de confianza.
+     */
+    static String signerInfo(Document doc) {
+        try {
+            NodeList certs = doc.getElementsByTagNameNS(XMLSignature.XMLNS, "X509Certificate");
+            if (certs.getLength() == 0) {
+                return "sin certificado";
+            }
+            byte[] der = java.util.Base64.getMimeDecoder().decode(certs.item(0).getTextContent().strip());
+            X509Certificate cert = (X509Certificate) java.security.cert.CertificateFactory.getInstance("X.509")
+                .generateCertificate(new java.io.ByteArrayInputStream(der));
+            String issuer = cert.getIssuerX500Principal().getName(X500Principal.RFC2253);
+            String subject = cert.getSubjectX500Principal().getName(X500Principal.RFC2253, Map.of("2.5.4.5", "SERIALNUMBER"));
+            String serial = "";
+            for (Rdn rdn : new LdapName(subject).getRdns()) {
+                if (rdn.getType().equalsIgnoreCase("SERIALNUMBER")) {
+                    serial = String.valueOf(rdn.getValue());
+                }
+            }
+            String info = "emisor-cert=[" + issuer + "] firmante=" + serial;
+            info = clean(info);
+            return info.length() > 140 ? info.substring(0, 140) : info;
+        } catch (Exception e) {
+            return "certificado ilegible";
         }
     }
 

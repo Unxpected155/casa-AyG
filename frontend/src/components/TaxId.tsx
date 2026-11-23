@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, messageOf } from "../api";
+import { navigate } from "../router";
 
 type Status = { set: boolean; available: boolean };
 
@@ -77,6 +78,9 @@ export function TaxId() {
           )}
         </form>
       )}
+      <button type="button" className="button ghost small" onClick={() => navigate("/facturas")}>
+        Buzón y facturas por revisar
+      </button>
     </section>
   );
 }

@@ -233,7 +233,11 @@ class InvoiceVerifierTest {
     void sinAutoridadesConfiguradasNadaPasa() throws Exception {
         InvoiceVerifier empty = new InvoiceVerifier(List.of(), HACIENDA, Clock.systemUTC());
         assertThatThrownBy(() -> empty.verify(TestPki.sign(factura(), comercio), TestPki.sign(mensaje(), hacienda)))
-            .isInstanceOf(InvoiceRejected.class).hasMessage("sin-configurar");
+            .isInstanceOf(InvoiceRejected.class).hasMessage("sin-configurar")
+            // Anota quién firmó (datos públicos del certificado) para configurar las autoridades.
+            .satisfies(e -> assertThat(((InvoiceRejected) e).detail())
+                .contains("CN=CA raiz").contains("firmante=CPJ-" + EMISOR).contains("firmante=CPJ-" + HACIENDA)
+                .doesNotContain(RECEPTOR));
     }
 
     // --- utilidades -----------------------------------------------------------------------------

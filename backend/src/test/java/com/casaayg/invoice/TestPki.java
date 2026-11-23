@@ -36,26 +36,26 @@ import org.w3c.dom.Document;
  * Autoridades y certificados SOLO de prueba, creados con keytool (el del JDK) en una carpeta
  * temporal en cada ejecución: no hay llaves guardadas en el repo.
  */
-final class TestPki {
+public final class TestPki {
 
-    record Signer(PrivateKey key, X509Certificate cert) {}
+    public record Signer(PrivateKey key, X509Certificate cert) {}
 
     private static final String PASS = "prueba";
     private final Path dir;
 
-    TestPki() throws Exception {
+    public TestPki() throws Exception {
         dir = Files.createTempDirectory("casa-pki");
     }
 
     /** Autoridad autofirmada. */
-    Signer authority(String alias) throws Exception {
+    public Signer authority(String alias) throws Exception {
         keytool("-genkeypair", "-keystore", ks(alias), "-alias", alias, "-keyalg", "RSA", "-keysize", "2048",
             "-dname", "CN=CA " + alias, "-ext", "bc:c", "-startdate", "-30d", "-validity", "3650");
         return load(alias, null);
     }
 
     /** Certificado emitido por {@code ca} para el SERIALNUMBER dado (ej. CPJ-3101999999). */
-    Signer issue(Signer ca, String caAlias, String alias, String serialNumber, String keyUsage) throws Exception {
+    public Signer issue(Signer ca, String caAlias, String alias, String serialNumber, String keyUsage) throws Exception {
         keytool("-genkeypair", "-keystore", ks(alias), "-alias", alias, "-keyalg", "RSA", "-keysize", "2048",
             "-dname", "CN=" + alias + ", SERIALNUMBER=" + serialNumber, "-validity", "3650");
         Path csr = dir.resolve(alias + ".csr");
@@ -96,12 +96,12 @@ final class TestPki {
 
     // --- firma XML (enveloped, del documento completo, como los comprobantes) ---------------
 
-    static byte[] sign(String xml, Signer signer) throws Exception {
+    public static byte[] sign(String xml, Signer signer) throws Exception {
         return sign(xml, signer, "");
     }
 
     /** {@code referenceUri} distinto de "" sirve para probar firmas que no cubren todo. */
-    static byte[] sign(String xml, Signer signer, String referenceUri) throws Exception {
+    public static byte[] sign(String xml, Signer signer, String referenceUri) throws Exception {
         DocumentBuilderFactory f = DocumentBuilderFactory.newInstance();
         f.setNamespaceAware(true);
         Document doc = f.newDocumentBuilder().parse(new ByteArrayInputStream(xml.getBytes("UTF-8")));

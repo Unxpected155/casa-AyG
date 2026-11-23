@@ -26,6 +26,7 @@ public abstract class PostgresTestBase {
     protected static final String OWNER_PASSWORD = randomSecret();
     protected static final String APP_PASSWORD = randomSecret();
     protected static final String TAX_ID_KEY = randomSecret();
+    protected static final String GMAIL_TOKEN_KEY = randomSecret();
 
     // La MISMA imagen que compose.yaml, fijada por digest (postgres:18.7).
     protected static final PostgreSQLContainer POSTGRES =
@@ -48,6 +49,9 @@ public abstract class PostgresTestBase {
         registry.add("db_app_password", () -> APP_PASSWORD);
         registry.add("db_owner_password", () -> OWNER_PASSWORD);
         registry.add("tax_id_key", () -> TAX_ID_KEY);
+        registry.add("gmail_token_key", () -> GMAIL_TOKEN_KEY);
+        // Los tests no leen ningún buzón por su cuenta.
+        registry.add("casaayg.invoices.mailbox-enabled", () -> "false");
         // Los tests no llaman a Hacienda; el emulador de passkeys usa el origen http://localhost.
         registry.add("casaayg.exchange-rate.enabled", () -> "false");
         registry.add("casaayg.security.origins", () -> "http://localhost");
