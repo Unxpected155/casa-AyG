@@ -81,7 +81,8 @@ export function Balance() {
           <div>
             <dt>Apartado para metas y CDP</dt>
             <dd className="figure muted">
-              {hasCrc && money(reserved.crc, "CRC")}{hasCrc && hasUsd && " y "}{hasUsd && money(reserved.usd, "USD")}
+              {[reserved.crc !== 0 && money(reserved.crc, "CRC"), reserved.usd !== 0 && money(reserved.usd, "USD")]
+                .filter(Boolean).join(" y ")}
             </dd>
           </div>
         </dl>
