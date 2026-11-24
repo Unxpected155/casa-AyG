@@ -144,6 +144,17 @@ export interface Debt {
   lastPaidOn: string | null;
   settledOn: string | null;
   createdBy: string;
+  /** Lo pagado antes de anotarla (no es un gasto de ningún mes). */
+  paidBefore: number;
+  /** Lo que la persona perdonó, y cuándo. */
+  forgiven: number;
+  forgivenOn: string | null;
+  /** Cuota acordada y su día (opcionales); `installmentDueDate`: el día de la cuota este mes. */
+  installment: number | null;
+  installmentDay: number | null;
+  installmentDueDate: string | null;
+  /** Abonos del mes en curso. */
+  paidThisMonth: number;
 }
 
 export type PlaceKind = "BANCO" | "SOBRE" | "CDP" | "EFECTIVO";

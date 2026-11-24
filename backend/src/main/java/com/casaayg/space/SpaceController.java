@@ -63,7 +63,7 @@ class SpaceController {
     }
 
     /** Versión del formato: sube si cambia la forma del archivo. */
-    static final int EXPORT_FORMAT = 3;
+    static final int EXPORT_FORMAT = 4;
 
     record Export(int format, Instant exportedAt, SpaceView space, List<Map<String, Object>> categories,
                   List<Map<String, Object>> budgets, List<Map<String, Object>> transactions,
@@ -123,7 +123,9 @@ class SpaceController {
                        expected_amount AS "expectedAmount", currency, notify_days_before AS "notifyDaysBefore", active
                   FROM recurring_payment WHERE space_id = ? ORDER BY lower(name)""").param(spaceId).query().listOfRows();
         var debts = jdbc.sql("""
-                SELECT id, kind, creditor, concept, amount, currency, borrowed_on AS "borrowedOn", due_date AS "dueDate"
+                SELECT id, kind, creditor, concept, amount, currency, borrowed_on AS "borrowedOn", due_date AS "dueDate",
+                       paid_before AS "paidBefore", forgiven, forgiven_on AS "forgivenOn", installment,
+                       installment_day AS "installmentDay"
                   FROM debt WHERE space_id = ? ORDER BY lower(creditor), borrowed_on""").param(spaceId).query().listOfRows();
         audit.record(CurrentUser.require(), "EXPORTACION", Map.of("espacio", spaceId.toString()), request);
         return ResponseEntity.ok()

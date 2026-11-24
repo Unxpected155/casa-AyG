@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
+import { useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { api, messageOf } from "../api";
 import { EntrySheet } from "../components/EntrySheet";
+import { DEBT_CATEGORY, debtCategory, installmentLeft, namesText, payPreset, pendingText, useDebts } from "../debts";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
 import { amountChange, amountToInput, dayMonthLabel, initials, money, parseAmount, todayIso } from "../format";
@@ -8,43 +9,6 @@ import { gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { navigate } from "../router";
 import { useApp } from "../state";
 import type { Currency, Debt } from "../types";
-
-export const DEBT_CATEGORY = "Pago de deudas";
-
-/** Las deudas del espacio. `null` mientras cargan. */
-export function useDebts(): { debts: Debt[] | null; error: string | null } {
-  const { space, version } = useApp();
-  const [debts, setDebts] = useState<Debt[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    if (!space) return;
-    let cancelled = false;
-    setError(null);
-    api.get<Debt[]>(`/api/spaces/${space.id}/debts`)
-      .then((list) => !cancelled && setDebts(list))
-      .catch((e) => {
-        if (cancelled) return;
-        setDebts([]);
-        setError(messageOf(e, "No se pudieron cargar las deudas."));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [space, version]);
-  return { debts, error };
-}
-
-/** Lo que falta, sumado por moneda: «₡85.000» o «₡85.000 y $40,00». */
-export function pendingText(debts: Debt[]): string {
-  const sum = (c: Currency) => debts.filter((d) => d.currency === c).reduce((s, d) => s + d.remaining, 0);
-  return (["CRC", "USD"] as const).filter((c) => sum(c) > 0).map((c) => money(sum(c), c, true)).join(" y ");
-}
-
-/** «Mamá», «Mamá y Juan», «Mamá, Juan y Ana». */
-export function namesText(names: string[]): string {
-  if (names.length <= 1) return names[0] ?? "";
-  return `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
-}
 
 function byCreditor(debts: Debt[]): [string, Debt[]][] {
   const groups = new Map<string, Debt[]>();
@@ -89,9 +53,7 @@ export function Debts() {
     gsap.from(".debt .rule-fill", { scaleX: 0, duration: 0.6, ease: "expo.out", stagger: 0.04, clearProps: "transform" });
   }), { scope: list, dependencies: [debts?.length] });
 
-  // El abono va a «Pago de deudas»; si alguien la desactivó o borró, a la primera necesidad.
-  const expense = categories.filter((c) => c.active && c.group !== "INGRESO");
-  const category = expense.find((c) => c.name === DEBT_CATEGORY) ?? expense.find((c) => c.group === "NECESIDAD") ?? expense[0];
+  const category = debtCategory(categories);
 
   return (
     <Shell>
@@ -156,18 +118,13 @@ export function Debts() {
 
         <p className="hint debt-hint">
           Cada abono se anota como gasto en «{category?.name ?? DEBT_CATEGORY}» y rebaja lo que falta. Si borras un abono, la deuda vuelve.
+          ¿Ya lo anotaste como gasto? Ábrelo en Movimientos y elige la deuda en «Es un abono a».
         </p>
       </div>
 
       {paying && (
-        <EntrySheet
-          preset={{
-            categoryId: category?.id ?? "", description: `${paying.creditor} · ${paying.concept}`.slice(0, 200),
-            amount: paying.remaining, max: paying.remaining, currency: paying.currency, placeId: null, debtId: paying.id,
-            title: `Abonar a ${paying.creditor}`,
-          }}
-          onClose={() => setPaying(null)}
-        />
+        <EntrySheet preset={payPreset(paying, categories, installmentLeft(paying) || paying.remaining)}
+                    onClose={() => setPaying(null)} />
       )}
     </Shell>
   );
@@ -202,8 +159,25 @@ function DebtRow({ debt: d, open, readOnly, creditors, who, onToggle, onPay, onD
   onToggle: () => void; onPay?: () => void; onDone: () => void;
 }) {
   const settled = d.remaining <= 0;
-  const ratio = d.amount > 0 ? Math.min(d.paid / d.amount, 1) : 0;
+  const covered = d.amount - d.remaining;
+  const ratio = d.amount > 0 ? Math.min(covered / d.amount, 1) : 0;
   const due = settled ? null : dueText(d);
+  const forgivenOnly = settled && d.forgiven > 0 && d.settledOn === d.forgivenOn;
+  // Lo que explica el saldo, en el orden en que pasó: antes de anotarla, abonos, cuota.
+  const notes: string[] = [];
+  if (!settled) {
+    if (d.paidBefore > 0) notes.push(`${money(d.paidBefore, d.currency, true)} pagados antes`);
+    notes.push(d.payments === 0
+      ? (d.paidBefore > 0 ? "sin abonos aquí" : `desde el ${dayMonthLabel(d.borrowedOn)}, sin abonos`)
+      : `${d.payments === 1 ? "1 abono" : `${d.payments} abonos`}, el último el ${dayMonthLabel(d.lastPaidOn!)}`);
+    if (d.installment != null) {
+      notes.push(`cuota ${money(d.installment, d.currency, true)}${d.installmentDay ? ` los días ${d.installmentDay}` : " al mes"}`);
+    }
+  }
+  const sentence = (parts: string[]) => {
+    const text = parts.join(" · ");
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  };
   return (
     <li className={`row debt${settled ? " settled" : ""}`}>
       <button type="button" className="row-main row-button" onClick={onToggle} aria-expanded={open} disabled={readOnly}>
@@ -219,10 +193,11 @@ function DebtRow({ debt: d, open, readOnly, creditors, who, onToggle, onPay, onD
           </span>
           <span className={`due-when${due?.late ? " late" : ""}`}>
             {settled
-              ? `Saldada el ${dayMonthLabel(d.settledOn ?? d.lastPaidOn ?? d.borrowedOn)}`
-              : d.payments === 0
-                ? `Desde el ${dayMonthLabel(d.borrowedOn)}, sin abonos`
-                : `${d.payments === 1 ? "1 abono" : `${d.payments} abonos`}, el último el ${dayMonthLabel(d.lastPaidOn!)}`}
+              ? forgivenOnly
+                ? `Te perdonó ${money(d.forgiven, d.currency, true)} el ${dayMonthLabel(d.forgivenOn!)}`
+                : `Saldada el ${dayMonthLabel(d.settledOn ?? d.lastPaidOn ?? d.borrowedOn)}`
+                  + (d.forgiven > 0 ? ` · perdonó ${money(d.forgiven, d.currency, true)}` : "")
+              : sentence(notes)}
             {due && <> · {due.late && <Icon name="alert" size={14} />} {due.text}</>}
           </span>
         </span>
@@ -231,15 +206,15 @@ function DebtRow({ debt: d, open, readOnly, creditors, who, onToggle, onPay, onD
             ? <span className="figure">{money(d.amount, d.currency, true)}</span>
             : <>
                 <span><span className="debt-left">falta </span><span className="figure">{money(d.remaining, d.currency, true)}</span></span>
-                {d.paid > 0 && <span className="planned small">de <span className="figure">{money(d.amount, d.currency, true)}</span></span>}
+                {covered > 0 && <span className="planned small">de <span className="figure">{money(d.amount, d.currency, true)}</span></span>}
               </>}
         </span>
       </button>
       {!settled && (
         <div className="row-rule">
           <span className="rule-fill" style={{ "--fill": ratio } as CSSProperties} role="meter"
-                aria-label={`${d.concept}: abonado ${money(d.paid, d.currency, true)} de ${money(d.amount, d.currency, true)}`}
-                aria-valuemin={0} aria-valuemax={d.amount} aria-valuenow={d.paid} />
+                aria-label={`${d.concept}: cubierto ${money(covered, d.currency, true)} de ${money(d.amount, d.currency, true)}`}
+                aria-valuemin={0} aria-valuemax={d.amount} aria-valuenow={covered} />
         </div>
       )}
       {!settled && !readOnly && onPay && !open && (
@@ -260,10 +235,15 @@ function DebtForm({ debt, creditors, onDone }: { debt?: Debt; creditors: string[
   const [currency, setCurrency] = useState<Currency>(debt?.currency ?? "CRC");
   const [borrowedOn, setBorrowedOn] = useState(debt?.borrowedOn ?? todayIso());
   const [dueDate, setDueDate] = useState(debt?.dueDate ?? "");
+  const [paidBefore, setPaidBefore] = useState(debt?.paidBefore ? amountToInput(debt.paidBefore) : "");
+  const [installment, setInstallment] = useState(debt?.installment != null ? amountToInput(debt.installment) : "");
+  const [installmentDay, setInstallmentDay] = useState(debt?.installmentDay ? String(debt.installmentDay) : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmForgive, setConfirmForgive] = useState(false);
   const locked = Boolean(debt && debt.paid > 0);
+  const extrasOpen = Boolean(debt && (debt.paidBefore > 0 || debt.installment != null));
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -271,18 +251,43 @@ function DebtForm({ debt, creditors, onDone }: { debt?: Debt; creditors: string[
     if (!concept.trim()) return setError("Escribe por qué, por ejemplo Citas médicas.");
     const parsed = parseAmount(amount);
     if (!parsed || Number(parsed) <= 0) return setError("Escribe cuánto debes, por ejemplo 60.000.");
-    if (debt && Number(parsed) < debt.paid) {
-      return setError(`Ya abonaste ${money(debt.paid, debt.currency, true)}: el monto no puede ser menor.`);
+    const before = paidBefore.trim() ? parseAmount(paidBefore) : "0";
+    if (before === null) return setError("Revisa lo que ya le pagaste.");
+    if (Number(before) >= Number(parsed)) {
+      return setError("Lo que ya le pagaste tiene que ser menor a la deuda. Si ya está pagada, no hace falta anotarla.");
     }
+    if (debt && Number(parsed) < debt.paid + debt.forgiven + Number(before)) {
+      return setError(`Ya está cubierto ${money(debt.paid + debt.forgiven + Number(before), debt.currency, true)}: el monto no puede ser menor.`);
+    }
+    const quota = installment.trim() ? parseAmount(installment) : null;
+    if (installment.trim() && (!quota || Number(quota) <= 0)) return setError("Revisa la cuota, por ejemplo 10.000.");
+    if (quota && Number(quota) > Number(parsed)) return setError("La cuota no puede ser mayor a la deuda.");
+    const day = installmentDay.trim() ? Number(installmentDay) : null;
+    if (day !== null && !(Number.isInteger(day) && day >= 1 && day <= 31)) return setError("El día de la cuota va de 1 a 31.");
+    if (day !== null && !quota) return setError("Escribe de cuánto es la cuota, o borra el día.");
     if (!borrowedOn) return setError("Elige desde cuándo la debes.");
     if (dueDate && dueDate < borrowedOn) return setError("La fecha acordada va después de la fecha de la deuda.");
     setBusy(true);
     setError(null);
     const body = { creditor: creditor.trim(), concept: concept.trim(), amount: parsed, currency, borrowedOn,
-                   dueDate: dueDate || null };
+                   dueDate: dueDate || null, paidBefore: before, installment: quota, installmentDay: day };
     try {
       if (debt) await api.put(`/api/spaces/${space!.id}/debts/${debt.id}`, body);
       else await api.post(`/api/spaces/${space!.id}/debts`, body);
+      touch();
+      onDone();
+    } catch (e) {
+      setError(messageOf(e, "No se pudo guardar."));
+      setBusy(false);
+    }
+  };
+
+  const forgive = async (undo: boolean) => {
+    setBusy(true);
+    try {
+      const url = `/api/spaces/${space!.id}/debts/${debt!.id}/forgive`;
+      if (undo) await api.del(url);
+      else await api.post(url, {});
       touch();
       onDone();
     } catch (e) {
@@ -345,8 +350,47 @@ function DebtForm({ debt, creditors, onDone }: { debt?: Debt; creditors: string[
         </label>
       </div>
       {dueDate && <p className="hint">Te aviso el día antes y ese día, si todavía falta algo.</p>}
-      {locked && <p className="hint">Ya tiene abonos: la moneda no cambia y el monto no baja de lo abonado.</p>}
+      <details className="more debt-extras" open={extrasOpen}>
+        <summary>¿Ya le pagaste algo o acordaron cuotas?</summary>
+        <label className="field">
+          <span>Ya le pagaste, antes de anotarla</span>
+          <input inputMode="decimal" value={paidBefore} maxLength={18} onChange={(e) => setPaidBefore(amountChange(e))}
+                 placeholder="20.000" aria-describedby="paid-before-hint" />
+        </label>
+        <p className="hint" id="paid-before-hint">Rebaja lo que falta, pero no cuenta como gasto de este mes: esa plata salió antes.</p>
+        <div className="field-row">
+          <label className="field grow">
+            <span>Cuota acordada</span>
+            <input inputMode="decimal" value={installment} maxLength={18} onChange={(e) => setInstallment(amountChange(e))}
+                   placeholder="10.000" />
+          </label>
+          <label className="field">
+            <span>Día del mes</span>
+            <input inputMode="numeric" value={installmentDay} maxLength={2} onChange={(e) => setInstallmentDay(e.target.value)}
+                   placeholder="15" />
+          </label>
+        </div>
+        <p className="hint">La cuota aparece en «Por pagar» del mes; con día, te aviso el día antes y ese día.</p>
+      </details>
+      {locked && <p className="hint">Ya tiene abonos: la moneda no cambia y el monto no baja de lo cubierto.</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
+      {debt && (debt.remaining > 0 || debt.forgiven > 0) && (
+        <div className="debt-forgive">
+          {debt.forgiven > 0 ? (
+            <button type="button" className="button ghost" onClick={() => void forgive(true)} disabled={busy}>
+              Quitar el perdón de {money(debt.forgiven, debt.currency, true)}
+            </button>
+          ) : confirmForgive ? (
+            <span className="confirm-inline">
+              ¿Te perdonó los {money(debt.remaining, debt.currency, true)} que faltan?
+              <button type="button" className="button ghost" onClick={() => void forgive(false)} disabled={busy}>Sí</button>
+              <button type="button" className="button ghost" onClick={() => setConfirmForgive(false)}>No</button>
+            </span>
+          ) : (
+            <button type="button" className="button ghost" onClick={() => setConfirmForgive(true)}>Me lo perdonó</button>
+          )}
+        </div>
+      )}
       <div className="actions">
         {debt && !confirmDelete && (
           <button type="button" className="button ghost danger" onClick={() => setConfirmDelete(true)}>Borrar</button>

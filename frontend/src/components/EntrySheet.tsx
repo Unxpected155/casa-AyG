@@ -9,10 +9,11 @@ import type { Currency, Group, Place, Suggestion, Transaction, TransactionPage, 
 import { orderedPlaces } from "./Balance";
 import { Icon } from "./Icon";
 import { useUndo } from "./Undo";
+import { useDebts } from "../debts";
 
 type Kind = "gasto" | "ingreso" | "mover";
 
-interface EntrySheetProps {
+export interface EntrySheetProps {
   /** Movimiento a editar; sin él, es uno nuevo. */
   editing?: Transaction | null;
   /** Dinero movido que se está viendo (no se edita: se borra y se anota de nuevo). */
@@ -66,6 +67,15 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // «Es un abono a…»: un gasto ya anotado se puede ligar a una deuda (o soltar). No aplica al
+  // diezmo, a un pago fijo ni a lo que anotó el cierre del mes.
+  const linkable = Boolean(editing && !editing.titheOf && !editing.recurringId && !editing.fromClose);
+  const { debts } = useDebts(linkable);
+  const [debtId, setDebtId] = useState(editing?.debtId ?? "");
+  const debtOptions = (debts ?? []).filter((d) => d.id === editing?.debtId || (d.remaining > 0 && d.currency === currency));
+  const chosenDebt = debtOptions.find((d) => d.id === debtId);
+  // Lo más que puede ser este abono: lo que falta, más lo que ya era suyo si ya estaba ligado.
+  const debtRoom = chosenDebt ? chosenDebt.remaining + (editing?.debtId === chosenDebt.id ? editing.amount : 0) : null;
   // Un movimiento que se parece a uno ya anotado (mismo día, monto y descripción): se pregunta
   // antes de guardar. Pasa sobre todo en el espacio familiar, cuando los dos anotan lo mismo.
   const [duplicate, setDuplicate] = useState<Transaction | null>(null);
@@ -214,6 +224,9 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
         return setError(`Solo faltan ${money(preset.max, currency, true)}. Escribe ese monto o uno menor.`);
       }
       if (preset?.debtId && Number(parsed) === 0) return setError("El abono tiene que ser mayor que cero.");
+      if (kind === "gasto" && debtRoom != null && Number(parsed) > debtRoom) {
+        return setError(`A esa deuda solo le faltan ${money(debtRoom, currency, true)}. Escribe ese monto o uno menor.`);
+      }
     }
     setBusy(true);
     setError(null);
@@ -235,8 +248,16 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                        grossAmount: income ? parsedGross : null, tithe: income && tithe,
                        recurringId: editing ? undefined : preset?.recurringId ?? null,
                        debtId: editing ? undefined : preset?.debtId ?? null };
-        if (editing) await api.put(`${base}/transactions/${editing.id}`, body);
-        else await api.post(`${base}/transactions`, body);
+        if (editing) {
+          const before = editing.debtId ?? null;
+          const after = kind === "gasto" && debtId ? debtId : null;
+          // Soltar primero (para poder cambiarlo a ingreso o subirle el monto); ligar después.
+          if (before && before !== after) await api.put(`${base}/transactions/${editing.id}/debt`, { debtId: null });
+          await api.put(`${base}/transactions/${editing.id}`, body);
+          if (after && after !== before) await api.put(`${base}/transactions/${editing.id}/debt`, { debtId: after });
+        } else {
+          await api.post(`${base}/transactions`, body);
+        }
       }
       touch();
       onClose();
@@ -457,6 +478,20 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
                 )}
                 {editing?.titheOf && (
                   <p className="muted small">Este diezmo se anotó con su ingreso: si cambias el ingreso, se ajusta solo.</p>
+                )}
+                {kind === "gasto" && linkable && debtOptions.length > 0 && (
+                  <label className="field">
+                    <span>Es un abono a</span>
+                    <select value={debtId} onChange={(e) => setDebtId(e.target.value)} aria-describedby="debt-room">
+                      <option value="">No es un abono</option>
+                      {debtOptions.map((d) => (
+                        <option key={d.id} value={d.id}>{d.creditor} · {d.concept}</option>
+                      ))}
+                    </select>
+                    {debtRoom != null && (
+                      <span className="hint" id="debt-room">Le faltan {money(debtRoom, currency, true)}, contando este gasto.</span>
+                    )}
+                  </label>
                 )}
               </>
             )}

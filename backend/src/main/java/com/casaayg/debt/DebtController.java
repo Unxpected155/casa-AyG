@@ -41,7 +41,8 @@ class DebtController {
     }
 
     record DebtRequest(@NotNull String creditor, @NotNull String concept, @NotNull BigDecimal amount,
-                       @NotNull Money.Currency currency, @NotNull LocalDate borrowedOn, LocalDate dueDate) {
+                       @NotNull Money.Currency currency, @NotNull LocalDate borrowedOn, LocalDate dueDate,
+                       BigDecimal paidBefore, BigDecimal installment, Integer installmentDay) {
         Data toData() {
             LocalDate max = LocalDate.now().plusYears(30);
             if (borrowedOn.isBefore(MIN_DATE) || borrowedOn.isAfter(LocalDate.now().plusDays(1))
@@ -49,7 +50,7 @@ class DebtController {
                 throw new IllegalArgumentException("fecha fuera de rango");
             }
             return new Data(new Creditor(creditor), new Concept(concept), new Money(amount, currency), borrowedOn,
-                dueDate);
+                dueDate, paidBefore, installment, installmentDay);
         }
     }
 
@@ -67,6 +68,17 @@ class DebtController {
     @PutMapping("/{id}")
     DebtView update(@PathVariable UUID spaceId, @PathVariable UUID id, @Valid @RequestBody DebtRequest body) {
         return debts.update(spaceId, id, body.toData());
+    }
+
+    /** «Me lo perdonó»: salda lo que falta sin gasto. */
+    @PostMapping("/{id}/forgive")
+    DebtView forgive(@PathVariable UUID spaceId, @PathVariable UUID id) {
+        return debts.forgive(spaceId, id);
+    }
+
+    @DeleteMapping("/{id}/forgive")
+    DebtView unforgive(@PathVariable UUID spaceId, @PathVariable UUID id) {
+        return debts.unforgive(spaceId, id);
     }
 
     @DeleteMapping("/{id}")
