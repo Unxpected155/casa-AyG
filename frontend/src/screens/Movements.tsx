@@ -199,6 +199,8 @@ export function Movements() {
                 const t = row.t;
                 const c = category(t.categoryId);
                 const income = c?.group === "INGRESO";
+                // Ahorro no es gasto (la plata sigue siendo tuya): queda neutro, como lo movido.
+                const expense = c?.group === "NECESIDAD" || c?.group === "DESEO";
                 return (
                   <li key={t.id} className="entry">
                     <button type="button" className="entry-button" onClick={() => setEditing(t)}
@@ -217,8 +219,8 @@ export function Movements() {
                           <span className="visually-hidden">Lo anotó {memberName(t.createdBy)}</span>
                         </span>
                       )}
-                      <span className={`entry-amount figure ${income ? "income" : ""}`}>
-                        {income ? "+" : ""}{money(t.amount, t.currency, true)}
+                      <span className={`entry-amount figure${income ? " income" : expense ? " expense" : ""}`}>
+                        {income ? "+" : expense ? "−" : ""}{money(t.amount, t.currency, true)}
                       </span>
                     </button>
                   </li>

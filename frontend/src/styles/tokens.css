@@ -12,7 +12,7 @@
   --accent: oklch(0.55 0.135 40);
   /* Gráficos: entró / salió. Validados (lightness, chroma, CVD, contraste) contra --paper. */
   --chart-in: oklch(0.52 0.12 230);
-  --chart-out: oklch(0.58 0.14 42);
+  --chart-out: oklch(0.56 0.17 22);
   --accent-hover: oklch(0.5 0.135 40);
   /* Texto de acción (botones fantasma, enlaces): terracota con contraste ≥ 4.5:1 sobre el papel. */
   --accent-ink: oklch(0.5 0.135 40);
@@ -21,6 +21,9 @@
   --ok: oklch(0.5 0.09 128);
   --near: oklch(0.52 0.1 72);
   --over: oklch(0.5 0.15 30);
+  /* Gasto: rojo propio (tono 22), separado del terracota de las acciones (40) para que un
+     monto nunca parezca un botón. Contraste ≥ 4.5:1 sobre el papel. */
+  --expense: oklch(0.5 0.17 22);
   --shadow: 0 -10px 40px oklch(0.3 0.03 55 / 0.14);
   --grain-opacity: 0.05;
 
@@ -65,7 +68,7 @@
     --ink-soft: oklch(0.75 0.022 80);
     --accent: oklch(0.73 0.12 48);
     --chart-in: oklch(0.64 0.12 230);
-    --chart-out: oklch(0.66 0.13 45);
+    --chart-out: oklch(0.68 0.15 22);
     --accent-hover: oklch(0.78 0.12 48);
     --accent-ink: oklch(0.76 0.12 48);
     --accent-wash: oklch(0.73 0.12 48 / 0.14);
@@ -73,6 +76,7 @@
     --ok: oklch(0.76 0.1 125);
     --near: oklch(0.8 0.11 80);
     --over: oklch(0.72 0.14 35);
+    --expense: oklch(0.72 0.15 22);
     --shadow: 0 -10px 40px oklch(0.05 0.01 55 / 0.5);
     --grain-opacity: 0.07;
   }
