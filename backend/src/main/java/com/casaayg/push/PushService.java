@@ -125,6 +125,44 @@ public class PushService {
     }
 
     /**
+     * Cada mañana: las deudas con fecha acordada mañana u hoy a las que aún les falta algo.
+     * Solo dice a quién (nunca montos ni el concepto). Un solo aviso por persona.
+     */
+    @Scheduled(cron = "0 5 8 * * *", zone = "America/Costa_Rica")
+    public void remindDebts() {
+        if (!sender.enabled()) {
+            return;
+        }
+        LocalDate today = LocalDate.now(COSTA_RICA);
+        record Due(UUID userId, String creditor, LocalDate dueDate) {}
+        List<Due> due = asUser.run(null, () -> jdbc.sql("SELECT user_id, creditor, due_date FROM debt_reminders(?)")
+            .param(today)
+            .query((rs, n) -> new Due(rs.getObject("user_id", UUID.class), rs.getString("creditor"),
+                rs.getObject("due_date", LocalDate.class))).list());
+        due.stream().collect(java.util.stream.Collectors.groupingBy(Due::userId, java.util.LinkedHashMap::new,
+                java.util.stream.Collectors.toList()))
+            .forEach((user, items) -> notify(user, "Deudas", debtText(today, items.stream()
+                .map(d -> new String[] {d.creditor(), d.dueDate().toString()}).toList()), "/deudas"));
+    }
+
+    /** "Hoy acordaste terminar de pagarle a Mamá. Mañana, a Juan." */
+    static String debtText(LocalDate today, List<String[]> items) {
+        java.util.Map<LocalDate, java.util.Set<String>> byDate = new java.util.TreeMap<>();
+        for (String[] item : items) {
+            byDate.computeIfAbsent(LocalDate.parse(item[1]), k -> new java.util.LinkedHashSet<>()).add(item[0]);
+        }
+        List<String> parts = new java.util.ArrayList<>();
+        byDate.forEach((date, names) -> {
+            String who = String.join(", ", names);
+            parts.add(parts.isEmpty()
+                ? (date.equals(today) ? "Hoy" : "Mañana") + " acordaste terminar de pagarle a " + who + "."
+                : (date.equals(today) ? "Hoy" : "Mañana") + ", a " + who + ".");
+        });
+        String text = String.join(" ", parts);
+        return text.length() > 200 ? text.substring(0, 197) + "…" : text;
+    }
+
+    /**
      * Mañana y tarde: las categorías de gasto que cruzaron el 80 % o el 100 % de lo planeado
      * este mes. Un solo aviso por persona; cada nivel se avisa una vez.
      */

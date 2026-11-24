@@ -35,7 +35,7 @@ export function Goals() {
   }, [space, version]);
 
   useGSAP(() => whenMotionAllowed(() => {
-    gsap.from(".goal .rule-fill", { scaleX: 0, duration: 0.7, ease: "expo.out", stagger: 0.05 });
+    gsap.from(".goal .rule-fill", { scaleX: 0, duration: 0.7, ease: "expo.out", stagger: 0.05, clearProps: "transform" });
   }), { scope: list, dependencies: [goals?.length] });
 
   const current = (goals ?? []).filter((g) => g.status === "ACTIVA" || g.status === "PAUSADA");

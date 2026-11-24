@@ -62,7 +62,7 @@ export function Shell({ children, withMonth = false, onAdd }: ShellProps) {
           </div>
         )}
         {/* «Más» va arriba: la barra de abajo queda para lo del día a día. */}
-        <a className="account-link icon-button" href="/mas" aria-label="Más: la casa, facturas, historia y perfil"
+        <a className="account-link icon-button" href="/mas" aria-label="Más: la casa, deudas, facturas, historia y perfil"
            aria-current={route === "/mas" ? "page" : undefined}
            onClick={(e) => { e.preventDefault(); navigate("/mas"); }}>
           <Icon name="menu" />

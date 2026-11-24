@@ -13,6 +13,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.casaayg.debt.DebtService;
 import com.casaayg.domain.Money;
 import com.casaayg.domain.Text.Description;
 import com.casaayg.place.PlaceService;
@@ -32,10 +33,12 @@ public class TransactionService {
     private final Spaces spaces;
     private final PlaceService places;
     private final RecurringService recurring;
+    private final DebtService debts;
     private final ChangeLog changes;
 
     TransactionService(JdbcClient jdbc, Spaces spaces, PlaceService places, RecurringService recurring,
-                       ChangeLog changes) {
+                       DebtService debts, ChangeLog changes) {
+        this.debts = debts;
         this.changes = changes;
         this.jdbc = jdbc;
         this.spaces = spaces;
@@ -52,19 +55,26 @@ public class TransactionService {
      * {@code gross}: monto bruto de un ingreso (base del diezmo); null = el mismo monto.
      * {@code tithe}: anotar también el diezmo de este ingreso.
      * {@code recurringId}: el pago fijo que se está pagando (solo al anotar).
+     * {@code debtId}: la deuda que se está abonando (solo al anotar; luego no cambia).
      */
     public record TransactionData(UUID categoryId, LocalDate date, Description description, Money money,
                                   String paymentMethod, UUID placeId, BigDecimal gross, boolean tithe,
-                                  UUID recurringId) {
+                                  UUID recurringId, UUID debtId) {
+
+        public TransactionData(UUID categoryId, LocalDate date, Description description, Money money,
+                               String paymentMethod, UUID placeId, BigDecimal gross, boolean tithe,
+                               UUID recurringId) {
+            this(categoryId, date, description, money, paymentMethod, placeId, gross, tithe, recurringId, null);
+        }
 
         public TransactionData(UUID categoryId, LocalDate date, Description description, Money money,
                                String paymentMethod, UUID placeId) {
-            this(categoryId, date, description, money, paymentMethod, placeId, null, false, null);
+            this(categoryId, date, description, money, paymentMethod, placeId, null, false, null, null);
         }
 
         public TransactionData(UUID categoryId, LocalDate date, Description description, Money money,
                                String paymentMethod, UUID placeId, BigDecimal gross, boolean tithe) {
-            this(categoryId, date, description, money, paymentMethod, placeId, gross, tithe, null);
+            this(categoryId, date, description, money, paymentMethod, placeId, gross, tithe, null, null);
         }
 
         /** Base del diezmo: el bruto si se dio, si no el monto. */
@@ -77,7 +87,7 @@ public class TransactionService {
                                   BigDecimal amount, Money.Currency currency, String paymentMethod,
                                   String source, UUID createdBy, boolean beforeMerge, UUID placeId,
                                   BigDecimal grossAmount, UUID titheOf, UUID titheId, UUID recurringId,
-                                  boolean fromClose) {}
+                                  boolean fromClose, UUID debtId) {}
 
     /**
      * Lo que se sugiere al anotar: la categoría que se usó antes con esa descripción, el último
@@ -106,7 +116,7 @@ public class TransactionService {
         id, category_id, tx_date, description, amount, currency, payment_method, source,
         created_by, origin_space_id IS NOT NULL AS before_merge, place_id, gross_amount, tithe_of,
         (SELECT d.id FROM transaction d WHERE d.tithe_of = transaction.id) AS tithe_id, recurring_id,
-        EXISTS (SELECT 1 FROM month_close_item i WHERE i.tx_id = transaction.id) AS from_close""";
+        EXISTS (SELECT 1 FROM month_close_item i WHERE i.tx_id = transaction.id) AS from_close, debt_id""";
 
     @Transactional(readOnly = true)
     public Page list(UUID spaceId, YearMonth month, int page, int size) {
@@ -203,17 +213,20 @@ public class TransactionService {
         if (data.recurringId() != null) {
             recurring.requireInSpace(spaceId, data.recurringId());
         }
+        if (data.debtId() != null) {
+            requireDebtPayment(spaceId, data, income, null);
+        }
         if (placeRequired) {
             requirePlaceChosen(data);
         }
         UUID id = jdbc.sql("""
                 INSERT INTO transaction (space_id, created_by, category_id, tx_date, description, amount,
                                          currency, payment_method, source, dedup_hash, place_id, gross_amount,
-                                         recurring_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""")
+                                         recurring_id, debt_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""")
             .params(spaceId, CurrentUser.require(), data.categoryId(), data.date(), data.description().value(),
                 data.money().amount(), data.money().currency().name(), data.paymentMethod(), source, dedupHash,
-                data.placeId(), income ? data.gross() : null, data.recurringId())
+                data.placeId(), income ? data.gross() : null, data.recurringId(), data.debtId())
             .query(UUID.class).single();
         if (data.tithe()) {
             insertTithe(spaceId, id, data);
@@ -228,6 +241,17 @@ public class TransactionService {
         boolean income = requireCategory(spaceId, data.categoryId());
         requirePlace(spaceId, data);
         requireTitheOnlyForIncome(income, data);
+        // Un abono sigue siendo de su deuda: al editarlo, el monto nuevo tampoco pasa lo que falta.
+        List<UUID> linked = jdbc.sql("SELECT debt_id FROM transaction WHERE id = ? AND space_id = ?").params(id, spaceId)
+            .query((rs, n) -> rs.getObject(1, UUID.class)).list();
+        if (linked.isEmpty()) {
+            throw new NotFoundException();
+        }
+        UUID debt = linked.get(0);
+        if (debt != null) {
+            requireDebtPayment(spaceId, new TransactionData(data.categoryId(), data.date(), data.description(),
+                data.money(), data.paymentMethod(), data.placeId(), data.gross(), data.tithe(), null, debt), income, id);
+        }
         requirePlaceChosen(data);
         int rows = jdbc.sql("""
                 UPDATE transaction SET category_id = ?, tx_date = ?, description = ?, amount = ?, currency = ?,
@@ -265,6 +289,14 @@ public class TransactionService {
             throw new NotFoundException();
         }
         changes.tellOwners(spaceId);
+    }
+
+    /** Un abono: es un gasto, sin diezmo ni pago fijo, y cabe en lo que falta de la deuda. */
+    private void requireDebtPayment(UUID spaceId, TransactionData data, boolean income, UUID replacing) {
+        if (income || data.recurringId() != null) {
+            throw new IllegalArgumentException("un abono es un gasto, sin pago fijo");
+        }
+        debts.requirePayable(spaceId, data.debtId(), data.money(), replacing);
     }
 
     /** Lo que creó el cierre del mes no se toca a mano: se deshace reabriendo el mes (V13). */
@@ -378,6 +410,7 @@ public class TransactionService {
             Money.Currency.valueOf(rs.getString("currency")), rs.getString("payment_method"),
             rs.getString("source"), rs.getObject("created_by", UUID.class), rs.getBoolean("before_merge"),
             rs.getObject("place_id", UUID.class), rs.getBigDecimal("gross_amount"), rs.getObject("tithe_of", UUID.class),
-            rs.getObject("tithe_id", UUID.class), rs.getObject("recurring_id", UUID.class), rs.getBoolean("from_close"));
+            rs.getObject("tithe_id", UUID.class), rs.getObject("recurring_id", UUID.class), rs.getBoolean("from_close"),
+            rs.getObject("debt_id", UUID.class));
     }
 }

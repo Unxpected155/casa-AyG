@@ -12,6 +12,10 @@ public final class PushServiceTextAccess {
         return PushService.recurringText(today, items);
     }
 
+    public static String debtText(LocalDate today, List<String[]> items) {
+        return PushService.debtText(today, items);
+    }
+
     /** Cada elemento: {categoría, nivel, es de la casa}. */
     public static String budgetText(List<Object[]> hits) {
         return PushService.budgetText(hits.stream()

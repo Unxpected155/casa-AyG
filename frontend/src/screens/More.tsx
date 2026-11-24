@@ -48,6 +48,7 @@ export function More() {
     family
       ? { route: "/casa", icon: "home", title: "La casa", detail: "Dinero personal, cierre del mes y quién cambió qué" }
       : { route: "/boda", icon: "rings", title: "La casa", detail: "Cuando se casen, unan sus espacios en uno compartido" },
+    { route: "/deudas", icon: "debt", title: "Deudas", detail: "Lo que le debes a alguien y cuánto te falta" },
     { route: "/facturas", icon: "receipt", title: "Facturas", detail: "Las que llegan al buzón, para anotarlas con un toque",
       badge: pending },
     { route: "/historia", icon: "history", title: "Historia", detail: "Cómo van los meses y qué cambió contra tu promedio" },

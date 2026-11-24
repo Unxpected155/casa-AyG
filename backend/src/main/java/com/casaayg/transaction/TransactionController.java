@@ -49,7 +49,7 @@ class TransactionController {
      */
     record TransactionRequest(@NotNull UUID categoryId, @NotNull LocalDate date, @NotNull String description,
                               @NotNull BigDecimal amount, @NotNull Money.Currency currency, String paymentMethod,
-                              UUID placeId, BigDecimal grossAmount, Boolean tithe, UUID recurringId) {
+                              UUID placeId, BigDecimal grossAmount, Boolean tithe, UUID recurringId, UUID debtId) {
 
         TransactionData toData() {
             if (date.isBefore(MIN_DATE) || date.isAfter(LocalDate.now().plusYears(1))) {
@@ -58,7 +58,7 @@ class TransactionController {
             return new TransactionData(categoryId, date, new Description(description), new Money(amount, currency),
                 Text.optionalPaymentMethod(paymentMethod), placeId,
                 grossAmount == null ? null : new Money(grossAmount, currency).amount(), Boolean.TRUE.equals(tithe),
-                recurringId);
+                recurringId, debtId);
         }
     }
 

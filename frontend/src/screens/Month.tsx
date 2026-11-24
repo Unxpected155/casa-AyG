@@ -3,6 +3,7 @@ import { api, messageOf } from "../api";
 import { Balance } from "../components/Balance";
 import { cdpDue } from "../components/CdpPanel";
 import { DueList } from "../components/Recurring";
+import { DebtLine } from "./Debts";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
@@ -62,12 +63,13 @@ export function Month() {
   }, [space, month.year, month.month, version]);
 
   // Las líneas de avance se llenan como un subrayado a lápiz; el total cuenta una vez.
+  // clearProps: al terminar vuelve a mandar el CSS (--fill), no el transform en línea.
   useGSAP(() => {
     if (!summary) return;
     const total = ledger.current?.querySelector<HTMLElement>("[data-count]");
     if (total) countUp(total, Math.round(summary.expenses.crc), (n) => money(n, "CRC"));
     return whenMotionAllowed(() => {
-      gsap.from(".rule-fill", { scaleX: 0, duration: 0.6, ease: "expo.out", stagger: 0.025 });
+      gsap.from(".rule-fill", { scaleX: 0, duration: 0.6, ease: "expo.out", stagger: 0.025, clearProps: "transform" });
     });
   }, { scope: ledger, dependencies: [summary] });
 
@@ -151,6 +153,7 @@ export function Month() {
             </section>
 
             {isCurrentMonth && <DueList />}
+            {isCurrentMonth && <DebtLine />}
 
             {GROUPS.map((group) => (
               <GroupSection

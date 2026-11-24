@@ -2196,3 +2196,85 @@ fieldset {
 .undo-toast.error {
   background: var(--over);
 }
+
+/* ---------- Deudas (V22): cuaderno de fiado, una persona por renglón de título ---------- */
+.debt-total {
+  margin: var(--s2) 0 var(--s6);
+}
+
+.debt-creditor {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+/* El total por persona en tinta y con cifras de libro, no en mayúsculas de etiqueta. */
+.debt-creditor .figure {
+  font-family: var(--font-serif);
+  font-size: var(--t-md);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+}
+
+.debt .row-main {
+  align-items: center;
+}
+
+.debt .row-name .who {
+  width: 24px;
+  height: 24px;
+}
+
+.debt-left {
+  color: var(--ink-soft);
+  font-size: var(--t-sm);
+}
+
+.debt .row-amounts {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+.debt .row-amounts .figure {
+  font-family: var(--font-serif);
+}
+
+.debt .due-when .icon,
+.debt .due-when svg {
+  vertical-align: -2px;
+}
+
+.debt-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--s2);
+}
+
+/* Saldada: tachada a lápiz, como en el cuaderno, y en tinta suave. */
+.debt.settled .row-name {
+  color: var(--ink-soft);
+}
+
+.debt.settled .row-amounts .figure {
+  color: var(--ink-soft);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: var(--rule-strong);
+}
+
+.debt-settled {
+  margin-top: var(--s6);
+}
+
+.debt-hint {
+  margin-top: var(--s6);
+}
+
+/* Línea de «Deudas» en el mes: un renglón que lleva a la pantalla. */
+.debt-line .row-button {
+  align-items: center;
+}
