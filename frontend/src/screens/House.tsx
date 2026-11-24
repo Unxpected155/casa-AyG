@@ -195,6 +195,7 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
   const [rest, setRest] = useState("");
   const [preview, setPreview] = useState<ClosePreview | null>(null);
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const options = crcOnly(homePlaces);
   // El dinero personal no sale de lo apartado (un CDP a plazo, el sobre de una meta).
   const sources = options.filter((p) => !isReserved(p));
@@ -253,6 +254,26 @@ function CloseMonth({ familyId, house, homePlaces, onDone, onError }: PartProps 
       setBusy(false);
     }
   };
+
+  // Antes de los últimos días del mes, el cierre es una línea: todavía falta anotar cosas.
+  const daysInMonth = new Date(now.year, now.month, 0).getDate();
+  const closeFrom = daysInMonth - 4;
+  if (isCurrent && new Date().getDate() < closeFrom && !expanded) {
+    return (
+      <section className="block" aria-labelledby="close-title">
+        <h2 id="close-title" className="section-title">Cerrar el mes</h2>
+        <p>
+          {monthLabel(month)} se cierra al final del mes, desde el {closeFrom}: así cuenta todo lo que anoten.
+          {preview && preview.perPerson > 0 && (
+            <> Por ahora, a cada quien le tocarían <strong className="figure">{money(preview.perPerson, "CRC")}</strong>.</>
+          )}
+        </p>
+        <button type="button" className="button ghost small" onClick={() => setExpanded(true)}>
+          Ver el cierre y meses anteriores
+        </button>
+      </section>
+    );
+  }
 
   return (
     <section className="block" aria-labelledby="close-title">

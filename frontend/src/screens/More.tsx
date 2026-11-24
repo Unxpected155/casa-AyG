@@ -14,6 +14,22 @@ interface Item {
   badge?: number;
 }
 
+const GLOSSARY: [string, string][] = [
+  ["Hoy tienes", "Todo lo que hay en tus cuentas, sobres y CDP, sumado."],
+  ["Disponible", "Lo que puedes usar sin tocar lo apartado."],
+  ["Apartado", "Lo que está en un CDP o en la cuenta de una meta: ya tiene dueño."],
+  ["Ahorro del mes", "Lo que pasaste al CDP o a una meta. No es un gasto: sigue siendo tuyo."],
+  ["Sobre", "Una cuenta dentro de otra para separar plata, como «Comida» o «Salidas»."],
+  ["CDP", "Plata a plazo en el banco. La app calcula intereses e impuesto y te avisa cuando vence."],
+  ["La casa", "El espacio que comparten. Todo el dinero entra ahí."],
+  ["Aporte", "Pasar plata de lo tuyo a la casa."],
+  ["Dinero personal", "Lo que la casa le da a cada quien al cerrar el mes: un monto fijo más el bono."],
+  ["Bono", "Un porcentaje de lo que sobró en la casa ese mes, igual para los dos."],
+  ["Cerrar el mes", "Calcula lo que sobró y paga el dinero personal. Si se equivocan, se reabre."],
+  ["Por revisar", "Facturas que llegaron al buzón. Nada se anota solo: tú eliges dónde va."],
+  ["Firma verificada", "La factura viene firmada con una llave oficial. Si no, revisa que reconozcas la compra."],
+];
+
 /** «Más»: todo lo que no cabe en la barra de abajo, a un toque y explicado en una línea. */
 export function More() {
   const { spaces, selectSpace, reloadSession, version } = useApp();
@@ -68,6 +84,18 @@ export function More() {
           </li>
         ))}
       </ul>
+      <details className="more-section glossary">
+        <summary>
+          <span className="section-title">¿Qué significa cada cosa?</span>
+          <span className="muted small">Las palabras de la app, en una línea cada una</span>
+        </summary>
+        <dl>
+          {GLOSSARY.map(([term, meaning]) => (
+            <div key={term}><dt>{term}</dt><dd>{meaning}</dd></div>
+          ))}
+        </dl>
+      </details>
+
       <button type="button" className="button ghost danger menu-exit" onClick={exit}>
         <Icon name="logout" size={18} /> Cerrar sesión
       </button>

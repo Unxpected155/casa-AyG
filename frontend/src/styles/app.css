@@ -2130,3 +2130,54 @@ fieldset {
 .simulator-result p {
   margin: 0;
 }
+
+/* ---------- Glosario en «Más» ---------- */
+.glossary dl {
+  display: grid;
+  gap: var(--s3);
+  margin: var(--s3) 0 var(--s5);
+}
+
+.glossary dt {
+  font-weight: 600;
+}
+
+.glossary dd {
+  margin: 2px 0 0;
+  color: var(--ink-soft);
+}
+
+/* ---------- «Deshacer» después de borrar ---------- */
+.undo-toast {
+  position: fixed;
+  left: 50%;
+  /* Encima del botón «Anotar» (84 px + su alto), para no taparlo. */
+  bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: calc(var(--z-fab) + 1);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: min(calc(100% - var(--s6)), 480px);
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 6px 24px oklch(0.2 0.02 55 / 0.25);
+}
+
+.undo-toast > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.undo-toast .button {
+  flex: none;
+  color: var(--paper);
+  border-color: var(--paper);
+}
+
+.undo-toast.error {
+  background: var(--over);
+}
