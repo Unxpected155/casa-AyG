@@ -154,7 +154,7 @@ function MonthsChart({ months }: { months: HistoryMonth[] }) {
       </svg>
       <figcaption className="chart-readout" aria-live="polite">
         <strong>{monthLabel({ year: Number(m.month.slice(0, 4)), month: Number(m.month.slice(5, 7)) })}</strong>:{" "}
-        entró <span className="figure">{money(m.income, "CRC")}</span>, salió <span className="figure">{money(m.expenses, "CRC")}</span>
+        entró <span className="figure income">{money(m.income, "CRC")}</span>, salió <span className="figure expense">{money(m.expenses, "CRC")}</span>
         {m.savingsRate != null && <>; te sobró el <strong className="figure">{m.savingsRate} %</strong></>}.
       </figcaption>
     </figure>
@@ -179,8 +179,8 @@ function MonthsTable({ months }: { months: HistoryMonth[] }) {
         {[...months].reverse().map((m) => (
           <tr key={m.month}>
             <th scope="row">{shortMonth(m.month)}</th>
-            <td className="figure">{money(m.income, "CRC")}</td>
-            <td className="figure">{money(m.expenses, "CRC")}</td>
+            <td className="figure income">{money(m.income, "CRC")}</td>
+            <td className="figure expense">{money(m.expenses, "CRC")}</td>
             <td className={`figure${m.saved < 0 ? " negative" : ""}`}>
               {m.savingsRate != null ? `${m.savingsRate} %` : "—"}
             </td>

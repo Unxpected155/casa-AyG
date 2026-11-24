@@ -135,8 +135,8 @@ export function Month() {
               <MonthFlow summary={summary} />
               <p className="overview-detail">
                 Si todo fuera en dólares:
-                {summary.income.totalUsd > 0 && <> entraron <span className="figure">{money(summary.income.totalUsd, "USD")}</span> y</>}
-                {" "}salieron <span className="figure">{money(summary.expenses.totalUsd, "USD")}</span>.
+                {summary.income.totalUsd > 0 && <> entraron <span className="figure income">{money(summary.income.totalUsd, "USD")}</span> y</>}
+                {" "}salieron <span className="figure expense">{money(summary.expenses.totalUsd, "USD")}</span>.
               </p>
               <IncomeSplit summary={summary} />
               <button type="button" className="button ghost small history-link" onClick={() => navigate("/historia")}>
@@ -192,8 +192,8 @@ function MonthFlow({ summary }: { summary: Summary }) {
       <p className="overview-line">
         {income.crc > 0 ? (
           <>
-            Entraron <span className="figure">{money(inCrc, "CRC")}</span> y salieron{" "}
-            <strong data-count className="figure">{money(outCrc, "CRC")}</strong>
+            Entraron <span className="figure income">{money(inCrc, "CRC")}</span> y salieron{" "}
+            <strong data-count className="figure expense">{money(outCrc, "CRC")}</strong>
             {savedCrc > 0 && <>; apartaste <span className="figure">{money(savedCrc, "CRC")}</span></>}
             {left >= 0
               ? <>: te quedan <strong className="figure">{money(left, "CRC")}</strong> del mes.</>
@@ -202,15 +202,15 @@ function MonthFlow({ summary }: { summary: Summary }) {
                 : <>: gastaste <strong className="figure">{money(-left, "CRC")}</strong> más de lo que entró.</>}
           </>
         ) : (
-          <>Van <strong data-count className="figure">{money(outCrc, "CRC")}</strong> en gastos este mes.</>
+          <>Van <strong data-count className="figure expense">{money(outCrc, "CRC")}</strong> en gastos este mes.</>
         )}
       </p>
       {(income.usd > 0 || expenses.usd > 0) && (
         <p className="overview-detail">
           En dólares:
-          {income.usd > 0 && <> entraron <span className="figure">{money(income.usd, "USD")}</span></>}
+          {income.usd > 0 && <> entraron <span className="figure income">{money(income.usd, "USD")}</span></>}
           {income.usd > 0 && expenses.usd > 0 && " y"}
-          {expenses.usd > 0 && <> salieron <span className="figure">{money(expenses.usd, "USD")}</span></>}.
+          {expenses.usd > 0 && <> salieron <span className="figure expense">{money(expenses.usd, "USD")}</span></>}.
         </p>
       )}
     </>

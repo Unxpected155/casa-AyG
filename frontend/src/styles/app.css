@@ -403,8 +403,15 @@
   white-space: nowrap;
 }
 
-.entry-amount.income {
+.entry-amount.income,
+.figure.income {
   color: var(--ok);
+}
+
+/* Gastos en rojo; el signo «−» acompaña para no depender solo del color. */
+.entry-amount.expense,
+.figure.expense {
+  color: var(--expense);
 }
 
 .load-more {
