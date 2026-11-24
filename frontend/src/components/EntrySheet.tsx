@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { api, messageOf } from "../api";
 import { amountChange, amountToInput, GROUP_LABEL, money, parseAmount, todayIso } from "../format";
@@ -41,8 +41,7 @@ interface EntrySheetProps {
 export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom, preset, onClose }: EntrySheetProps) {
   const { space, categories, places, touch, memberName } = useApp();
   const undo = useUndo();
-  const sheet = useRef<HTMLDivElement>(null);
-  const backdrop = useRef<HTMLDivElement>(null);
+  const sheet = useRef<HTMLDialogElement>(null);
   const amountInput = useRef<HTMLInputElement>(null);
 
   const editingCategory = categories.find((c) => c.id === editing?.categoryId);
@@ -98,26 +97,23 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     if (!editingTransfer) amountInput.current?.focus({ preventScroll: true });
   };
 
+  // <dialog> nativo en modo modal: el navegador deja la página de atrás inerte, mantiene el foco
+  // adentro, y Esc o el gesto de «atrás» de Android la cierran (evento close → onClose).
+  // Va antes de la animación: el monto solo se puede enfocar con la hoja ya abierta.
+  useLayoutEffect(() => {
+    const dialog = sheet.current;
+    if (dialog && !dialog.open) dialog.showModal();
+  }, []);
+
   useGSAP(() => {
     let animated = false;
     const revert = whenMotionAllowed(() => {
       animated = true;
-      gsap.from(backdrop.current, { autoAlpha: 0, duration: 0.2 });
       gsap.from(sheet.current, { yPercent: 100, duration: 0.32, ease: "expo.out", onComplete: focusAmount });
     });
     if (!animated) focusAmount();
     return revert;
   });
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    document.body.classList.add("sheet-open");
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.classList.remove("sheet-open");
-    };
-  }, [onClose]);
 
   // Al abrir una hoja nueva: el último lugar que usaste.
   useEffect(() => {
@@ -270,15 +266,28 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   const title = editingTransfer ? "Dinero movido" : editing ? "Editar movimiento" : preset ? `Pagar ${preset.description}` : "Anotar";
   const destinations = activePlaces.filter((p) => p.id !== from && (!fromPlace || p.currency === fromPlace.currency));
 
-  // Portal a <body>: un ancestro con transform (la animación de página) volvería relativo
-  // a él cualquier position: fixed, y la hoja quedaría cortada.
+  // Portal a <body> para que la hoja no dependa de la página que la abre (el top layer de
+  // <dialog> ya la saca de cualquier ancestro con transform).
   return createPortal(
-    <div className="sheet-layer">
-      <div className="sheet-backdrop" ref={backdrop} onClick={onClose} />
-      <div className="sheet" ref={sheet} role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <dialog
+      className="sheet"
+      ref={sheet}
+      aria-labelledby="sheet-title"
+      // Tocar fuera de la hoja la cierra (closedby="any"; donde no existe, el clic en el fondo).
+      {...({ closedby: "any" } as Record<string, string>)}
+      onClose={onClose}
+      onClick={(e) => {
+        // El clic en el relleno de la hoja también tiene como target el <dialog>: solo cierra
+        // si cae fuera de su rectángulo (en el fondo).
+        const d = sheet.current;
+        if (!d || e.target !== d) return;
+        const r = d.getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
+      }}
+    >
         <div className="sheet-head">
           <h2 id="sheet-title">{title}</h2>
-          <button type="button" className="icon-button" onClick={onClose} aria-label="Cerrar">
+          <button type="button" className="icon-button" onClick={() => sheet.current?.close()} aria-label="Cerrar">
             <Icon name="close" />
           </button>
         </div>
@@ -487,8 +496,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
             </div>
           </form>
         )}
-      </div>
-    </div>,
+    </dialog>,
     document.body,
   );
 }

@@ -162,7 +162,7 @@
   transform: scale(0.97);
 }
 
-@media (min-width: 960px) {
+@media (min-width: 60em) {
   .shell {
     padding-left: calc(var(--s4) + 120px);
     max-width: 800px;
@@ -717,29 +717,14 @@ details.more summary {
   align-items: center;
 }
 
-/* ---------- Hoja de anotar ---------- */
-body.sheet-open {
-  overflow: hidden;
-}
-
-.sheet-layer {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-sheet);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.sheet-backdrop {
-  position: absolute;
-  inset: 0;
-  background: oklch(0.2 0.02 55 / 0.35);
-}
-
+/* ---------- Hoja de anotar (<dialog> nativo, modal) ---------- */
 .sheet {
-  position: relative;
+  /* Pegada abajo y centrada; el top layer la saca de cualquier contenedor. */
+  margin: auto auto 0;
+  border: 0;
+  color: inherit;
   width: min(100%, 560px);
+  max-width: 100%;
   max-height: 92dvh;
   overflow-x: hidden;
   overflow-y: auto;
@@ -747,6 +732,32 @@ body.sheet-open {
   background: var(--paper-raised);
   border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
   box-shadow: var(--shadow);
+}
+
+/* Que el scroll dentro de la hoja o sobre el fondo no mueva la página de atrás
+   (guía prevent-page-scroll-under-modal-dialog; sin overflow en body). */
+.sheet:modal {
+  overscroll-behavior: contain;
+}
+
+.sheet::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background: oklch(0.2 0.02 55 / 0.35);
+  opacity: 1;
+  transition: opacity 200ms var(--ease-out);
+}
+
+@starting-style {
+  .sheet[open]::backdrop {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet::backdrop {
+    transition: none;
+  }
 }
 
 .sheet-head {
@@ -1787,12 +1798,9 @@ fieldset {
 
 /* En el teléfono la hoja ocupa la pantalla completa, desde arriba: el título y los tipos
    (Gasto / Ingreso / Mover) siempre a la vista, y el teclado no la deja "corrida". */
-@media (max-width: 640px) {
-  .sheet-layer {
-    align-items: stretch;
-  }
-
+@media (max-width: 40em) {
   .sheet {
+    margin: 0;
     width: 100%;
     height: 100dvh;
     max-height: 100dvh;

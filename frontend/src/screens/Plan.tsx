@@ -136,6 +136,8 @@ export function Plan() {
         </div>
         <p className="hint">Cuánto planean gastar o ahorrar este mes en cada categoría, en colones.</p>
 
+        {/* Un <form>: «Ir/Enter» en el teclado del teléfono guarda el presupuesto. */}
+        <form noValidate onSubmit={(e) => { e.preventDefault(); if (!readOnly && !saving) void save(); }}>
         {GROUPS.filter((g) => g !== "INGRESO").map((group) => {
           const items = categories.filter((c) => c.group === group && plannable(c, planned));
           if (items.length === 0) return null;
@@ -175,11 +177,12 @@ export function Plan() {
             {space.kind === "FAMILIA" && personal && (
               <button type="button" className="button ghost" onClick={bringMine}>Sumar mi presupuesto personal</button>
             )}
-            <button type="button" className="button primary" onClick={save} disabled={saving}>
+            <button type="submit" className="button primary" disabled={saving}>
               {saving ? "Guardando…" : "Guardar presupuesto"}
             </button>
           </div>
         )}
+        </form>
       </section>
 
       <RecurringManager readOnly={readOnly} />

@@ -230,7 +230,93 @@ class AuthenticationTest extends WebTestSupport {
             .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void reautenticarseConLaPasskeyDeOtraPersonaSeRechaza() throws Exception {
+        TestData.AppUser other;
+        try (Connection su = asSuperuser()) {
+            other = TestData.adminCreateUser(su, "Otra persona");
+        }
+        ClientPlatform mine = phone();
+        ClientPlatform theirs = phone();
+        byte[] myKey = enrollPasskey(mine, user);
+        byte[] theirKey = enrollPasskey(theirs, other);
+
+        MockHttpSession session = new MockHttpSession();
+        passkeyLogin(session, mine, myKey).andExpect(status().isOk());
+
+        // Con sesión, las opciones piden solo las passkeys de quien la tiene.
+        Map<String, Object> request = json(mvc.perform(post("/webauthn/authenticate/options").session(session).with(csrf()))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat((List<Map<String, Object>>) request.get("allowCredentials"))
+            .extracting(c -> c.get("id")).containsExactly(B64URL.encodeToString(myKey));
+
+        // Una passkey válida, pero de otra persona: no re-autentica ni cambia el dueño de la sesión.
+        passkeyLogin(session, theirs, theirKey).andExpect(status().isUnauthorized());
+        assertThat(json(mvc.perform(get("/api/me").session(session)).andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString())).containsEntry("username", user.username());
+
+        // Para la Signal API: solo las passkeys propias, con el rpId del servidor.
+        Map<String, Object> accepted = json(mvc.perform(get("/api/me/passkeys/accepted").session(session))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(accepted).containsEntry("credentialIds", List.of(B64URL.encodeToString(myKey)))
+            .containsKeys("rpId", "userId");
+        assertThat((String) accepted.get("userId")).matches("[A-Za-z0-9_-]{22}");
+
+        // La propia sí.
+        passkeyLogin(session, mine, myKey).andExpect(status().isOk());
+    }
+
     // --- helpers ------------------------------------------------------------------------
+
+    private static ClientPlatform phone() {
+        return new ClientPlatform(new Origin("http://localhost"),
+            new WebAuthnAuthenticatorAdaptor(EmulatorUtil.NONE_ATTESTATION_AUTHENTICATOR));
+    }
+
+    /** Inscripción con el código de la persona y registro de una passkey; devuelve su ID. */
+    private byte[] enrollPasskey(ClientPlatform phone, TestData.AppUser who) throws Exception {
+        MockHttpSession enroll = new MockHttpSession();
+        codeLogin(enroll, who.username(), who.enrollmentCode()).andExpect(status().isOk());
+        Map<String, Object> options = json(mvc.perform(post("/webauthn/register/options").session(enroll).with(csrf()))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        PublicKeyCredential<AuthenticatorAttestationResponse, ?> created = phone.create(creationOptions(options));
+        String credentialId = B64URL.encodeToString(created.getRawId());
+        mvc.perform(post("/webauthn/register").session(enroll).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(toJson(Map.of("publicKey", Map.of("label", "Teléfono de prueba", "credential", Map.of(
+                    "id", credentialId,
+                    "rawId", credentialId,
+                    "type", "public-key",
+                    "clientExtensionResults", Map.of(),
+                    "response", Map.of(
+                        "attestationObject", B64URL.encodeToString(created.getResponse().getAttestationObject()),
+                        "clientDataJSON", B64URL.encodeToString(created.getResponse().getClientDataJSON()),
+                        "transports", List.of("internal"))))))))
+            .andExpect(status().isOk());
+        return created.getRawId();
+    }
+
+    /** Pide opciones en la sesión y firma con la passkey indicada. */
+    private org.springframework.test.web.servlet.ResultActions passkeyLogin(MockHttpSession session, ClientPlatform phone,
+                                                                            byte[] credential) throws Exception {
+        Map<String, Object> request = json(mvc.perform(post("/webauthn/authenticate/options").session(session).with(csrf()))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        PublicKeyCredential<AuthenticatorAssertionResponse, ?> assertion = phone.get(requestOptions(request, credential));
+        AuthenticatorAssertionResponse r = assertion.getResponse();
+        String credentialId = B64URL.encodeToString(credential);
+        return mvc.perform(post("/login/webauthn").session(session).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(toJson(Map.of(
+                "id", credentialId,
+                "rawId", credentialId,
+                "credType", "public-key",
+                "clientExtensionResults", Map.of(),
+                "response", Map.of(
+                    "authenticatorData", B64URL.encodeToString(r.getAuthenticatorData()),
+                    "clientDataJSON", B64URL.encodeToString(r.getClientDataJSON()),
+                    "signature", B64URL.encodeToString(r.getSignature()))))));
+    }
 
     private org.springframework.test.web.servlet.ResultActions codeLogin(MockHttpSession session, String username,
                                                                          String code) throws Exception {

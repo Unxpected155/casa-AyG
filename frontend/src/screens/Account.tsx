@@ -8,7 +8,7 @@ import { dateLabel } from "../format";
 import { navigate } from "../router";
 import { useApp } from "../state";
 import type { Passkey } from "../types";
-import { logout, registerPasskey } from "../webauthn";
+import { logout, registerPasskey, syncAcceptedPasskeys } from "../webauthn";
 
 export function Account() {
   const { session, spaces, reloadSession } = useApp();
@@ -22,6 +22,7 @@ export function Account() {
   const load = () => api.get<Passkey[]>("/api/me/passkeys").then(setPasskeys).catch(() => setPasskeys([]));
   useEffect(() => {
     void load();
+    void syncAcceptedPasskeys();
   }, []);
 
   const run = async (action: () => Promise<void>, ok: string, fallback: string) => {
@@ -46,6 +47,7 @@ export function Account() {
 
   const removePasskey = (id: string) => run(async () => {
     await withPasskeyConfirm(() => api.del(`/api/me/passkeys/${encodeURIComponent(id)}`));
+    void syncAcceptedPasskeys();
     await load();
     await reloadSession();
   }, "Passkey borrada.", "No se pudo borrar la passkey.");
@@ -125,15 +127,17 @@ export function Account() {
             </li>
           ))}
         </ul>
-        <div className="add-category">
+        {/* Un <form> para que «Ir/Enter» en el teclado agregue la passkey. */}
+        <form className="add-category" onSubmit={(e) => { e.preventDefault(); void addPasskey(); }}>
           <label className="field grow">
             <span>Nombre del dispositivo nuevo</span>
-            <input value={label} maxLength={100} onChange={(e) => setLabel(e.target.value)} placeholder="Laptop" />
+            <input value={label} maxLength={100} onChange={(e) => setLabel(e.target.value)} placeholder="Laptop"
+              enterKeyHint="done" autoComplete="off" />
           </label>
-          <button type="button" className="button secondary" onClick={addPasskey} disabled={busy}>
+          <button type="submit" className="button secondary" disabled={busy}>
             <Icon name="plus" size={18} /> Agregar passkey
           </button>
-        </div>
+        </form>
       </details>
 
       <Notifications />

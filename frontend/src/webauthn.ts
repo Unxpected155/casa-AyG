@@ -2,7 +2,7 @@
 // El navegador firma un desafío del servidor con la llave privada del dispositivo; la llave
 // nunca sale de él y queda ligada al dominio (por eso una página falsa no puede usarla).
 
-import { csrfHeaders } from "./api";
+import { api, csrfHeaders } from "./api";
 
 const b64url = {
   encode(buffer: ArrayBuffer): string {
@@ -121,6 +121,42 @@ export async function registerPasskey(label: string, confirmIfNeeded = true): Pr
       },
     },
   });
+}
+
+// --- Signal API: que el gestor de contraseñas del teléfono sepa qué passkeys siguen valiendo ---
+
+type SignalApi = {
+  signalAllAcceptedCredentials?: (options: {
+    rpId: string;
+    userId: string;
+    allAcceptedCredentialIds: string[];
+  }) => Promise<void>;
+};
+
+/** base64url sin relleno, que es lo único que el navegador acepta aquí (si no, lanza TypeError). */
+function isBase64Url(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && value.length % 4 !== 1 && /^[A-Za-z0-9_-]+$/.test(value);
+}
+
+/**
+ * Le pasa al gestor de contraseñas la lista de passkeys que el servidor todavía acepta, para que
+ * una borrada aquí deje de ofrecerse en el teléfono. Es sincronización pasiva: si el navegador no
+ * la soporta (Firefox) o algo falla, no pasa nada visible.
+ */
+export async function syncAcceptedPasskeys(): Promise<void> {
+  const signal = (window.PublicKeyCredential as unknown as SignalApi | undefined)?.signalAllAcceptedCredentials;
+  if (!signal) return;
+  try {
+    const { rpId, userId, credentialIds } = await api.get<{ rpId: string; userId: string; credentialIds: string[] }>(
+      "/api/me/passkeys/accepted");
+    if (!rpId || !isBase64Url(userId) || !credentialIds.every(isBase64Url)) {
+      console.warn("Signal API omitida: IDs que no son base64url.");
+      return;
+    }
+    await signal.call(window.PublicKeyCredential, { rpId, userId, allAcceptedCredentialIds: credentialIds });
+  } catch (e) {
+    console.warn("Signal API:", e);
+  }
 }
 
 export async function loginWithCode(username: string, code: string): Promise<void> {

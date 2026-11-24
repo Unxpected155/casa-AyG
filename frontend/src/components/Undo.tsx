@@ -38,6 +38,7 @@ export function UndoProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<Pending | null>(null);
   const [error, setError] = useState<string | null>(null);
   const current = useRef<Pending | null>(null);
+  const toast = useRef<HTMLDivElement>(null);
 
   const commit = useCallback(async (p: Pending) => {
     window.clearTimeout(p.timer);
@@ -57,7 +58,13 @@ export function UndoProvider({ children }: { children: ReactNode }) {
   const schedule = useCallback((id: string, label: string, run: () => Promise<unknown>) => {
     if (current.current) void commit(current.current);
     const p: Pending = { id, label, run, timer: 0 };
-    p.timer = window.setTimeout(() => void commit(p), UNDO_MS);
+    // Si el foco está en «Deshacer» cuando se acaba el tiempo, se espera a que salga:
+    // quien está por tocarlo con teclado o lector de pantalla no lo pierde.
+    const expire = () => {
+      if (toast.current?.contains(document.activeElement)) p.timer = window.setTimeout(expire, 1000);
+      else void commit(p);
+    };
+    p.timer = window.setTimeout(expire, UNDO_MS);
     current.current = p;
     setError(null);
     setPending(p);
@@ -87,17 +94,23 @@ export function UndoProvider({ children }: { children: ReactNode }) {
   return (
     <Ctx.Provider value={value}>
       {children}
-      {(pending || error) && (
-        <div className={`undo-toast${error ? " error" : ""}`} role="status" aria-live="polite">
-          <span>{error ?? pending?.label}</span>
-          {pending && !error && (
-            <button type="button" className="button secondary small" onClick={undo}>Deshacer</button>
-          )}
-          {error && (
-            <button type="button" className="button ghost small" onClick={() => setError(null)}>Cerrar</button>
+      {/* La región existe desde el inicio (si no, los lectores de pantalla no anuncian lo que
+          entra) y tiene nombre, para encontrar los avisos siempre en el mismo lugar. */}
+      <div role="region" aria-label="Avisos">
+        <div aria-live="polite">
+          {(pending || error) && (
+            <div ref={toast} className={`undo-toast${error ? " error" : ""}`}>
+              <span>{error ?? pending?.label}</span>
+              {pending && !error && (
+                <button type="button" className="button secondary small" onClick={undo}>Deshacer</button>
+              )}
+              {error && (
+                <button type="button" className="button ghost small" onClick={() => setError(null)}>Cerrar</button>
+              )}
+            </div>
           )}
         </div>
-      )}
+      </div>
     </Ctx.Provider>
   );
 }
