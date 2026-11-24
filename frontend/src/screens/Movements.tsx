@@ -3,6 +3,7 @@ import { api, messageOf } from "../api";
 import { EntrySheet } from "../components/EntrySheet";
 import { Icon } from "../components/Icon";
 import { Shell } from "../components/Shell";
+import { useUndo } from "../components/Undo";
 import { dayLabel, initials, money } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { useApp } from "../state";
@@ -22,6 +23,7 @@ const PAGE_SIZE = 50;
 /** Los movimientos del mes como asientos de libreta, agrupados por día. */
 export function Movements() {
   const { space, month, version, categories, places, memberName } = useApp();
+  const { hidden } = useUndo();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [viewingTransfer, setViewingTransfer] = useState<Transfer | null>(null);
   const [items, setItems] = useState<Transaction[] | null>(null);
@@ -88,15 +90,16 @@ export function Movements() {
   const byDay = useMemo(() => {
     const groups = new Map<string, Row[]>();
     const add = (date: string, row: Row) => groups.set(date, [...(groups.get(date) ?? []), row]);
-    for (const t of items ?? []) add(t.date, { kind: "tx", t });
+    // Lo que está por borrarse (con «Deshacer») ya no se muestra.
+    for (const t of items ?? []) if (!hidden.has(t.id)) add(t.date, { kind: "tx", t });
     // El dinero movido se filtra aquí: por lugar (origen o destino) y por nota. Con categoría o en
     // toda la historia no aplica (no tiene categoría, y solo se cargó el del mes).
     const shownTransfers = filters.categoryId || filters.all ? [] : transfers.filter((x) =>
       (!filters.placeId || x.fromPlace === filters.placeId || x.toPlace === filters.placeId)
       && (!filters.q || (x.description ?? "").toLowerCase().includes(filters.q.toLowerCase())));
-    for (const x of shownTransfers) add(x.date, { kind: "transfer", x });
+    for (const x of shownTransfers) if (!hidden.has(x.id)) add(x.date, { kind: "transfer", x });
     return [...groups.entries()].sort(([a], [b]) => b.localeCompare(a));
-  }, [items, transfers, filters]);
+  }, [items, transfers, filters, hidden]);
   const placeName = (id: string | null) => places.find((p) => p.id === id)?.name;
 
   const category = (id: string) => categories.find((c) => c.id === id);

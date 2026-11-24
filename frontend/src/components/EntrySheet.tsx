@@ -8,6 +8,7 @@ import { useApp } from "../state";
 import type { Currency, Group, Place, Suggestion, Transaction, TransactionPage, Transfer } from "../types";
 import { orderedPlaces } from "./Balance";
 import { Icon } from "./Icon";
+import { useUndo } from "./Undo";
 
 type Kind = "gasto" | "ingreso" | "mover";
 
@@ -39,6 +40,7 @@ interface EntrySheetProps {
  */
 export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom, preset, onClose }: EntrySheetProps) {
   const { space, categories, places, touch, memberName } = useApp();
+  const undo = useUndo();
   const sheet = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
   const amountInput = useRef<HTMLInputElement>(null);
@@ -252,17 +254,16 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
     }
   };
 
-  const remove = async () => {
-    setBusy(true);
-    try {
-      if (editingTransfer) await api.del(`${base}/transfers/${editingTransfer.id}`);
-      else if (editing) await api.del(`${base}/transactions/${editing.id}`);
-      touch();
-      onClose();
-    } catch (e) {
-      setError(messageOf(e, "No se pudo borrar."));
-      setBusy(false);
+  // Se borra en unos segundos, con «Deshacer» mientras tanto (components/Undo.tsx).
+  const remove = () => {
+    if (editingTransfer) {
+      const id = editingTransfer.id;
+      undo.schedule(id, "Borraste el movimiento de dinero.", () => api.del(`${base}/transfers/${id}`));
+    } else if (editing) {
+      const id = editing.id;
+      undo.schedule(id, `Borraste «${editing.description}».`, () => api.del(`${base}/transactions/${id}`));
     }
+    onClose();
   };
 
   const placeName = (id: string) => places.find((p) => p.id === id)?.name ?? "una cuenta";

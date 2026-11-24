@@ -8,13 +8,16 @@ import "./styles/base.css";
 import "./styles/app.css";
 import { App } from "./App";
 import { AppProvider } from "./state";
+import { UndoProvider } from "./components/Undo";
 
 const root = document.getElementById("root");
 if (root) {
   createRoot(root).render(
     <StrictMode>
       <AppProvider>
-        <App />
+        <UndoProvider>
+          <App />
+        </UndoProvider>
       </AppProvider>
     </StrictMode>,
   );
