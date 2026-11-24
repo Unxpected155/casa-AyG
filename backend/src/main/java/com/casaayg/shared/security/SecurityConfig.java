@@ -127,7 +127,9 @@ public class SecurityConfig {
                 .withObjectPostProcessor(new ObjectPostProcessor<WebAuthnAuthenticationFilter>() {
                     @Override
                     public <O extends WebAuthnAuthenticationFilter> O postProcess(O filter) {
-                        filter.setSessionAuthenticationStrategy(onLogin);
+                        // Primero: si ya hay sesión, la passkey tiene que ser de esa misma persona.
+                        filter.setSessionAuthenticationStrategy(new CompositeSessionAuthenticationStrategy(List.of(
+                            new SameUserReauthentication(SecurityContextHolder.getContextHolderStrategy()), onLogin)));
                         filter.setAuthenticationSuccessHandler(passkeySuccess(audit, asUser, jdbc));
                         filter.setAuthenticationFailureHandler(passkeyFailure(audit));
                         return filter;

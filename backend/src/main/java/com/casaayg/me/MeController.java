@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.casaayg.audit.AuditService;
 import com.casaayg.shared.security.AuthCodes;
+import com.casaayg.shared.security.CasaSecurityProperties;
 import com.casaayg.shared.security.CurrentUser;
 import com.casaayg.shared.security.RecentAuthentication;
 import com.casaayg.shared.security.SessionRevoker;
@@ -35,11 +36,13 @@ class MeController {
     private final JdbcClient jdbc;
     private final AuditService audit;
     private final SessionRevoker sessions;
+    private final CasaSecurityProperties security;
 
-    MeController(JdbcClient jdbc, AuditService audit, SessionRevoker sessions) {
+    MeController(JdbcClient jdbc, AuditService audit, SessionRevoker sessions, CasaSecurityProperties security) {
         this.jdbc = jdbc;
         this.audit = audit;
         this.sessions = sessions;
+        this.security = security;
     }
 
     record Me(UUID id, String username, String displayName, int passkeys, int recoveryCodesLeft) {}
@@ -72,6 +75,24 @@ class MeController {
             .query((rs, n) -> new Passkey(rs.getString(1), rs.getString(2), instant(rs.getTimestamp(3)),
                 instant(rs.getTimestamp(4))))
             .list();
+    }
+
+    /**
+     * Lo que el navegador necesita para decirle al gestor de contraseñas qué passkeys siguen
+     * valiendo (Signal API): así una passkey borrada aquí deja de aparecer en el teléfono.
+     * El rpId sale del servidor (el mismo con que se registraron), nunca del hostname.
+     * IDs en base64url sin relleno, que es como ya se guardan.
+     */
+    record AcceptedPasskeys(String rpId, String userId, List<String> credentialIds) {}
+
+    @GetMapping("/passkeys/accepted")
+    @Transactional(readOnly = true)
+    AcceptedPasskeys acceptedPasskeys() {
+        UUID me = CurrentUser.require();
+        String handle = jdbc.sql("SELECT user_handle(?)").param(me).query(String.class).single();
+        List<String> ids = jdbc.sql("SELECT credential_id FROM user_credentials WHERE user_entity_user_id = ?")
+            .param(handle).query(String.class).list();
+        return new AcceptedPasskeys(security.rpId(), handle, ids);
     }
 
     @DeleteMapping("/passkeys/{credentialId}")

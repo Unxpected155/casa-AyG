@@ -16,6 +16,8 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--t-md);
+  /* Mientras carga la fuente, la de respaldo ocupa lo mismo: el texto no "salta". */
+  font-size-adjust: from-font;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
