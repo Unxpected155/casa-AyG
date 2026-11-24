@@ -54,6 +54,8 @@ export interface Transaction {
   recurringId: string | null;
   /** Lo anotó el cierre del mes de la casa: no se edita a mano (se reabre el mes). */
   fromClose: boolean;
+  /** La deuda que abona (V22), o null. */
+  debtId: string | null;
 }
 
 export interface HistoryMonth {
@@ -125,6 +127,23 @@ export interface Recurring {
   paidTransactionId: string | null;
   paidAmount: number | null;
   paidOn: string | null;
+}
+
+/** Una deuda con una persona (V22). Lo que falta sale de los abonos; nunca se guarda. */
+export interface Debt {
+  id: string;
+  creditor: string;
+  concept: string;
+  amount: number;
+  currency: Currency;
+  borrowedOn: string;
+  dueDate: string | null;
+  paid: number;
+  remaining: number;
+  payments: number;
+  lastPaidOn: string | null;
+  settledOn: string | null;
+  createdBy: string;
 }
 
 export type PlaceKind = "BANCO" | "SOBRE" | "CDP" | "EFECTIVO";

@@ -47,6 +47,8 @@ class ExportTest extends WebTestSupport {
             "parts", List.of(Map.of("name", "Luna de miel", "amount", "1000000")))))).andExpect(status().isCreated());
         as(a, post(base + "/recurring").content(toJson(Map.of("name", "Internet", "categoryId", servicios.toString(),
             "dueDay", 15, "currency", "CRC", "notifyDaysBefore", 1)))).andExpect(status().isCreated());
+        as(a, post(base + "/debts").content(toJson(Map.of("creditor", "Mamá", "concept", "Citas médicas",
+            "amount", "60000", "currency", "CRC", "borrowedOn", LocalDate.now().toString())))).andExpect(status().isCreated());
         // Algo de B que NO debe salir en la exportación de A.
         as(b, post("/api/spaces/" + b.personalSpace() + "/goals").content(toJson(Map.of("name", "Secreto de B",
             "kind", "NORMAL", "targetAmount", "1", "currency", "CRC")))).andExpect(status().isCreated());
@@ -54,9 +56,9 @@ class ExportTest extends WebTestSupport {
         Map<String, Object> export = json(as(a, get(base + "/export")).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString());
         assertThat(export).containsKeys("format", "categories", "budgets", "transactions", "places", "transfers",
-            "goals", "goalParts", "goalPlaces", "recurringPayments");
+            "goals", "goalParts", "goalPlaces", "recurringPayments", "debts");
         String text = toJson(export);
-        assertThat(text).contains("Casarnos", "Luna de miel", "Internet", "\"cdpRate\":\"2.8500\"", cdp.toString())
+        assertThat(text).contains("Casarnos", "Luna de miel", "Internet", "Citas médicas", "\"cdpRate\":\"2.8500\"", cdp.toString())
             .doesNotContain("Secreto de B");
     }
 

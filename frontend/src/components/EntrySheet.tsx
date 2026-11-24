@@ -21,14 +21,19 @@ interface EntrySheetProps {
   initialKind?: Kind;
   /** Lugar de origen sugerido al abrir en modo "mover". */
   initialFrom?: string;
-  /** Hoja nueva ya llena (pagar un pago fijo). */
+  /** Hoja nueva ya llena (pagar un pago fijo o abonar a una deuda). */
   preset?: {
     categoryId: string;
     description: string;
     amount: number | null;
     currency: Currency;
     placeId: string | null;
-    recurringId: string;
+    recurringId?: string;
+    debtId?: string;
+    /** Lo más que se puede anotar (lo que falta de la deuda). */
+    max?: number;
+    /** Título de la hoja; si no, «Pagar …». */
+    title?: string;
   };
   onClose: () => void;
 }
@@ -205,6 +210,10 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
       if (!categoryId) return setError("Elige una categoría.");
       if (!description.trim()) return setError("Agrega una descripción corta.");
       if (kind === "ingreso" && gross.trim() && !parsedGross) return setError("Revisa el monto bruto.");
+      if (preset?.max != null && Number(parsed) > preset.max) {
+        return setError(`Solo faltan ${money(preset.max, currency, true)}. Escribe ese monto o uno menor.`);
+      }
+      if (preset?.debtId && Number(parsed) === 0) return setError("El abono tiene que ser mayor que cero.");
     }
     setBusy(true);
     setError(null);
@@ -224,7 +233,8 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
         const body = { categoryId, date, description: description.trim(), amount: parsed, currency,
                        paymentMethod: editing?.paymentMethod ?? null, placeId,
                        grossAmount: income ? parsedGross : null, tithe: income && tithe,
-                       recurringId: editing ? undefined : preset?.recurringId ?? null };
+                       recurringId: editing ? undefined : preset?.recurringId ?? null,
+                       debtId: editing ? undefined : preset?.debtId ?? null };
         if (editing) await api.put(`${base}/transactions/${editing.id}`, body);
         else await api.post(`${base}/transactions`, body);
       }
@@ -263,7 +273,7 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   };
 
   const placeName = (id: string) => places.find((p) => p.id === id)?.name ?? "una cuenta";
-  const title = editingTransfer ? "Dinero movido" : editing ? "Editar movimiento" : preset ? `Pagar ${preset.description}` : "Anotar";
+  const title = editingTransfer ? "Dinero movido" : editing ? "Editar movimiento" : preset ? preset.title ?? `Pagar ${preset.description}` : "Anotar";
   const destinations = activePlaces.filter((p) => p.id !== from && (!fromPlace || p.currency === fromPlace.currency));
 
   // Portal a <body> para que la hoja no dependa de la página que la abre (el top layer de
@@ -333,13 +343,16 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
           </div>
         ) : (
           <form onSubmit={submit} noValidate>
-            <div className="segmented" role="group" aria-label="Tipo">
-              <button type="button" aria-pressed={kind === "gasto"} onClick={() => chooseKind("gasto")}>Gasto</button>
-              <button type="button" aria-pressed={kind === "ingreso"} onClick={() => chooseKind("ingreso")}>Ingreso</button>
-              {!editing && activePlaces.length > 1 && (
-                <button type="button" aria-pressed={kind === "mover"} onClick={() => chooseKind("mover")}>Mover</button>
-              )}
-            </div>
+            {/* Un abono siempre es un gasto: sin pestañas. */}
+            {!preset?.debtId && (
+              <div className="segmented" role="group" aria-label="Tipo">
+                <button type="button" aria-pressed={kind === "gasto"} onClick={() => chooseKind("gasto")}>Gasto</button>
+                <button type="button" aria-pressed={kind === "ingreso"} onClick={() => chooseKind("ingreso")}>Ingreso</button>
+                {!editing && activePlaces.length > 1 && (
+                  <button type="button" aria-pressed={kind === "mover"} onClick={() => chooseKind("mover")}>Mover</button>
+                )}
+              </div>
+            )}
 
             <div className="amount-field">
               {kind === "mover" || place ? (
