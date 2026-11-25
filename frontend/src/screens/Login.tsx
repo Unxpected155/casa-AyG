@@ -59,7 +59,7 @@ export function Login() {
             {busy ? "Esperando la passkey…" : "Entrar con passkey"}
           </button>
         ) : (
-          <p className="form-error">Este navegador no admite passkeys. Prueba con Safari o Chrome actualizados.</p>
+          <p className="form-error" role="alert">Este navegador no admite passkeys. Prueba con Safari o Chrome actualizados.</p>
         )}
 
         {error && <p className="form-error" role="alert">{error}</p>}

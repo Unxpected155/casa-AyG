@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { api, messageOf, withPasskeyConfirm } from "../api";
+import { api, ApiError, messageOf, withPasskeyConfirm } from "../api";
 import { Shell } from "../components/Shell";
 import { navigate } from "../router";
 import { useApp } from "../state";
@@ -22,7 +22,7 @@ export function Wedding() {
   const family = spaces.find((s) => s.kind === "FAMILIA" && !s.archived);
   const pending = requests?.find((r) => r.status === "PENDIENTE");
 
-  const act = async (action: () => Promise<unknown>, ok: string) => {
+  const act = async (action: () => Promise<unknown>, ok: string, notFound?: string) => {
     setBusy(true);
     setMessage(null);
     try {
@@ -31,7 +31,8 @@ export function Wedding() {
       await load();
       await reloadSession();
     } catch (e) {
-      setMessage({ tone: "error", text: messageOf(e, "No se pudo completar.") });
+      const text = notFound && e instanceof ApiError && e.status === 404 ? notFound : messageOf(e, "No se pudo completar.");
+      setMessage({ tone: "error", text });
     } finally {
       setBusy(false);
     }
@@ -57,13 +58,14 @@ export function Wedding() {
   const propose = (event: FormEvent) => {
     event.preventDefault();
     void act(() => api.post("/api/merge-requests", { partnerUsername: partner.trim().toLowerCase(), familyName: familyName.trim() }),
-      "Listo. Ahora tu pareja tiene que confirmarlo desde su cuenta.");
+      "Listo. Ahora tu pareja tiene que confirmarlo desde su cuenta.",
+      "No hay nadie con ese usuario. Pídele a tu pareja que lo revise en Perfil: va debajo de su nombre.");
   };
 
   return (
     <Shell>
       <h1 className="page-title">La casa</h1>
-      {message && <p className={message.tone === "ok" ? "form-ok" : "form-error"} role="status">{message.text}</p>}
+      {message && <p className={message.tone === "ok" ? "form-ok" : "form-error"} role={message.tone === "ok" ? "status" : "alert"}>{message.text}</p>}
 
       {family && (
         <section className="block">

@@ -127,6 +127,22 @@ class AuthenticationTest extends WebTestSupport {
         assertThat(auditEvents()).doesNotContain("LOGIN_INSCRIPCION");
     }
 
+    @Test
+    void conDiezPasskeysNoEmpiezaOtraYLoDiceSinError500() throws Exception {
+        try (Connection su = asSuperuser(); var ps = su.prepareStatement("""
+                INSERT INTO casaayg.user_credentials (credential_id, user_entity_user_id, public_key, backup_eligible,
+                                                      backup_state, label)
+                SELECT 'cred-' || g || '-' || ?, casaayg.user_handle(?), decode('00', 'hex'), false, false, 'Prueba ' || g
+                  FROM generate_series(1, 10) g""")) {
+            ps.setString(1, user.username());
+            ps.setObject(2, user.id());
+            ps.executeUpdate();
+        }
+        MockHttpSession session = new MockHttpSession();
+        codeLogin(session, user.username(), user.enrollmentCode()).andExpect(status().isOk());
+        mvc.perform(post("/webauthn/register/options").session(session).with(csrf())).andExpect(status().isConflict());
+    }
+
     // --- Re-autenticación reciente ------------------------------------------------------
 
     @Test

@@ -80,6 +80,7 @@ export async function withPasskeyConfirm<T>(action: () => Promise<T>): Promise<T
 
 /** Mensaje para mostrar: los de la API ya son seguros y genéricos. */
 export function messageOf(error: unknown, fallback: string): string {
+  if (error instanceof Error && "userMessage" in error && typeof error.userMessage === "string") return error.userMessage;
   if (error instanceof ApiError) {
     if (error.status === 404) return "No se encontró. Puede que ya no exista.";
     if (error.status === 400) return "Revisa los datos: algo no tiene el formato esperado.";
