@@ -291,6 +291,27 @@ public class TransactionService {
         changes.tellOwners(spaceId);
     }
 
+    /**
+     * Liga un gasto ya anotado a una deuda (o lo suelta, con {@code debtId} null): «ya lo anoté y
+     * olvidé tocar Abonar». Mismas reglas que al anotar un abono.
+     */
+    @Transactional
+    public TransactionView linkDebt(UUID spaceId, UUID id, UUID debtId) {
+        spaces.requireWritable(spaceId);
+        TransactionView tx = find(spaceId, id);
+        requireNotFromClose(id);
+        if (debtId != null) {
+            boolean income = requireCategory(spaceId, tx.categoryId());
+            if (income || tx.recurringId() != null || tx.titheOf() != null) {
+                throw new ConflictException("Solo un gasto normal puede ser abono de una deuda.");
+            }
+            debts.requirePayable(spaceId, debtId, new Money(tx.amount(), tx.currency()), id);
+        }
+        jdbc.sql("UPDATE transaction SET debt_id = ? WHERE id = ? AND space_id = ?").params(debtId, id, spaceId)
+            .update();
+        return find(spaceId, id);
+    }
+
     /** Un abono: es un gasto, sin diezmo ni pago fijo, y cabe en lo que falta de la deuda. */
     private void requireDebtPayment(UUID spaceId, TransactionData data, boolean income, UUID replacing) {
         if (income || data.recurringId() != null) {

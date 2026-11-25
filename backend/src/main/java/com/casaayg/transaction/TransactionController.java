@@ -99,6 +99,14 @@ class TransactionController {
         return transactions.update(spaceId, id, body.toData());
     }
 
+    record DebtLink(UUID debtId) {}
+
+    /** Ligar un gasto ya anotado a una deuda, o soltarlo ({@code debtId}: null). */
+    @PutMapping("/{id}/debt")
+    TransactionView linkDebt(@PathVariable UUID spaceId, @PathVariable UUID id, @RequestBody DebtLink body) {
+        return transactions.linkDebt(spaceId, id, body.debtId());
+    }
+
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     void delete(@PathVariable UUID spaceId, @PathVariable UUID id) {

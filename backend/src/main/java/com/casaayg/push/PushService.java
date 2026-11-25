@@ -125,8 +125,8 @@ public class PushService {
     }
 
     /**
-     * Cada mañana: las deudas con fecha acordada mañana u hoy a las que aún les falta algo.
-     * Solo dice a quién (nunca montos ni el concepto). Un solo aviso por persona.
+     * Cada mañana: las deudas con fecha acordada (FIN) o cuota del mes (CUOTA) hoy o mañana a las
+     * que aún les falta algo. Solo dice a quién (nunca montos ni el concepto). Un aviso por persona.
      */
     @Scheduled(cron = "0 5 8 * * *", zone = "America/Costa_Rica")
     public void remindDebts() {
@@ -134,29 +134,37 @@ public class PushService {
             return;
         }
         LocalDate today = LocalDate.now(COSTA_RICA);
-        record Due(UUID userId, String creditor, LocalDate dueDate) {}
-        List<Due> due = asUser.run(null, () -> jdbc.sql("SELECT user_id, creditor, due_date FROM debt_reminders(?)")
+        record Due(UUID userId, String creditor, LocalDate dueDate, String kind) {}
+        List<Due> due = asUser.run(null, () -> jdbc.sql("SELECT user_id, creditor, due_date, kind FROM debt_reminders(?)")
             .param(today)
             .query((rs, n) -> new Due(rs.getObject("user_id", UUID.class), rs.getString("creditor"),
-                rs.getObject("due_date", LocalDate.class))).list());
+                rs.getObject("due_date", LocalDate.class), rs.getString("kind"))).list());
         due.stream().collect(java.util.stream.Collectors.groupingBy(Due::userId, java.util.LinkedHashMap::new,
                 java.util.stream.Collectors.toList()))
             .forEach((user, items) -> notify(user, "Deudas", debtText(today, items.stream()
-                .map(d -> new String[] {d.creditor(), d.dueDate().toString()}).toList()), "/deudas"));
+                .map(d -> new String[] {d.creditor(), d.dueDate().toString(), d.kind()}).toList()), "/deudas"));
     }
 
-    /** "Hoy acordaste terminar de pagarle a Mamá. Mañana, a Juan." */
+    /**
+     * "Hoy acordaste terminar de pagarle a Mamá. Mañana toca la cuota de Juan."
+     * Cada elemento: {persona, fecha, FIN|CUOTA}.
+     */
     static String debtText(LocalDate today, List<String[]> items) {
-        java.util.Map<LocalDate, java.util.Set<String>> byDate = new java.util.TreeMap<>();
+        record Key(LocalDate date, boolean installment) {}
+        java.util.Map<Key, java.util.Set<String>> groups = new java.util.TreeMap<>(
+            java.util.Comparator.comparing(Key::date).thenComparing(Key::installment));
         for (String[] item : items) {
-            byDate.computeIfAbsent(LocalDate.parse(item[1]), k -> new java.util.LinkedHashSet<>()).add(item[0]);
+            boolean installment = item.length > 2 && "CUOTA".equals(item[2]);
+            groups.computeIfAbsent(new Key(LocalDate.parse(item[1]), installment), k -> new java.util.LinkedHashSet<>())
+                .add(item[0]);
         }
         List<String> parts = new java.util.ArrayList<>();
-        byDate.forEach((date, names) -> {
+        groups.forEach((key, names) -> {
+            String when = key.date().equals(today) ? "Hoy" : "Mañana";
             String who = String.join(", ", names);
-            parts.add(parts.isEmpty()
-                ? (date.equals(today) ? "Hoy" : "Mañana") + " acordaste terminar de pagarle a " + who + "."
-                : (date.equals(today) ? "Hoy" : "Mañana") + ", a " + who + ".");
+            parts.add(key.installment()
+                ? when + " toca la cuota de " + who + "."
+                : when + " acordaste terminar de pagarle a " + who + ".");
         });
         String text = String.join(" ", parts);
         return text.length() > 200 ? text.substring(0, 197) + "…" : text;

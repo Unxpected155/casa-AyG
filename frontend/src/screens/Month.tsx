@@ -130,6 +130,8 @@ export function Month() {
             </button>
           </section>
         )}
+        {/* Lo que hay que pagar no espera a que el mes tenga movimientos. */}
+        {summary && isEmpty && isCurrentMonth && <><DueList /><DebtLine /></>}
 
         {summary && !isEmpty && (
           <>

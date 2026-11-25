@@ -7,6 +7,7 @@ import { useUndo } from "../components/Undo";
 import { dayLabel, initials, money } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { useApp } from "../state";
+import { useDebts } from "../debts";
 import type { Transaction, TransactionPage, Transfer } from "../types";
 
 interface Filters {
@@ -23,6 +24,8 @@ const PAGE_SIZE = 50;
 /** Los movimientos del mes como asientos de libreta, agrupados por día. */
 export function Movements() {
   const { space, month, version, categories, places, memberName } = useApp();
+  const { debts } = useDebts();
+  const debtName = (id: string) => debts?.find((d) => d.id === id)?.creditor;
   const { hidden } = useUndo();
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [viewingTransfer, setViewingTransfer] = useState<Transfer | null>(null);
@@ -211,6 +214,7 @@ export function Movements() {
                           {c?.name ?? "Categoría"}
                           {placeName(t.placeId) ? <> · {placeName(t.placeId)}</> : t.paymentMethod && <> · {t.paymentMethod}</>}
                           {t.beforeMerge && <> · antes de la boda</>}
+                          {t.debtId && <> · <span className="tag">abono{debtName(t.debtId) ? ` a ${debtName(t.debtId)}` : ""}</span></>}
                         </span>
                       </span>
                       {shared && (

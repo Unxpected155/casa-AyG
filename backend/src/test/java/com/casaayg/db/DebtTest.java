@@ -178,10 +178,16 @@ class DebtTest extends WebTestSupport {
                 }
             }).isInstanceOf(SQLException.class);
             app.rollback();
-            // Tampoco puede cambiar de deuda un abono ya anotado (sin permiso sobre debt_id).
+            // Ligar un gasto ya anotado tampoco puede pasarse, aunque se salte la app.
             TestData.actAs(app, a.id());
-            assertThatThrownBy(() -> app.createStatement().executeUpdate(
-                "UPDATE casaayg.transaction SET debt_id = NULL")).isInstanceOf(SQLException.class);
+            UUID big = TestData.newTransaction(app, a.personalSpace(), a.id(), deudas, "101");
+            assertThatThrownBy(() -> {
+                try (var ps = app.prepareStatement("UPDATE casaayg.transaction SET debt_id = ? WHERE id = ?")) {
+                    ps.setObject(1, d);
+                    ps.setObject(2, big);
+                    ps.executeUpdate();
+                }
+            }).isInstanceOf(SQLException.class);
         }
     }
 
@@ -194,8 +200,10 @@ class DebtTest extends WebTestSupport {
             .noneMatch(r -> r.contains("Juan"));
 
         String text = PushServiceTextAccess.debtText(LocalDate.of(2026, 11, 24), List.of(
-            new String[] {"Juan", "2026-11-25"}, new String[] {"Mamá", "2026-11-24"}));
-        assertThat(text).isEqualTo("Hoy acordaste terminar de pagarle a Mamá. Mañana, a Juan.");
+            new String[] {"Juan", "2026-11-25", "FIN"}, new String[] {"Mamá", "2026-11-24", "FIN"},
+            new String[] {"Ana", "2026-11-24", "CUOTA"}));
+        assertThat(text).isEqualTo(
+            "Hoy acordaste terminar de pagarle a Mamá. Hoy toca la cuota de Ana. Mañana acordaste terminar de pagarle a Juan.");
     }
 
     @Test
@@ -205,6 +213,113 @@ class DebtTest extends WebTestSupport {
         as(a, post(base(a) + "/debts").content(toJson(body("Mamá", "Ci\ntas", "1", null)))).andExpect(status().isBadRequest());
         as(a, post(base(a) + "/debts").content(toJson(body("Mamá", "Citas", "1", TODAY.minusDays(1)))))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void loPagadoAntesRebajaLoQueFaltaPeroNoEsUnGasto() throws Exception {
+        Map<String, Object> body = body("Mamá", "Citas médicas", "60000", null);
+        body.put("paidBefore", "20000");
+        UUID d = uuid(json(as(a, post(base(a) + "/debts").content(toJson(body))).andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString()).get("id"));
+        assertThat(debt(a, d)).containsEntry("paidBefore", 20000.0).containsEntry("paid", 0.0)
+            .containsEntry("remaining", 40000.0).containsEntry("payments", 0);
+        String month = as(a, get(base(a) + "/transactions?year=" + TODAY.getYear() + "&month=" + TODAY.getMonthValue()))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(json(month).get("total")).isEqualTo(0);
+        pay(a, d, "40000.01").andExpect(status().isConflict());
+        pay(a, d, "40000").andExpect(status().isCreated());
+        assertThat(debt(a, d)).containsEntry("remaining", 0.0).containsEntry("settledOn", TODAY.toString());
+
+        // Todo pagado antes no es una deuda; y la deuda no baja de lo cubierto.
+        body.put("paidBefore", "60000");
+        as(a, post(base(a) + "/debts").content(toJson(body))).andExpect(status().isBadRequest());
+        body.put("paidBefore", "20000");
+        body.put("amount", "59000");
+        as(a, put(base(a) + "/debts/" + d).content(toJson(body))).andExpect(status().isConflict());
+    }
+
+    @Test
+    void unGastoYaAnotadoSeLigaYSeSuelta() throws Exception {
+        UUID d = create(a, "Mamá", "Suéter", "45000", null);
+        Map<String, Object> plain = payment(d, "15000");
+        plain.remove("debtId");
+        UUID tx = uuid(json(as(a, post(base(a) + "/transactions").content(toJson(plain))).andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString()).get("id"));
+
+        as(a, put(base(a) + "/transactions/" + tx + "/debt").content(toJson(Map.of("debtId", d.toString()))))
+            .andExpect(status().isOk());
+        assertThat(debt(a, d)).containsEntry("remaining", 30000.0).containsEntry("payments", 1);
+        // Ligarlo otra vez a la misma deuda no lo cuenta dos veces.
+        as(a, put(base(a) + "/transactions/" + tx + "/debt").content(toJson(Map.of("debtId", d.toString()))))
+            .andExpect(status().isOk());
+        assertThat(debt(a, d)).containsEntry("remaining", 30000.0);
+
+        Map<String, Object> none = new HashMap<>();
+        none.put("debtId", null);
+        as(a, put(base(a) + "/transactions/" + tx + "/debt").content(toJson(none))).andExpect(status().isOk());
+        assertThat(debt(a, d)).containsEntry("remaining", 45000.0).containsEntry("payments", 0);
+
+        // Un gasto más grande que lo que falta no se liga.
+        UUID small = create(a, "Juan", "Almuerzo", "1000", null);
+        as(a, put(base(a) + "/transactions/" + tx + "/debt").content(toJson(Map.of("debtId", small.toString()))))
+            .andExpect(status().isConflict());
+        // Un ingreso no es abono.
+        Map<String, Object> income = payment(d, "1000");
+        income.remove("debtId");
+        income.put("categoryId", salario.toString());
+        UUID in = uuid(json(as(a, post(base(a) + "/transactions").content(toJson(income))).andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString()).get("id"));
+        as(a, put(base(a) + "/transactions/" + in + "/debt").content(toJson(Map.of("debtId", d.toString()))))
+            .andExpect(status().isConflict());
+
+        // B no liga lo de A, ni su gasto a la deuda de A.
+        as(b, put(base(a) + "/transactions/" + tx + "/debt").content(toJson(Map.of("debtId", d.toString()))))
+            .andExpect(status().isNotFound());
+        UUID txB;
+        try (Connection su = asSuperuser()) {
+            txB = TestData.newTransaction(su, b.personalSpace(), b.id(),
+                TestData.categoryNamed(su, b.personalSpace(), "Pago de deudas"), "1");
+        }
+        as(b, put(base(b) + "/transactions/" + txB + "/debt").content(toJson(Map.of("debtId", d.toString()))))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void perdonarSaldaSinGastoYSePuedeQuitar() throws Exception {
+        UUID d = create(a, "Mamá", "Citas", "60000", null);
+        pay(a, d, "20000").andExpect(status().isCreated());
+        as(a, post(base(a) + "/debts/" + d + "/forgive")).andExpect(status().isOk());
+        assertThat(debt(a, d)).containsEntry("forgiven", 40000.0).containsEntry("remaining", 0.0)
+            .containsEntry("forgivenOn", TODAY.toString()).containsEntry("settledOn", TODAY.toString());
+        pay(a, d, "1").andExpect(status().isConflict());
+        as(a, post(base(a) + "/debts/" + d + "/forgive")).andExpect(status().isConflict());
+
+        as(a, delete(base(a) + "/debts/" + d + "/forgive")).andExpect(status().isOk());
+        assertThat(debt(a, d)).containsEntry("forgiven", 0.0).containsEntry("remaining", 40000.0)
+            .containsEntry("settledOn", null);
+        as(b, post(base(a) + "/debts/" + d + "/forgive")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void laCuotaDelMesTieneAvisoHastaQueSeAbona() throws Exception {
+        Map<String, Object> body = body("Ana", "Préstamo", "60000", null);
+        body.put("installment", "10000");
+        body.put("installmentDay", TODAY.getDayOfMonth());
+        UUID d = uuid(json(as(a, post(base(a) + "/debts").content(toJson(body))).andExpect(status().isCreated())
+            .andReturn().getResponse().getContentAsString()).get("id"));
+        assertThat(debt(a, d)).containsEntry("installment", 10000.0).containsEntry("paidThisMonth", 0.0)
+            .containsEntry("installmentDueDate", TODAY.toString());
+        assertThat(reminders(TODAY)).contains(a.id() + "|Ana|" + TODAY);
+
+        pay(a, d, "10000").andExpect(status().isCreated());
+        assertThat(debt(a, d)).containsEntry("paidThisMonth", 10000.0);
+        assertThat(reminders(TODAY)).noneMatch(r -> r.contains("|Ana|"));
+
+        // Día sin cuota, o cuota mayor a la deuda: no.
+        body.put("installment", null);
+        as(a, post(base(a) + "/debts").content(toJson(body))).andExpect(status().isBadRequest());
+        body.put("installment", "60001");
+        as(a, post(base(a) + "/debts").content(toJson(body))).andExpect(status().isBadRequest());
     }
 
     // --- utilidades ----------------------------------------------------------------------

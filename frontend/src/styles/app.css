@@ -2278,3 +2278,16 @@ fieldset {
 .debt-line .row-button {
   align-items: center;
 }
+
+/* Deudas (V23): lo opcional, plegado; «Me lo perdonó» aparte de guardar y borrar. */
+.debt-extras {
+  margin-top: var(--s3);
+}
+
+.debt-extras[open] > summary {
+  margin-bottom: var(--s2);
+}
+
+.debt-forgive {
+  margin-top: var(--s3);
+}

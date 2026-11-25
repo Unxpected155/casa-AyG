@@ -2,7 +2,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, messageOf } from "../api";
 import { amountChange, amountToInput, dayMonthLabel, GROUP_LABEL, money, parseAmount, todayIso } from "../format";
 import { useApp } from "../state";
-import type { Currency, Recurring } from "../types";
+import type { Currency, Debt, Recurring } from "../types";
+import { installmentLeft, payPreset, useDebts } from "../debts";
 import { EntrySheet } from "./EntrySheet";
 
 const BEFORE_LABEL: Record<number, string> = { 0: "el mismo día", 1: "1 día antes", 3: "3 días antes" };
@@ -23,7 +24,7 @@ function useRecurring(year: number, month: number) {
   return items;
 }
 
-function whenLabel(r: Recurring): string {
+function whenLabel(r: { dueDate: string | null }): string {
   if (!r.dueDate) return "sin fecha fija";
   const today = todayIso();
   if (r.dueDate === today) return "vence hoy";
@@ -39,20 +40,26 @@ function whenLabel(r: Recurring): string {
  * hoja de anotar llena con el pago fijo, que queda ligado y deja de recordarse ese mes.
  */
 export function DueList() {
-  const { month } = useApp();
+  const { month, categories } = useApp();
   const items = useRecurring(month.year, month.month);
+  const { debts } = useDebts();
   const [paying, setPaying] = useState<Recurring | null>(null);
+  const [payingDebt, setPayingDebt] = useState<Debt | null>(null);
   if (!items) return null;
   const active = items.filter((r) => r.active);
-  if (active.length === 0) return null;
+  // Las cuotas de deudas: mientras falte algo de la deuda y la de este mes no esté abonada.
+  const quotas = (debts ?? []).filter((d) => d.installment != null && d.remaining > 0);
+  const quotasDue = quotas.filter((d) => installmentLeft(d) > 0)
+    .sort((a, b) => (a.installmentDueDate ?? "9").localeCompare(b.installmentDueDate ?? "9"));
+  if (active.length === 0 && quotas.length === 0) return null;
   const pending = active.filter((r) => !r.paidTransactionId);
-  const paid = active.length - pending.length;
+  const paid = active.length - pending.length + (quotas.length - quotasDue.length);
 
   return (
     <section className="group due-list" aria-labelledby="due-title">
       <h2 id="due-title" className="group-title">Por pagar</h2>
-      {pending.length === 0 ? (
-        <p className="muted due-done">Todos los pagos fijos del mes están hechos.</p>
+      {pending.length === 0 && quotasDue.length === 0 ? (
+        <p className="muted due-done">Todo lo del mes está pagado.</p>
       ) : (
         <ul className="rows">
           {pending.map((r) => (
@@ -69,9 +76,24 @@ export function DueList() {
               </div>
             </li>
           ))}
+          {quotasDue.map((d) => (
+            <li key={d.id} className="row">
+              <div className="row-main">
+                <span className="due-text">
+                  <span className="row-name">Cuota de {d.creditor}</span>
+                  <span className={`due-when${d.installmentDueDate && d.installmentDueDate <= todayIso() ? " late" : ""}`}>
+                    {whenLabel({ dueDate: d.installmentDueDate })}
+                    {" · "}<span className="figure">{money(installmentLeft(d), d.currency, true)}</span>
+                    {d.paidThisMonth > 0 && " por completar"}
+                  </span>
+                </span>
+                <button type="button" className="button secondary small" onClick={() => setPayingDebt(d)}>Abonar</button>
+              </div>
+            </li>
+          ))}
         </ul>
       )}
-      {paid > 0 && pending.length > 0 && <p className="muted small due-paid">{paid} ya {paid === 1 ? "pagado" : "pagados"} este mes.</p>}
+      {paid > 0 && (pending.length > 0 || quotasDue.length > 0) && <p className="muted small due-paid">{paid} ya {paid === 1 ? "pagado" : "pagados"} este mes.</p>}
       {paying && (
         <EntrySheet
           preset={{
@@ -80,6 +102,10 @@ export function DueList() {
           }}
           onClose={() => setPaying(null)}
         />
+      )}
+      {payingDebt && (
+        <EntrySheet preset={payPreset(payingDebt, categories, installmentLeft(payingDebt))}
+                    onClose={() => setPayingDebt(null)} />
       )}
     </section>
   );
