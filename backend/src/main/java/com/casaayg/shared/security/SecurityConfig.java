@@ -143,7 +143,7 @@ public class SecurityConfig {
             .addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
             // Los filtros de registro de Spring corren ANTES de AuthorizationFilter: este los protege.
             .addFilterAfter(new PasskeyRegistrationGuard(SecurityContextHolder.getContextHolderStrategy(),
-                Clock.systemUTC()), CsrfFilter.class)
+                Clock.systemUTC(), user -> passkeyCount(jdbc, user)), CsrfFilter.class)
             .sessionManagement(session -> session
                 .sessionFixation(fixation -> fixation.changeSessionId())
                 .maximumSessions(-1)
@@ -208,6 +208,12 @@ public class SecurityConfig {
             response.sendError(HttpStatus.UNAUTHORIZED.value());
         });
         return filter;
+    }
+
+    /** Passkeys de una persona (user_credentials se puede leer sin sesión: lo necesita Spring). */
+    static int passkeyCount(JdbcClient jdbc, java.util.UUID user) {
+        return jdbc.sql("SELECT count(*) FROM user_credentials WHERE user_entity_user_id = user_handle(?)")
+            .param(user).query(Integer.class).single();
     }
 
     private static AuthenticationSuccessHandler passkeySuccess(AuditService audit, AsUser asUser, JdbcClient jdbc) {

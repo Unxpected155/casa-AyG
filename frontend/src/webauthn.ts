@@ -18,9 +18,12 @@ const b64url = {
 
 class CeremonyError extends Error {
   readonly status: number;
-  constructor(status: number) {
+  /** Lo que se le muestra a la persona, si la causa se conoce (lo lee messageOf). */
+  readonly userMessage?: string;
+  constructor(status: number, userMessage?: string) {
     super(`HTTP ${status}`);
     this.status = status;
+    this.userMessage = userMessage;
   }
 }
 
@@ -84,7 +87,13 @@ export async function registerPasskey(label: string, confirmIfNeeded = true): Pr
   };
   let options: CreationOptions;
   try {
-    options = await post<CreationOptions>("/webauthn/register/options");
+    options = await post<CreationOptions>("/webauthn/register/options").catch((e: unknown) => {
+      // 409: ya tiene el máximo de passkeys (10). El servidor lo revisa antes de empezar.
+      if (e instanceof CeremonyError && e.status === 409) {
+        throw new CeremonyError(409, "Ya tienes 10 passkeys, el máximo. Entra con una y borra las que ya no uses en Perfil → Passkeys.");
+      }
+      throw e;
+    });
   } catch (error) {
     if (confirmIfNeeded && error instanceof CeremonyError && error.status === 403) {
       await loginWithPasskey();

@@ -17,10 +17,13 @@ interface ShellProps {
   children: ReactNode;
   /** Muestra el selector de mes (pantallas que dependen del mes). */
   withMonth?: boolean;
+  /** La pantalla ya tiene su propio título principal: el mes no es <h1> (uno solo por página). */
+  ownTitle?: boolean;
   onAdd?: () => void;
 }
 
-export function Shell({ children, withMonth = false, onAdd }: ShellProps) {
+export function Shell({ children, withMonth = false, ownTitle = false, onAdd }: ShellProps) {
+  const MonthTag = ownTitle ? "p" : "h1";
   const { spaces, space, selectSpace, month, moveMonth } = useApp();
   const route = useRoute();
   const page = useRef<HTMLDivElement>(null);
@@ -74,9 +77,9 @@ export function Shell({ children, withMonth = false, onAdd }: ShellProps) {
           <button type="button" className="icon-button" onClick={() => go(-1)} aria-label="Mes anterior">
             <Icon name="left" />
           </button>
-          <h1 className="month-title">
+          <MonthTag className="month-title">
             {monthLabel(month)} <span className="year">{month.year}</span>
-          </h1>
+          </MonthTag>
           <button type="button" className="icon-button" onClick={() => go(1)} aria-label="Mes siguiente">
             <Icon name="right" />
           </button>

@@ -41,7 +41,7 @@ export function History() {
     .sort((a, b) => a.delta! - b.delta!).slice(0, 3);
 
   return (
-    <Shell withMonth>
+    <Shell withMonth ownTitle>
       <h1 className="page-title">Historia</h1>
       {error && <p className="form-error" role="alert">{error}</p>}
       {!data && !error && <div className="skeleton" aria-hidden="true"><div className="sk-line wide" /><div className="sk-row" /><div className="sk-row" /></div>}
