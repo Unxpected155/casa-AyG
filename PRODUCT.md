@@ -102,6 +102,13 @@ Responde, con los datos reales, dos preguntas:
    historia) y lo reparte entre todas las metas por prioridad, con una fecha realista para cada una.
 2. **«¿Voy como planeé?»** Se guarda un plan y cada mes se compara contra lo que pasó.
 Los cálculos son exactos y en código, sin IA.
+- Apartar para metas es opcional: nada se aparta solo, guardar un plan es opcional y la
+  comparación muestra los números sin juicios ni avisos («planearon ₡X · apartaron ₡Y»).
+- El monto viene lleno con una recomendación: «Recomiendo apartar ₡X al mes para llegar a
+  {meta} en {mes}» (el mínimo para que todas las metas con fecha lleguen a tiempo); sin metas con
+  fecha, lo que en promedio sobró (ingresos menos gastos de los últimos 3 meses completos).
+- Reparto mes a mes por prioridad: cada meta con fecha recibe lo que necesita para llegar a
+  tiempo, mientras alcance; lo que sobra va a la meta más importante sin terminar.
 
 ### Notificaciones push
 - Nunca llevan montos en el texto.
@@ -169,3 +176,6 @@ y el dinero personal, facturas y tiquetes, historia, «¿Voy bien?», notificaci
 | 2026-11-27 | Push de facturas: resumen a las 6 p. m.; presupuesto una vez al día a las 7 p. m.; recordatorio de cierre solo el día 1 | Uno al día por tipo, antes del silencio | Sí |
 | 2026-11-27 | Tiquetes: el dueño sale de la cédula o, si no la trae, de la variante del correo de la casa (casa+usuario@) | Los tiquetes casi nunca traen cédula | No |
 | 2026-11-27 | Tiquetes sin la respuesta de Hacienda entran marcados «sin confirmar»; las facturas, no | Que entren más tiquetes; la persona revisa antes de anotar | No |
+| 2026-11-27 | Planeador: «lo que se puede apartar» parte del promedio de lo que sobró en los últimos 3 meses completos | Lo que pueden apartar si deciden hacerlo | No |
+| 2026-11-27 | Planeador: reparto primero por fechas y luego en cascada por prioridad | Respeta fechas y prioridades | No |
+| 2026-11-27 | Planeador: apartar es opcional; plan opcional, sin avisos ni juicios; recomendación concreta («Recomiendo apartar ₡X para llegar a…») | En la vida real apartar para metas no es obligatorio | No |
