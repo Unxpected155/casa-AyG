@@ -19,10 +19,14 @@ export function useRoute(): Route {
   return useSyncExternalStore(subscribe, current);
 }
 
-export function navigate(route: Route, replace = false): void {
-  if (route === current() && !replace) return;
-  if (replace) window.history.replaceState(null, "", route);
-  else window.history.pushState(null, "", route);
+/**
+ * {@code state}: datos para la pantalla de destino (por ejemplo, con qué filtro abre
+ * Movimientos). Quedan en esa entrada del historial: al volver con «atrás» se respetan.
+ */
+export function navigate(route: Route, replace = false, state: unknown = null): void {
+  if (route === current() && !replace && state === null) return;
+  if (replace) window.history.replaceState(state, "", route);
+  else window.history.pushState(state, "", route);
   window.dispatchEvent(new PopStateEvent("popstate"));
   window.scrollTo({ top: 0 });
 }

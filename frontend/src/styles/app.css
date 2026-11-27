@@ -1292,6 +1292,41 @@ details.more summary {
   color: var(--accent-ink);
 }
 
+/* ---------- Categorías del Mes: cada fila lleva a sus movimientos ---------- */
+/* Mismo trato que «¿Voy bien?»: el resaltado sale 12 px a los lados con esquinas suaves y el
+   texto queda alineado con el resto. El renglón conserva su alto (4 + 8 = 12 px arriba y abajo). */
+.row.category-row {
+  padding: var(--s1) 0;
+}
+
+.row-button.category-link {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: calc(100% + 2 * var(--s3));
+  margin-inline: calc(-1 * var(--s3));
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+}
+
+.category-body {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Dentro del botón la línea es un <span>: necesita bloque para tener alto. */
+.category-body .row-rule {
+  display: block;
+}
+
+.goal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s2);
+}
+
 .savings-check {
   display: grid;
   gap: var(--s1);
