@@ -62,17 +62,19 @@ class PlaceController {
     }
 
     record PlaceRequest(@NotNull String name, @NotNull Kind kind, @NotNull Money.Currency currency,
-                        @NotNull BigDecimal openingBalance, @NotNull LocalDate openingDate, UUID parentId) {
+                        @NotNull BigDecimal openingBalance, @NotNull LocalDate openingDate, UUID parentId,
+                        Boolean savings) {
         NewPlace toNew() {
             return new NewPlace(new PlaceName(name), kind, new Money(openingBalance, currency), checkDate(openingDate),
-                parentId);
+                parentId, savings);
         }
     }
 
     record PlaceUpdate(@NotNull String name, @NotNull BigDecimal openingBalance, @NotNull LocalDate openingDate,
-                       UUID parentId, boolean archived) {
+                       UUID parentId, boolean archived, Boolean savings) {
         PlaceChanges toChanges() {
-            return new PlaceChanges(new PlaceName(name), openingBalance, checkDate(openingDate), parentId, archived);
+            return new PlaceChanges(new PlaceName(name), openingBalance, checkDate(openingDate), parentId, archived,
+                savings);
         }
     }
 
