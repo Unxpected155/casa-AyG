@@ -96,3 +96,7 @@ nombre al lado. El estado nunca va solo en color.
 - 150–300 ms, curvas `power3.out` / `expo.out`. Sin rebotes.
 - `prefers-reduced-motion: reduce` → sin animaciones (estado final inmediato).
 - Solo `transform` y `opacity`.
+- Cambiar de pantalla: la nueva entra deslizando 24 px desde el lado de la barra de abajo (220 ms); al terminar se limpia el `transform` (si queda, `.page` se vuelve el contenedor de lo fijo, como la hoja de anotar).
+- Animar una sola vez por espacio y mes: una recarga en tiempo real no repite las líneas ni el conteo.
+- En listas largas, animar solo lo que se ve (las primeras filas), nunca cientos de elementos.
+- Nada infinito ni fuera de pantalla; todo se revierte al salir (useGSAP + gsap.matchMedia).

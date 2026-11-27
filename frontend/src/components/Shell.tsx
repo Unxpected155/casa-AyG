@@ -13,6 +13,15 @@ const NAV: { route: Route; label: string; icon: IconName }[] = [
   { route: "/lugares", label: "Cuentas", icon: "wallet" },
 ];
 
+/** Posición de cada pantalla: las de la barra en su orden; las demás («Más», Perfil…) van después. */
+function screenIndex(route: Route): number {
+  const i = NAV.findIndex((n) => n.route === route);
+  return i >= 0 ? i : NAV.length;
+}
+
+/** La última pantalla que se mostró (cada pantalla monta su propio Shell). */
+let lastScreen: number | null = null;
+
 interface ShellProps {
   children: ReactNode;
   /** Muestra el selector de mes (pantallas que dependen del mes). */
@@ -29,10 +38,26 @@ export function Shell({ children, withMonth = false, ownTitle = false, onAdd }: 
   const page = useRef<HTMLDivElement>(null);
   const lastDelta = useRef(0);
 
+  // Cambiar de pantalla: la nueva entra deslizando un poco desde el lado de la barra de abajo
+  // (a la derecha si está más adelante). Solo transform y opacity; al terminar se limpian, porque
+  // un transform puesto convierte a .page en el contenedor de lo fijo (la hoja de anotar).
+  useGSAP(() => {
+    const index = screenIndex(route);
+    const previous = lastScreen;
+    lastScreen = index;
+    if (previous === null || previous === index) return;
+    return whenMotionAllowed(() => {
+      const direction = index > previous ? 1 : -1;
+      gsap.fromTo(page.current, { x: 24 * direction, autoAlpha: 0 },
+        { x: 0, autoAlpha: 1, duration: 0.22, ease: "power3.out", clearProps: "transform,opacity,visibility" });
+    });
+  }, { dependencies: [route] });
+
   // Cambiar de mes se siente como pasar una página.
   useGSAP(() => whenMotionAllowed(() => {
     if (!lastDelta.current) return;
-    gsap.fromTo(page.current, { x: 18 * lastDelta.current, autoAlpha: 0.2 }, { x: 0, autoAlpha: 1 });
+    gsap.fromTo(page.current, { x: 18 * lastDelta.current, autoAlpha: 0.2 },
+      { x: 0, autoAlpha: 1, clearProps: "transform,opacity,visibility" });
   }), { dependencies: [month.year, month.month] });
 
   const go = (delta: number) => {
