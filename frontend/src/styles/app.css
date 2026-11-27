@@ -1569,6 +1569,98 @@ details.more summary {
   font-weight: 500;
 }
 
+/* ---------- Planeador de metas (V29) ---------- */
+.planner {
+  display: grid;
+  gap: var(--s3);
+}
+
+.planner p {
+  margin: 0;
+}
+
+.planner-amount {
+  max-width: 20rem;
+}
+
+.planner-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--rule);
+}
+
+.planner-item {
+  display: grid;
+  gap: 2px;
+  padding: var(--s3) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.planner-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.planner-name {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.planner-row .figure {
+  white-space: nowrap;
+}
+
+.planner-ok {
+  color: var(--ok);
+  font-weight: 600;
+}
+
+.planner-late {
+  color: var(--near);
+  font-weight: 600;
+}
+
+.planner .actions {
+  align-items: center;
+}
+
+.planner-progress {
+  display: grid;
+  gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule);
+}
+
+.planner-progress-title {
+  margin: 0;
+  font-size: var(--t-md);
+}
+
+.planner-months {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planner-month {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s1) var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.planner-progress .button {
+  justify-self: start;
+}
+
 /* ---------- Diezmo y CDP (V7) ---------- */
 .check {
   display: inline-flex;
@@ -2456,47 +2548,6 @@ fieldset {
   color: var(--on-accent);
   font-size: var(--t-xs);
   font-weight: 700;
-}
-
-/* ---------- Simulador de una meta («¿Y si…?») ---------- */
-.simulator {
-  margin-top: var(--s2);
-}
-
-.simulator > summary {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: var(--accent-ink);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.simulator-fields {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: var(--s3);
-  padding: var(--s3) 0;
-}
-
-.simulator-fields > .field,
-.simulator-fields input {
-  min-width: 0;
-  width: 100%;
-}
-
-.simulator-result {
-  display: grid;
-  gap: var(--s2);
-  padding: var(--s3) var(--s4);
-  background: var(--paper-sunk);
-  border-radius: var(--radius);
-}
-
-.simulator-result p {
-  margin: 0;
 }
 
 /* ---------- Glosario en «Más» ---------- */

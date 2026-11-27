@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { api, messageOf } from "../api";
 import { Icon } from "../components/Icon";
-import { GoalSimulator } from "../components/GoalSimulator";
+import { Planner } from "../components/Planner";
 import { Shell } from "../components/Shell";
 import { amountChange, amountToInput, money, parseAmount, pct } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
@@ -69,6 +69,8 @@ export function Goals() {
             <p>Empieza por la que más importa ahora. El fondo de emergencia es una buena primera.</p>
           </section>
         )}
+
+        {current.length > 0 && <Planner />}
 
         <ul className="goals">
           {current.map((g, i) => (
@@ -166,7 +168,6 @@ function GoalRow({ goal: g, goals, open, readOnly, onToggle, onUp, onDown, onDon
           ))}
         </div>
       )}
-      {g.target > 0 && g.status !== "CUMPLIDA" && g.status !== "ARCHIVADA" && <GoalSimulator goal={g} />}
       {g.kind === "EMERGENCIA" && g.monthlyExpenses > 0 && (
         <p className="muted small">{g.emergencyMonths} meses de tus gastos ({money(g.monthlyExpenses, g.currency)} al mes en promedio).</p>
       )}
