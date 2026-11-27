@@ -72,7 +72,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
+            <!-- compile: SpaceEvents usa PGConnection para escuchar NOTIFY (saldos en tiempo real). -->
         </dependency>
 
         <!-- Tests contra un Postgres real (Testcontainers), no contra mocks -->

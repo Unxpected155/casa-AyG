@@ -155,3 +155,4 @@ y el dinero personal, facturas y tiquetes, historia, «¿Voy bien?», notificaci
 | 2026-11-26 | Agregar tiquetes electrónicos al buzón | Quien no está inscrito en Hacienda recibe tiquetes | No |
 | 2026-11-26 | El planeador reemplaza al simulador; empieza por «¿cuándo llego?» y «¿voy como planeé?» | El simulador actual no sirve | No |
 | 2026-11-26 | Push: la lista de tipos, diezmo quincenal, silencio de 9 p. m. a 7 a. m. | Avisar lo útil, sin ruido | No |
+| 2026-11-27 | Tiempo real: el servidor avisa al instante y la pantalla se actualiza sola, sin mensaje; solo mientras la app está a la vista | Ver lo de la otra persona sin ruido ni gasto de batería | No |

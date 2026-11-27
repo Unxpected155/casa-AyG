@@ -17,6 +17,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -88,6 +89,15 @@ public class ApiExceptionHandler {
         // El detalle puede traer datos: solo en DEBUG (apagado en producción).
         log.debug("Detalle del error de base de datos", e);
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Error interno", "error-interno");
+    }
+
+    /**
+     * El navegador cerró una conexión que seguía abierta (los avisos en vivo, al salir de la
+     * pantalla): es normal, no es un error y ya no hay a quién responderle.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    void clientGone(AsyncRequestNotUsableException e) {
+        log.debug("El navegador cerró la conexión: {}", e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
