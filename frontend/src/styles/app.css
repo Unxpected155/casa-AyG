@@ -1488,22 +1488,35 @@ details.more summary {
   margin-top: var(--s2);
 }
 
-.tithe .field-row {
-  align-items: end;
+/* La casilla del diezmo lleva su monto y, detrás, el destello del recordatorio. Sale un poco
+   hacia los lados para que el destello no quede pegado al texto. */
+.tithe-check {
+  position: relative;
+  isolation: isolate;
+  margin-inline: calc(-1 * var(--s2));
+  padding-inline: var(--s2);
+  border-radius: var(--radius);
 }
 
-.tithe-amount {
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  color: var(--ink-soft);
-  font-size: var(--t-sm);
+.tithe-check strong {
+  font-weight: 600;
 }
 
-.tithe-amount strong {
-  color: var(--ink);
-  font-size: var(--t-md);
+/* Ocre de «cerca»: llama la atención sin alarma. Lo enciende GSAP una sola vez. */
+.tithe-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: color-mix(in oklch, var(--near) 20%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--near) 55%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.tithe-help {
+  margin: 0;
 }
 
 .cdp {

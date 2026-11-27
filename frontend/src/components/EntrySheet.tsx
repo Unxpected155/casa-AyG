@@ -85,10 +85,38 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   useEffect(() => {
     if (duplicate) duplicateBox.current?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [duplicate]);
-  // Diezmo: siempre marcado en un ingreso nuevo; al editar, según si ya lo tiene.
-  const [tithe, setTithe] = useState(editing ? Boolean(editing.titheId) : true);
+  // Diezmo (PRODUCT.md): apagado por defecto; cada ingreso decide si aplica (un préstamo que te
+  // devuelven, por ejemplo, no lleva diezmo). Al editar, según si ya lo debía.
+  const [tithe, setTithe] = useState(editing ? editing.titheOwed || Boolean(editing.titheId) : false);
   const [gross, setGross] = useState(editing?.grossAmount ? amountToInput(editing.grossAmount) : "");
   const [grossTouched, setGrossTouched] = useState(Boolean(editing));
+  // El diezmo se calcula mientras escribes, sobre el bruto si lo hay.
+  const titheBase = (gross.trim() ? parseAmount(gross) : null) ?? parseAmount(amount);
+  const titheAmount = titheBase ? Math.round(Number(titheBase) * 10) / 100 : 0;
+  // Recordatorio sin insistir: un destello ocre, UNA sola vez, cuando el ingreso ya tiene monto,
+  // la casilla está apagada y la casilla se ve en pantalla (al escribir el monto suele quedar más
+  // abajo). Nunca en bucle, y nada si se pidió reducir el movimiento.
+  const titheGlow = useRef<HTMLSpanElement>(null);
+  const glowed = useRef(Boolean(editing));
+  const glowRevert = useRef<(() => void) | null>(null);
+  const hasTitheAmount = titheAmount > 0;
+  useEffect(() => {
+    const el = titheGlow.current;
+    if (glowed.current || kind !== "ingreso" || tithe || !hasTitheAmount || !el) return;
+    const seen = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting || glowed.current) return;
+      glowed.current = true;
+      seen.disconnect();
+      glowRevert.current = whenMotionAllowed(() => {
+        gsap.fromTo(el, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.35, ease: "power2.out", yoyo: true, repeat: 1,
+          repeatDelay: 0.6 });
+      });
+    }, { threshold: 1 });
+    seen.observe(el);
+    return () => seen.disconnect();
+  }, [kind, tithe, hasTitheAmount]);
+  // La animación termina sola aunque sigas escribiendo; solo se limpia al cerrar la hoja.
+  useEffect(() => () => glowRevert.current?.(), []);
 
   const activePlaces = useMemo(
     () => orderedPlaces(places).map((r) => r.place).filter((p) => !p.archived || p.id === placeId),
@@ -190,8 +218,6 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
   if (!space) return null;
   const base = `/api/spaces/${space.id}`;
   const parsedGross = gross.trim() ? parseAmount(gross) : null;
-  const titheBase = parsedGross ?? parseAmount(amount);
-  const titheAmount = titheBase ? Math.round(Number(titheBase) * 10) / 100 : 0;
 
   // El lugar es obligatorio: tocar el elegido no lo quita.
   const choosePlace = (p: Place) => {
@@ -458,21 +484,25 @@ export function EntrySheet({ editing, editingTransfer, initialKind, initialFrom,
 
                 {kind === "ingreso" && (
                   <div className="tithe">
-                    <label className="check">
+                    <label className="check tithe-check">
+                      <span className="tithe-glow" ref={titheGlow} aria-hidden="true" />
                       <input type="checkbox" checked={tithe} onChange={(e) => setTithe(e.target.checked)} />
-                      <span>Dar diezmo (10 % del bruto)</span>
+                      <span>
+                        Dar diezmo
+                        {titheAmount > 0 && <> · <strong className="figure">{money(titheAmount, currency, true)}</strong></>}
+                      </span>
                     </label>
                     {tithe && (
-                      <div className="field-row">
-                        <label className="field grow">
+                      <>
+                        <p className="muted small tithe-help">
+                          Es el 10 % del bruto. Se suma a «Diezmo por dar»; cuando lo des, anótalo como gasto en «Diezmo».
+                        </p>
+                        <label className="field">
                           <span>Monto bruto</span>
                           <input inputMode="decimal" maxLength={18} value={gross} placeholder={amount || "Igual al monto"}
                                  onChange={(e) => { setGross(amountChange(e)); setGrossTouched(true); }} />
                         </label>
-                        <p className="tithe-amount" aria-live="polite">
-                          Diezmo <strong className="figure">{money(titheAmount, currency, true)}</strong>
-                        </p>
-                      </div>
+                      </>
                     )}
                   </div>
                 )}

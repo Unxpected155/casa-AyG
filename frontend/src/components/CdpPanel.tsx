@@ -140,7 +140,8 @@ function Renew({ place, onDone }: { place: Place; onDone: () => void }) {
   const c = place.cdp!;
   const [rate, setRate] = useState(decimal(c.rate));
   const [contribution, setContribution] = useState(amountToInput(c.lastContribution ?? 0));
-  const [tithe, setTithe] = useState(true);
+  // Como en cualquier ingreso: apagado por defecto; marcado, suma a «Diezmo por dar».
+  const [tithe, setTithe] = useState(false);
   const [preview, setPreview] = useState<Renewal | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +203,7 @@ function Renew({ place, onDone }: { place: Place; onDone: () => void }) {
           <dt>Interés bruto</dt><dd className="figure">{money(preview.grossInterest, cur, true)}</dd>
           <dt>Impuesto</dt><dd className="figure">− {money(preview.tax, cur, true)}</dd>
           <dt>Interés neto a {payout}</dt><dd className="figure"><strong>{money(preview.netInterest, cur, true)}</strong></dd>
-          {tithe && <><dt>Diezmo (10 % del bruto)</dt><dd className="figure">− {money(preview.tithe, cur, true)}</dd></>}
+          {tithe && <><dt>Se suma a «Diezmo por dar»</dt><dd className="figure">{money(preview.tithe, cur, true)}</dd></>}
           <dt>Aporte de {payout} al CDP</dt><dd className="figure">{money(preview.contribution, cur, true)}</dd>
           <dt>El CDP queda en</dt><dd className="figure"><strong>{money(preview.newPrincipal, cur, true)}</strong></dd>
           <dt>Próximo vencimiento</dt><dd>{dateLabel(preview.nextMaturity)}</dd>

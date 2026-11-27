@@ -16,7 +16,7 @@ import { GROUPS, type Group, type Health, type MergeRequest, type Summary, type 
 
 /** Pantalla principal: el mes como una página de libreta. */
 export function Month() {
-  const { space, spaces, month, version, places } = useApp();
+  const { space, spaces, month, version, places, categories } = useApp();
   const hasHome = spaces.some((s) => s.kind === "FAMILIA" && !s.archived);
   // Si alguien te propuso unir los espacios, se ve aquí (no solo en Perfil → Espacio familiar).
   const [invite, setInvite] = useState<MergeRequest | null>(null);
@@ -48,6 +48,9 @@ export function Month() {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  // «Darlo»: la hoja de anotar ya llena con lo que falta dar de diezmo en esa moneda.
+  const [giving, setGiving] = useState<Health["tithe"][number] | null>(null);
+  const titheCategory = categories.find((c) => c.name.toLowerCase() === "diezmo" && c.group !== "INGRESO");
   const [showIdle, setShowIdle] = useState(false);
   const ledger = useRef<HTMLDivElement>(null);
   // «¿Voy bien?» y las tres partes del dinero: siempre a hoy, así que solo en el mes en curso.
@@ -114,6 +117,13 @@ export function Month() {
             <button type="button" className="button secondary small" onClick={() => navigate("/facturas")}>Revisar</button>
           </p>
         )}
+
+        {summary && isCurrentMonth && health?.tithe.filter((t) => t.pending > 0).map((t) => (
+          <p key={`diezmo-${t.currency}`} className="notice cdp-due">
+            <span>Diezmo por dar: <strong className="figure">{money(t.pending, t.currency, true)}</strong>.</span>
+            <button type="button" className="button secondary small" onClick={() => setGiving(t)}>Darlo</button>
+          </p>
+        ))}
 
         {summary && isCurrentMonth && dueCdps.map((p) => (
           <p key={p.id} className="notice cdp-due">
@@ -192,6 +202,13 @@ export function Month() {
       </div>
 
       {adding && <EntrySheet onClose={() => setAdding(false)} />}
+      {giving && (
+        <EntrySheet
+          preset={{ categoryId: titheCategory?.id ?? "", description: "Diezmo", amount: giving.pending,
+            currency: giving.currency, placeId: null, title: "Dar el diezmo" }}
+          onClose={() => setGiving(null)}
+        />
+      )}
     </Shell>
   );
 }

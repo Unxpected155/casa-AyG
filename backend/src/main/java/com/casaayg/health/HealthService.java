@@ -96,8 +96,11 @@ public class HealthService {
     /** Metas con fecha: cuántas van a tiempo. Las que no tienen fecha no se juzgan. */
     public record Goals(int judged, int onTime, List<String> behind, int withoutDate) {}
 
+    /** Diezmo de una moneda: lo debido, lo dado y lo que falta dar (se arrastra de mes a mes). */
+    public record Tithe(Money.Currency currency, BigDecimal owed, BigDecimal given, BigDecimal pending) {}
+
     public record Health(LocalDate today, MoneyParts money, SavingsRate savingsRate, Emergency emergency,
-                         Debts debts, Goals goals) {}
+                         Debts debts, Goals goals, List<Tithe> tithe) {}
 
     @Transactional(readOnly = true)
     public Health health(UUID spaceId) {
@@ -114,7 +117,11 @@ public class HealthService {
             savingsRate(spaceId, month),
             emergency(goalList),
             debtHealth(spaceId, month, today, rate, debtList),
-            goalHealth(goalList, month));
+            goalHealth(goalList, month),
+            jdbc.sql("SELECT currency, owed, given, pending FROM tithe_pending(?)").param(spaceId)
+                .query((rs, n) -> new Tithe(Money.Currency.valueOf(rs.getString("currency").strip()),
+                    rs.getBigDecimal("owed"), rs.getBigDecimal("given"), rs.getBigDecimal("pending")))
+                .list());
     }
 
     // --- Las tres partes -------------------------------------------------------------------
