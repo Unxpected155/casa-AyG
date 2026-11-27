@@ -15,7 +15,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.casaayg.push.PushNotice;
 
 /**
  * Lee el buzón de facturas cada dos horas de día (ADR-006). Por cada correo nuevo con adjuntos
@@ -140,8 +139,7 @@ class MailboxReader {
             } else if (inbox.add(owner.get(), v)) {
                 // Sin verificar: se anota quién firmó (dato público) para configurar las autoridades.
                 record(messageId, clave, hasInvoice, hasResponse, "NUEVA", v.diagnostic());
-                events.publishEvent(new PushNotice(List.of(owner.get()), "Casa A&G",
-                    "Llegó una factura nueva para revisar.", "/facturas"));
+                // El aviso sale en el resumen de las 6 p. m. (PushService.invoiceDigest), no uno por factura.
                 added = true;
             } else {
                 record(messageId, clave, hasInvoice, hasResponse, "REPETIDA", null);

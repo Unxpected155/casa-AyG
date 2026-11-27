@@ -1501,6 +1501,74 @@ details.more summary {
   cursor: default;
 }
 
+/* ---------- Tipos de notificación (V27) ---------- */
+.push-kinds {
+  display: grid;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--rule);
+}
+
+.push-kinds-title {
+  margin: 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.push-kinds-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Toda la fila se toca (44 px o más); la casilla alineada con la primera línea. */
+.push-kind {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  min-height: 44px;
+  padding: var(--s2) 0;
+  cursor: pointer;
+}
+
+.push-kind input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.push-kind.fixed {
+  cursor: default;
+}
+
+/* La marca de «siempre encendidas»: del tamaño de una casilla, con el color de una marcada. */
+.push-kind-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--paper);
+}
+
+.push-kind-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.push-kind-name {
+  font-weight: 500;
+}
+
 /* ---------- Diezmo y CDP (V7) ---------- */
 .check {
   display: inline-flex;
@@ -1586,15 +1654,12 @@ details.more summary {
 .renew-block {
   display: grid;
   gap: var(--s2);
-  margin: 0;
-  padding: var(--s3) 0 0;
-  border: 0;
+  padding-top: var(--s3);
   border-top: 1px solid var(--rule);
 }
 
 .renew-step {
-  padding: 0;
-  margin-bottom: var(--s1);
+  margin: 0 0 var(--s1);
   font-size: var(--t-sm);
   font-weight: 600;
   color: var(--ink-soft);

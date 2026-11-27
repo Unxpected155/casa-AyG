@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.casaayg.domain.Text.SpaceName;
+import com.casaayg.push.PushKind;
 import com.casaayg.push.PushNotice;
 import com.casaayg.shared.security.RecentAuthentication;
 import com.casaayg.shared.web.ConflictException;
@@ -97,7 +98,7 @@ class MergeController {
     /** Aviso a la otra persona de la propuesta, después de confirmar (ver PushNotice). */
     private void tellOther(UUID request, String text, String url) {
         jdbc.sql("SELECT merge_other_party(?)").param(request).query(UUID.class).optional()
-            .ifPresent(other -> events.publishEvent(new PushNotice(List.of(other), "Espacio familiar", text, url)));
+            .ifPresent(other -> events.publishEvent(new PushNotice(PushKind.CASA, List.of(other), "Espacio familiar", text, url)));
     }
 
     private String myName() {

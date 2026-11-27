@@ -19,6 +19,7 @@ import com.casaayg.domain.Money;
 import com.casaayg.domain.Text.Description;
 import com.casaayg.place.PlaceService;
 import com.casaayg.place.PlaceService.NewTransfer;
+import com.casaayg.push.PushKind;
 import com.casaayg.push.PushNotice;
 import com.casaayg.shared.security.CurrentUser;
 import com.casaayg.shared.web.ConflictException;
@@ -175,7 +176,7 @@ public class HouseholdService {
         List<UUID> others = jdbc.sql("SELECT user_id FROM space_member WHERE space_id = ? AND user_id <> current_app_user()")
             .param(familyId).query(UUID.class).list();
         if (!others.isEmpty()) {
-            events.publishEvent(new PushNotice(others, "La casa", text, "/casa"));
+            events.publishEvent(new PushNotice(PushKind.CASA, others, "La casa", text, "/casa"));
         }
     }
 

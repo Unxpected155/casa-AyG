@@ -25,4 +25,21 @@ public final class PushServiceTextAccess {
     public static String closeReminderText(java.time.YearMonth month) {
         return PushService.closeReminderText(month);
     }
+
+    public static String cdpText(long today, long tomorrow) {
+        return PushService.cdpText(today, tomorrow);
+    }
+
+    public static String invoiceText(long invoices) {
+        return PushService.invoiceText(invoices);
+    }
+
+    public static String titheText(java.util.Set<Boolean> where) {
+        return PushService.titheText(where);
+    }
+
+    /** Las reglas de un aviso (apagado, silencio, uno al día): "SEND", "HOLD" o "SKIP". */
+    public static String decide(PushService push, java.util.UUID user, PushKind kind, java.time.ZonedDateTime now) {
+        return push.decide(user, kind, now, "Prueba", "Texto de prueba", "/").name();
+    }
 }

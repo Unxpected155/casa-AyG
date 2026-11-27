@@ -235,8 +235,18 @@ class MailboxTest extends WebTestSupport {
         assertThat(results().get("m4")).isEqualTo("INCOMPLETA");
         assertThat(results().get("m3")).isEqualTo("NUEVA");
         as(ana, get("/api/invoices")).andExpect(jsonPath("$.length()").value(2));
-        assertThat(events.stream(PushNotice.class).filter(n -> n.to().contains(ana.id()))).hasSize(2)
-            .allSatisfy(n -> assertThat(n.body()).doesNotContain("₡").doesNotContain("11300"));
+        // No sale un aviso por factura: van en el resumen de las 6 p. m. (dos nuevas para Ana).
+        assertThat(events.stream(PushNotice.class).filter(n -> n.to().contains(ana.id()))).isEmpty();
+        try (Connection app = asApp()) {
+            app.setAutoCommit(false);
+            try (var ps = app.prepareStatement("SELECT invoices FROM casaayg.invoice_digest(now() - interval '1 hour') WHERE user_id = ?")) {
+                ps.setObject(1, ana.id());
+                try (var rs = ps.executeQuery()) {
+                    assertThat(rs.next()).isTrue();
+                    assertThat(rs.getLong(1)).isEqualTo(2);
+                }
+            }
+        }
 
         // Lo ya leído no se vuelve a procesar.
         as(ana, post("/api/invoices/mailbox/check")).andExpect(jsonPath("$.read").value(0));
