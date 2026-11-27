@@ -1,10 +1,13 @@
 # Casa A&G
 
-Sitio web privado (PWA) para las finanzas de una pareja: cada quien con su **espacio personal** y, al casarse, un **espacio familiar** compartido. Registra gastos desde las **facturas electrónicas de Costa Rica** (Hacienda v4.4). Construido para **aprender seguridad de aplicaciones** haciendo: threat modeling, seguridad de base de datos, supply chain, GitHub Advanced Security y Docker.
-
-> 🚧 En construcción — Fase 2: backend y base de datos.
+Sitio web privado (PWA) para llevar las finanzas personales y del hogar durante toda la vida: cada quien con su **espacio personal** y, en pareja, **La casa** compartida. Registra gastos desde las **facturas y tiquetes electrónicos de Costa Rica** (Hacienda v4.4). Construido también para **aprender seguridad de aplicaciones** haciendo: threat modeling, seguridad de base de datos, supply chain, GitHub Advanced Security y Docker.
 
 Acceso solo por red privada (Tailscale): el sitio no se publica en internet.
+
+- **Qué es y qué reglas sigue:** [PRODUCT.md](PRODUCT.md) (propósito, reglas de dominio y decisiones).
+- **Cómo se ve:** [DESIGN.md](DESIGN.md).
+- **Instalarla para otra pareja, en su propio servidor:** [docs/instalar-para-amigos.md](docs/instalar-para-amigos.md).
+- **Desplegar, respaldar y recuperar el servidor:** [deploy/README.md](deploy/README.md).
 
 Stack: Java 25 + Spring Boot, PostgreSQL, React + TypeScript + GSAP (PWA), Docker.
 
