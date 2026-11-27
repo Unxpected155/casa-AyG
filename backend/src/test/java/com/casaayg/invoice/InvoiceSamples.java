@@ -34,6 +34,21 @@ public final class InvoiceSamples {
             .formatted(clave(EMISOR, n), EMISOR, receptor, total);
     }
 
+    /** Un tiquete: sin receptor (lo normal en un tiquete). */
+    public static String tiquete(int n, String total) {
+        return """
+            <TiqueteElectronico xmlns="https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/tiqueteElectronico"><Clave>%s</Clave><NumeroConsecutivo>%s</NumeroConsecutivo><FechaEmision>%s</FechaEmision><Emisor><Nombre>Comercio de Prueba S.A.</Nombre><Identificacion><Tipo>02</Tipo><Numero>%s</Numero></Identificacion><NombreComercial>Super Prueba</NombreComercial></Emisor><ResumenFactura><CodigoTipoMoneda><CodigoMoneda>CRC</CodigoMoneda><TipoCambio>1</TipoCambio></CodigoTipoMoneda><TotalComprobante>%s</TotalComprobante></ResumenFactura></TiqueteElectronico>"""
+            .formatted(clave(EMISOR, n), consecutivo(n), now().minusHours(1).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                EMISOR, total);
+    }
+
+    /** La respuesta de Hacienda a un tiquete: sin receptor. */
+    public static String mensajeTiquete(int n, String total) {
+        return """
+            <MensajeHacienda xmlns="https://cdn.comprobanteselectronicos.go.cr/xml-schemas/v4.4/mensajeHacienda"><Clave>%s</Clave><NombreEmisor>Comercio de Prueba S.A.</NombreEmisor><TipoIdentificacionEmisor>02</TipoIdentificacionEmisor><NumeroCedulaEmisor>%s</NumeroCedulaEmisor><Mensaje>1</Mensaje><DetalleMensaje>Aceptado</DetalleMensaje><MontoTotalImpuesto>0</MontoTotalImpuesto><TotalFactura>%s</TotalFactura></MensajeHacienda>"""
+            .formatted(clave(EMISOR, n), EMISOR, total);
+    }
+
     static OffsetDateTime now() {
         return OffsetDateTime.now(ZoneOffset.ofHours(-6)).withNano(0);
     }

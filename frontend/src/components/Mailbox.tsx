@@ -19,6 +19,8 @@ const RESULT_LABEL: Record<string, string> = {
   INCOMPLETA: "esperando la respuesta de Hacienda",
   RECHAZADA: "rechazadas",
   SIN_XML: "sin factura",
+  SIN_DUENO: "tiquetes a una variante de correo de nadie",
+  CONFIRMADA: "tiquetes que Hacienda confirmó después",
 };
 
 /**

@@ -30,8 +30,18 @@ public interface GmailApi {
     /** Los adjuntos XML de un correo (nombre y contenido), con tope de tamaño y cantidad. */
     List<Attachment> xmlAttachments(String accessToken, String messageId);
 
+    /**
+     * Un correo: a qué direcciones llegó (Delivered-To, To, Cc) y sus adjuntos XML. Con las
+     * direcciones se sabe de quién es un tiquete sin cédula (casa+usuario@...).
+     */
+    default Mail mail(String accessToken, String messageId) {
+        return new Mail(List.of(), xmlAttachments(accessToken, messageId));
+    }
+
     /** Revoca el permiso en Google (desconectar). */
     void revoke(String refreshToken);
 
     record Attachment(String filename, byte[] content) {}
+
+    record Mail(List<String> recipients, List<Attachment> attachments) {}
 }

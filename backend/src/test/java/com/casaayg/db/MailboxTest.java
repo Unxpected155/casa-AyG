@@ -60,6 +60,7 @@ class MailboxTest extends WebTestSupport {
     /** Gmail falso: correos en memoria y un único código de autorización válido. */
     static class FakeGmail implements GmailApi {
         final Map<String, List<Attachment>> messages = new LinkedHashMap<>();
+        final Map<String, List<String>> recipients = new HashMap<>();
         final List<String> revoked = new ArrayList<>();
         String challenge;
 
@@ -94,6 +95,10 @@ class MailboxTest extends WebTestSupport {
 
         @Override public List<Attachment> xmlAttachments(String accessToken, String id) {
             return messages.getOrDefault(id, List.of());
+        }
+
+        @Override public Mail mail(String accessToken, String id) {
+            return new Mail(recipients.getOrDefault(id, List.of()), xmlAttachments(accessToken, id));
         }
 
         @Override public void revoke(String token) { revoked.add(token); }
@@ -141,6 +146,7 @@ class MailboxTest extends WebTestSupport {
     @BeforeEach
     void seed() throws Exception {
         gmail.messages.clear();
+        gmail.recipients.clear();
         gmail.revoked.clear();
         try (Connection su = asSuperuser()) {
             su.createStatement().execute("DELETE FROM mailbox; DELETE FROM mailbox_message; DELETE FROM tax_id");
@@ -295,6 +301,32 @@ class MailboxTest extends WebTestSupport {
         as(ana, post("/api/invoices/mailbox/callback").session(session)
                 .content(toJson(Map.of("code", "codigo-de-google-123", "state", state))))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void unTiqueteLlegaAQuienEsDuenoDeLaVarianteDelCorreoYSeConfirmaCuandoLlegaLaRespuesta() throws Exception {
+        connectFully();
+        int t1 = ++seq, t2 = ++seq;
+        String alias = "facturas.casa+" + ana.username() + "@example.com";
+        // Solo el tiquete, sin la respuesta de Hacienda; y otro a una variante de nadie.
+        messageTo("t1", alias, attach(TestPki.sign(InvoiceSamples.tiquete(t1, "4500.00"), comercio)));
+        messageTo("t2", "facturas.casa+nadie@example.com", attach(TestPki.sign(InvoiceSamples.tiquete(t2, "800.00"), comercio)));
+        as(ana, post("/api/invoices/mailbox/check")).andExpect(jsonPath("$.added").value(1));
+        assertThat(results()).containsEntry("t1", "NUEVA").containsEntry("t2", "SIN_DUENO");
+        as(ana, get("/api/invoices")).andExpect(jsonPath("$.length()").value(1))
+            .andExpect(jsonPath("$[0].kind").value("TIQUETE"))
+            .andExpect(jsonPath("$[0].haciendaConfirmed").value(false));
+
+        // Después llega la respuesta de Hacienda en otro correo: el tiquete queda confirmado.
+        message("t3", attach(TestPki.sign(InvoiceSamples.mensajeTiquete(t1, "4500.00"), hacienda)));
+        as(ana, post("/api/invoices/mailbox/check")).andExpect(jsonPath("$.added").value(0));
+        assertThat(results()).containsEntry("t3", "CONFIRMADA");
+        as(ana, get("/api/invoices")).andExpect(jsonPath("$[0].haciendaConfirmed").value(true));
+    }
+
+    private void messageTo(String id, String recipient, GmailApi.Attachment... attachments) {
+        gmail.recipients.put(id, List.of(recipient));
+        message(id, attachments);
     }
 
     private void message(String id, GmailApi.Attachment... attachments) {

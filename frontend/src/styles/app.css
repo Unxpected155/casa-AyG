@@ -2269,6 +2269,41 @@ fieldset {
   white-space: nowrap;
 }
 
+.invoice-kind {
+  margin: 0;
+}
+
+/* Tu variante del correo de la casa: se copia para darla en las tiendas. */
+.ticket-address {
+  display: grid;
+  gap: var(--s1);
+  margin-top: var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--paper-sunk);
+  border-radius: var(--radius);
+}
+
+.ticket-address-title {
+  margin: 0;
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.ticket-address-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.ticket-address-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--t-sm);
+}
+
 /* La marca de la firma: con texto e ícono (el estado nunca va solo en color). */
 .invoice-trust {
   display: inline-flex;

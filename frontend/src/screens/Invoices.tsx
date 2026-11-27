@@ -9,17 +9,69 @@ import type { Category, Currency, Place, Space } from "../types";
 
 export interface PendingInvoice {
   id: string;
-  kind: "FACTURA" | "NOTA_CREDITO";
+  kind: "FACTURA" | "NOTA_CREDITO" | "TIQUETE";
   date: string;
   merchant: string;
   currency: Currency;
   total: number;
   /** La firma se confirmó contra la autoridad oficial. */
   verified: boolean;
+  /** Llegó con la respuesta «aceptado» de Hacienda (un tiquete puede no traerla). */
+  haciendaConfirmed: boolean;
   suggestion: { spaceId: string; categoryId: string; placeId: string } | null;
 }
 
-/** Facturas electrónicas que llegaron a mi nombre y esperan que las confirme o las descarte. */
+const KIND_LABEL: Record<PendingInvoice["kind"], string> = {
+  FACTURA: "Factura",
+  TIQUETE: "Tiquete",
+  NOTA_CREDITO: "Nota de crédito",
+};
+
+/**
+ * La variante del correo de la casa de esta persona (casa+usuario@...): dada en las tiendas,
+ * sus tiquetes le llegan a ella aunque no traigan cédula.
+ */
+function TicketAddress() {
+  const { session } = useApp();
+  const [mailbox, setMailbox] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api.get<{ connected: boolean; email: string | null }>("/api/invoices/mailbox")
+      .then((s) => setMailbox(s.connected ? s.email : null))
+      .catch(() => setMailbox(null));
+  }, []);
+
+  if (!mailbox || session.kind !== "ready" || !mailbox.includes("@")) return null;
+  const at = mailbox.lastIndexOf("@");
+  const address = `${mailbox.slice(0, at)}+${session.me.username}${mailbox.slice(at)}`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <div className="ticket-address">
+      <h2 className="ticket-address-title">Tu correo para tiquetes</h2>
+      <div className="ticket-address-row">
+        <span className="mono ticket-address-value">{address}</span>
+        <button type="button" className="button ghost small" onClick={() => void copy()}>
+          {copied ? "Copiado" : "Copiar"}
+        </button>
+      </div>
+      <p className="muted small">Dalo en las tiendas cuando te pidan correo: tus tiquetes llegan aquí, a tu nombre.</p>
+      <span className="visually-hidden" role="status">{copied ? "Correo copiado" : ""}</span>
+    </div>
+  );
+}
+
+/** Facturas y tiquetes electrónicos que llegaron a mi nombre y esperan que los confirme o los descarte. */
 export function Invoices() {
   const { spaces, space, touch } = useApp();
   const [items, setItems] = useState<PendingInvoice[] | null>(null);
@@ -42,10 +94,11 @@ export function Invoices() {
     <Shell>
       <h1 className="page-title">Por revisar</h1>
       <p className="muted">
-        Facturas electrónicas a tu nombre que Hacienda aceptó. Nada se anota solo: tú decides dónde va cada una.
+        Facturas y tiquetes electrónicos a tu nombre. Nada se anota solo: tú decides dónde va cada uno.
       </p>
+      <TicketAddress />
       {error && <p className="form-error" role="alert">{error}</p>}
-      {items && items.length === 0 && <p className="empty">No hay facturas por revisar.</p>}
+      {items && items.length === 0 && <p className="empty">No hay nada por revisar.</p>}
       <ul className="invoice-list">
         {items?.map((i) => (
           <InvoiceCard key={i.id} invoice={i} spaces={writable} fallbackSpace={space?.id ?? writable[0]?.id}
@@ -106,25 +159,28 @@ function InvoiceCard({ invoice, spaces, fallbackSpace, onDone }: {
     }
   };
 
+  const what = invoice.kind === "TIQUETE" ? "el tiquete" : "la factura";
   const confirm = () => act(() => api.post(`/api/invoices/${invoice.id}/confirm`, { spaceId, categoryId, placeId }),
-    "No se pudo anotar la factura.");
-  const discard = () => act(() => api.post(`/api/invoices/${invoice.id}/discard`), "No se pudo descartar la factura.");
+    `No se pudo anotar ${what}.`);
+  const discard = () => act(() => api.post(`/api/invoices/${invoice.id}/discard`), `No se pudo descartar ${what}.`);
 
   return (
     <li className="invoice">
+      <p className="invoice-kind muted small">{KIND_LABEL[invoice.kind]} · {dayLabel(invoice.date)}</p>
       <div className="invoice-head">
         <span className="invoice-merchant">{invoice.merchant}</span>
         <span className="invoice-total figure">{money(invoice.total, invoice.currency, true)}</span>
       </div>
-      <p className={`invoice-trust${invoice.verified ? " ok" : ""}`}>
-        {invoice.verified
-          ? <><Icon name="check" size={16} /> Firma verificada</>
-          : <><Icon name="alert" size={16} /> Revisa que reconozcas esta compra</>}
+      <p className={`invoice-trust${invoice.verified && invoice.haciendaConfirmed ? " ok" : ""}`}>
+        {!invoice.haciendaConfirmed
+          ? <><Icon name="alert" size={16} /> Sin confirmar por Hacienda: revisa que reconozcas esta compra</>
+          : invoice.verified
+            ? <><Icon name="check" size={16} /> Firma verificada</>
+            : <><Icon name="alert" size={16} /> Revisa que reconozcas esta compra</>}
       </p>
-      <p className="muted small">
-        {dayLabel(invoice.date)}
-        {refund && <> · <strong>Devolución</strong> (nota de crédito): anótala como ingreso o descártala.</>}
-      </p>
+      {refund && (
+        <p className="muted small"><strong>Devolución</strong> (nota de crédito): anótala como ingreso o descártala.</p>
+      )}
       {suggested && <p className="hint small">Lo mismo que la última vez en este comercio.</p>}
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="invoice-fields">

@@ -30,7 +30,7 @@ class MailboxReader {
     static final String QUERY = "has:attachment filename:xml newer_than:60d";
     static final int MAX_PER_RUN = 20;
 
-    record Piece(boolean response, String clave, byte[] xml) {}
+    record Piece(boolean response, String clave, boolean ticket, byte[] xml) {}
 
     public record RunResult(int read, int added) {}
 
@@ -112,7 +112,8 @@ class MailboxReader {
 
     /** Un correo. true si dejó una factura nueva por revisar. */
     private boolean process(String access, String messageId) {
-        List<Piece> pieces = pieces(gmail.xmlAttachments(access, messageId));
+        GmailApi.Mail mail = gmail.mail(access, messageId);
+        List<Piece> pieces = pieces(mail.attachments());
         if (pieces.isEmpty()) {
             record(messageId, null, false, false, "SIN_XML", null);
             return false;
@@ -127,15 +128,25 @@ class MailboxReader {
 
         Optional<byte[]> invoice = find(mine, false).or(() -> fromEarlier(access, clave, false));
         Optional<byte[]> response = find(mine, true).or(() -> fromEarlier(access, clave, true));
-        if (invoice.isEmpty() || response.isEmpty()) {
+        // Un tiquete puede entrar sin la respuesta de Hacienda (queda «sin confirmar»); una factura no.
+        boolean ticket = invoice.flatMap(InvoiceVerifier::peek).map(InvoiceVerifier.Peek::ticket).orElse(false);
+        if (invoice.isEmpty() || (response.isEmpty() && !ticket)) {
             record(messageId, clave, hasInvoice, hasResponse, "INCOMPLETA", null);
             return false;
         }
         try {
-            VerifiedInvoice v = verifier.verify(invoice.get(), response.get());
-            Optional<UUID> owner = taxIds.ownerOf(v.receptorId());
+            VerifiedInvoice v = verifier.verify(invoice.get(), response.orElse(null));
+            // La respuesta de Hacienda de un tiquete que ya había entrado sin ella (suele llegar sola,
+            // en otro correo, sin la variante del correo de nadie).
+            if (v.haciendaConfirmed() && v.kind() == VerifiedInvoice.Kind.TIQUETE && inbox.haciendaConfirmed(v)) {
+                record(messageId, clave, hasInvoice, hasResponse, "CONFIRMADA", null);
+                return false;
+            }
+            // De quién es: la cédula si la trae; un tiquete sin cédula, por la variante del correo.
+            Optional<UUID> owner = v.receptorId() != null ? taxIds.ownerOf(v.receptorId())
+                : ownerByAddress(mail.recipients());
             if (owner.isEmpty()) {
-                record(messageId, clave, hasInvoice, hasResponse, "AJENA", null);
+                record(messageId, clave, hasInvoice, hasResponse, v.receptorId() == null ? "SIN_DUENO" : "AJENA", null);
             } else if (inbox.add(owner.get(), v)) {
                 // Sin verificar: se anota quién firmó (dato público) para configurar las autoridades.
                 record(messageId, clave, hasInvoice, hasResponse, "NUEVA", v.diagnostic());
@@ -154,7 +165,8 @@ class MailboxReader {
     private List<Piece> pieces(List<GmailApi.Attachment> attachments) {
         List<Piece> out = new ArrayList<>();
         for (GmailApi.Attachment a : attachments) {
-            InvoiceVerifier.peek(a.content()).ifPresent(p -> out.add(new Piece(p.response(), p.clave(), a.content())));
+            InvoiceVerifier.peek(a.content())
+                .ifPresent(p -> out.add(new Piece(p.response(), p.clave(), p.ticket(), a.content())));
         }
         return out;
     }
@@ -178,6 +190,53 @@ class MailboxReader {
             }
         }
         return Optional.empty();
+    }
+
+    /** La persona dueña de la variante del correo de la casa a la que llegó el tiquete, si alguna. */
+    private Optional<UUID> ownerByAddress(List<String> recipients) {
+        String mailboxEmail = jdbc.sql("SELECT email FROM mailbox WHERE id = 1").query(String.class).optional().orElse(null);
+        if (mailboxEmail == null) {
+            return Optional.empty();
+        }
+        for (String recipient : recipients) {
+            Optional<UUID> user = aliasTag(recipient, mailboxEmail)
+                .flatMap(tag -> jdbc.sql("SELECT id FROM auth_find_user(?)").param(tag).query(UUID.class).optional());
+            if (user.isPresent()) {
+                return user;
+            }
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * El usuario de una variante del correo de la casa: casa+gabito@gmail.com → «gabito».
+     * Gmail no distingue puntos ni mayúsculas en su parte local: c.a.s.a+gabito@gmail.com también.
+     */
+    static Optional<String> aliasTag(String recipient, String mailboxEmail) {
+        int at = recipient.lastIndexOf('@');
+        int mailboxAt = mailboxEmail.lastIndexOf('@');
+        if (at < 1 || mailboxAt < 1) {
+            return Optional.empty();
+        }
+        String domain = recipient.substring(at + 1).toLowerCase(java.util.Locale.ROOT);
+        String mailboxDomain = mailboxEmail.substring(mailboxAt + 1).toLowerCase(java.util.Locale.ROOT);
+        if (!domain.equals(mailboxDomain)) {
+            return Optional.empty();
+        }
+        String local = recipient.substring(0, at).toLowerCase(java.util.Locale.ROOT);
+        int plus = local.indexOf('+');
+        if (plus < 1) {
+            return Optional.empty();
+        }
+        boolean gmail = domain.equals("gmail.com") || domain.equals("googlemail.com");
+        String base = local.substring(0, plus);
+        String mailboxBase = mailboxEmail.substring(0, mailboxAt).toLowerCase(java.util.Locale.ROOT);
+        if (gmail) {
+            base = base.replace(".", "");
+            mailboxBase = mailboxBase.replace(".", "");
+        }
+        String tag = local.substring(plus + 1);
+        return base.equals(mailboxBase) && tag.matches("[a-z][a-z0-9_]{2,29}") ? Optional.of(tag) : Optional.empty();
     }
 
     private void record(String messageId, String clave, boolean invoice, boolean response, String result, String detail) {
