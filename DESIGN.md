@@ -2,6 +2,25 @@
 
 Sistema visual de Casa A&G: **libreta del hogar**. Papel crema, tinta cálida, un solo acento terracota. Ver PRODUCT.md para el porqué.
 
+## Brand Personality
+Hogareña, serena y cuidadosa. Como una libreta de cuentas bonita en la mesa de la casa: papel, tinta, letra con oficio. Transmite calma y orden, nunca ansiedad por el dinero. Voz en español de Costa Rica, cercana y breve, de "tú".
+
+## Anti-references
+- App de banco: azul marino corporativo, frío, sin personalidad.
+- App de cripto o trading: fondo negro, neón, gráficos agresivos.
+- Cursi: corazones, rosados, tipografía de invitación de boda.
+- Plantilla SaaS: tarjetas idénticas en cuadrícula, número gigante con gradiente.
+
+## Design Principles
+1. **La tarea primero.** Registrar y revisar son las dos acciones; todo lo demás queda a un paso.
+2. **Calma con el dinero.** Los excesos se muestran con claridad pero sin alarma; el color comunica estado, no miedo.
+3. **Oficio de libreta.** Tipografía y números cuidados (cifras tabulares, alineación decimal) en lugar de decoración.
+4. **Lo compartido es visible.** Siempre se sabe en qué espacio se está y quién registró qué.
+5. **Seguridad tranquila.** Las confirmaciones con passkey se sienten naturales, no como obstáculos.
+
+## Accessibility & Inclusion
+WCAG 2.2 AA: contraste 4.5:1 en texto, objetivos táctiles de 44 px, foco visible, formularios con etiquetas. Respeta `prefers-reduced-motion` (GSAP se apaga o se reduce) y `prefers-color-scheme`. El estado nunca se comunica solo con color (texto o ícono además). Montos leídos correctamente por lectores de pantalla (₡ y $).
+
 ## Theme
 
 - **Día (por defecto):** papel crema con grano sutil. Pensado para usar de pie, con luz fuerte.
