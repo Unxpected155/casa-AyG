@@ -99,8 +99,12 @@ export function Movements() {
     };
   }, [space, month.year, month.month, version]);
 
+  // Solo las primeras filas (las que caben en pantalla): animar cientos de filas no se ve y
+  // gasta batería. clearProps: que no quede estilo en línea en la lista.
   useGSAP(() => whenMotionAllowed(() => {
-    gsap.from(".entry", { autoAlpha: 0, y: 6, stagger: 0.012, duration: 0.2 });
+    const visible = Array.from(list.current?.querySelectorAll(".entry") ?? []).slice(0, 14);
+    if (visible.length === 0) return;
+    gsap.from(visible, { autoAlpha: 0, y: 6, stagger: 0.015, duration: 0.2, clearProps: "opacity,visibility,transform" });
   }), { scope: list, dependencies: [items?.length === 0, month.year, month.month] });
 
   // Movimientos y dinero movido, juntos por día (los días más recientes primero).

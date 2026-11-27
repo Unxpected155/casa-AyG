@@ -83,8 +83,14 @@ export function Month() {
 
   // Las líneas de avance se llenan como un subrayado a lápiz; el total cuenta una vez.
   // clearProps: al terminar vuelve a mandar el CSS (--fill), no el transform en línea.
+  // Una sola vez por espacio y mes: una recarga (lo que anota la otra persona, en tiempo real)
+  // no vuelve a animar todo.
+  const animated = useRef<string | null>(null);
   useGSAP(() => {
     if (!summary) return;
+    const key = `${space?.id}|${month.year}-${month.month}`;
+    if (animated.current === key) return;
+    animated.current = key;
     const total = ledger.current?.querySelector<HTMLElement>("[data-count]");
     if (total) countUp(total, Math.round(summary.expenses.crc), (n) => money(n, "CRC"));
     return whenMotionAllowed(() => {
@@ -102,6 +108,9 @@ export function Month() {
       <div ref={ledger} className="ledger" aria-busy={summary === null && !error}>
         {error && <p className="form-error" role="alert">{error}</p>}
         {summary === null && !error && <LedgerSkeleton />}
+
+        {/* Lo esencial arriba: cuánto tienes y cuánto te sobra. */}
+        {summary && isCurrentMonth && <Balance health={health} />}
 
         {invite && (
           <p className="notice cdp-due">
@@ -133,7 +142,6 @@ export function Month() {
           </p>
         ))}
 
-        {summary && isCurrentMonth && <Balance health={health} />}
         {summary && isCurrentMonth && health && <VoyBien health={health} />}
 
         {summary && space?.kind === "FAMILIA" && (
@@ -164,12 +172,15 @@ export function Month() {
           <>
             <section className="overview" aria-label="Resumen del mes">
               <MonthFlow summary={summary} />
-              <p className="overview-detail">
-                Si todo fuera en dólares:
-                {summary.income.totalUsd > 0 && <> entraron <span className="figure income">{money(summary.income.totalUsd, "USD")}</span> y</>}
-                {" "}salieron <span className="figure expense">{money(summary.expenses.totalUsd, "USD")}</span>.
-              </p>
-              <IncomeSplit summary={summary} />
+              <details className="more overview-more">
+                <summary>Más del mes</summary>
+                <p className="overview-detail">
+                  Si todo fuera en dólares:
+                  {summary.income.totalUsd > 0 && <> entraron <span className="figure income">{money(summary.income.totalUsd, "USD")}</span> y</>}
+                  {" "}salieron <span className="figure expense">{money(summary.expenses.totalUsd, "USD")}</span>.
+                </p>
+                <IncomeSplit summary={summary} />
+              </details>
               <button type="button" className="button ghost small history-link" onClick={() => navigate("/historia")}>
                 Comparar con otros meses
               </button>
