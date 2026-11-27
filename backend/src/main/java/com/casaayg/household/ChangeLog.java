@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.casaayg.push.PushKind;
 import com.casaayg.push.PushNotice;
 import com.casaayg.space.Spaces;
 
@@ -73,7 +74,7 @@ public class ChangeLog {
             String verb = "BORRO".equals(r.action()) ? "borró" : "editó";
             String what = r.description() == null ? "un movimiento que anotaste"
                 : "«" + shorten(r.description()) + "», que anotaste";
-            events.publishEvent(new PushNotice(List.of(r.owner()), "La casa",
+            events.publishEvent(new PushNotice(PushKind.CASA, List.of(r.owner()), "La casa",
                 r.actor() + " " + verb + " " + what + ".", "/casa"));
         }
     }

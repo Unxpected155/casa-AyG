@@ -104,14 +104,16 @@ Los cálculos son exactos y en código, sin IA.
 - Tipos:
   - **Seguridad** (siempre encendidas): passkey nueva o uso de un código de recuperación.
   - **Por pagar:** un pago fijo o la cuota de una deuda vence en N días.
-  - **CDP:** vence mañana.
+  - **CDP:** el día antes y el día que vence (no insiste después).
   - **Presupuesto:** una categoría llegó al 80 % o al 100 %, una vez por mes.
   - **La casa:** propuesta de dinero personal; el mes está listo para cerrar (día 1).
-  - **Facturas:** un resumen al día, no una por factura.
-  - **Diezmo:** un recordatorio cada quincena si hay diezmo por dar.
+  - **Facturas:** un resumen al día (6 p. m.), no una por factura.
+  - **Diezmo:** un recordatorio cada quincena si hay diezmo por dar (días 1 y 16, 9 a. m.).
+  - **Metas:** una meta llegó al 25, 50, 75 o 100 %.
   - **Nunca:** cada movimiento que anota la otra persona.
 - Cada tipo se enciende y apaga desde Perfil (menos seguridad).
-- Horas de silencio de 9 p. m. a 7 a. m. (menos seguridad).
+- Horas de silencio de 9 p. m. a 7 a. m. (menos seguridad): lo que pase en ese rato se guarda y
+  llega a las 7 a. m.
 - Como máximo, un aviso de cada tipo al día.
 
 ## Alcance
@@ -156,3 +158,8 @@ y el dinero personal, facturas y tiquetes, historia, «¿Voy bien?», notificaci
 | 2026-11-26 | El planeador reemplaza al simulador; empieza por «¿cuándo llego?» y «¿voy como planeé?» | El simulador actual no sirve | No |
 | 2026-11-26 | Push: la lista de tipos, diezmo quincenal, silencio de 9 p. m. a 7 a. m. | Avisar lo útil, sin ruido | No |
 | 2026-11-27 | Tiempo real: el servidor avisa al instante y la pantalla se actualiza sola, sin mensaje; solo mientras la app está a la vista | Ver lo de la otra persona sin ruido ni gasto de batería | No |
+| 2026-11-27 | Push: «Metas» se queda como tipo propio (25, 50, 75 y 100 %) | Son buenas noticias y llegan pocas veces | No |
+| 2026-11-27 | Push del CDP: el día antes y el día que vence, sin insistir después | Prepararse y no olvidarlo, sin ruido | No |
+| 2026-11-27 | Push en horas de silencio: se guarda y sale a las 7 a. m. (sin repetir un tipo que ya salió ese día) | No perder avisos | No |
+| 2026-11-27 | Push del diezmo: días 1 y 16 a las 9 a. m. | El día después de cada quincena | No |
+| 2026-11-27 | Push de facturas: resumen a las 6 p. m.; presupuesto una vez al día a las 7 p. m.; recordatorio de cierre solo el día 1 | Uno al día por tipo, antes del silencio | Sí |

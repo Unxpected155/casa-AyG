@@ -260,8 +260,8 @@ function Renew({ place, onDone }: { place: Place; onDone: () => void }) {
         )}
       </section>
 
-      <fieldset className="renew-block">
-        <legend className="renew-step">El nuevo plazo</legend>
+      <div className="renew-block" role="group" aria-labelledby={`next-${place.id}`}>
+        <h4 className="renew-step" id={`next-${place.id}`}>El nuevo plazo</h4>
         <p className="muted small">Vienen los de la vez anterior. Cámbialos si el banco te dio otros.</p>
         <div className="field-row">
           <label className="field">
@@ -287,10 +287,10 @@ function Renew({ place, onDone }: { place: Place; onDone: () => void }) {
           </div>
         </div>
         {shown && <p className="renew-note">Vence el <strong>{dateLabel(shown.nextMaturity)}</strong></p>}
-      </fieldset>
+      </div>
 
-      <fieldset className="renew-block">
-        <legend className="renew-step">El capital</legend>
+      <div className="renew-block" role="group" aria-labelledby={`capital-${place.id}`}>
+        <h4 className="renew-step" id={`capital-${place.id}`}>El capital</h4>
         <div className="segmented" role="group" aria-label="Qué haces con el capital">
           <button type="button" aria-pressed={move === "sumar"} onClick={() => setMove("sumar")}>Sumar</button>
           <button type="button" aria-pressed={move === "retirar"} onClick={() => setMove("retirar")}>Retirar</button>
@@ -327,7 +327,7 @@ function Renew({ place, onDone }: { place: Place; onDone: () => void }) {
             </span>
           </p>
         )}
-      </fieldset>
+      </div>
 
       {(error ?? problem) && <p className="form-error" role="alert">{error ?? problem}</p>}
       <div className="actions">

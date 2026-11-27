@@ -7,9 +7,12 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 
+import com.casaayg.push.PushKind;
+import com.casaayg.push.PushNotice;
 import com.casaayg.shared.db.AsUser;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,12 +27,22 @@ public class AuditService {
 
     private static final Logger log = LoggerFactory.getLogger(AuditService.class);
 
+    /**
+     * Eventos que se le avisan a la persona en todos sus dispositivos, a cualquier hora
+     * (PushKind.SEGURIDAD): si no fue ella, se entera a tiempo.
+     */
+    private static final Map<String, String> SECURITY_NOTICES = Map.of(
+        "PASSKEY_REGISTRADA", "Se registró una passkey nueva en tu cuenta. Si no fuiste tú, revisa tus passkeys en Perfil.",
+        "LOGIN_RECUPERACION", "Alguien entró a tu cuenta con un código de recuperación. Si no fuiste tú, revisa Perfil.");
+
     private final AsUser asUser;
     private final JdbcClient jdbc;
+    private final ApplicationEventPublisher events;
 
-    AuditService(AsUser asUser, JdbcClient jdbc) {
+    AuditService(AsUser asUser, JdbcClient jdbc, ApplicationEventPublisher events) {
         this.asUser = asUser;
         this.jdbc = jdbc;
+        this.events = events;
     }
 
     /** @param userId puede ser null (por ejemplo, un login fallido sin usuario conocido). */
@@ -48,6 +61,10 @@ public class AuditService {
                 .update());
         } catch (RuntimeException e) {
             log.error("No se pudo auditar el evento {}: {}", eventType, e.getClass().getSimpleName());
+        }
+        String notice = SECURITY_NOTICES.get(eventType);
+        if (notice != null && userId != null) {
+            events.publishEvent(new PushNotice(PushKind.SEGURIDAD, List.of(userId), "Seguridad", notice, "/cuenta"));
         }
     }
 
