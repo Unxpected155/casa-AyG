@@ -179,3 +179,7 @@ y el dinero personal, facturas y tiquetes, historia, «¿Voy bien?», notificaci
 | 2026-11-27 | Planeador: «lo que se puede apartar» parte del promedio de lo que sobró en los últimos 3 meses completos | Lo que pueden apartar si deciden hacerlo | No |
 | 2026-11-27 | Planeador: reparto primero por fechas y luego en cascada por prioridad | Respeta fechas y prioridades | No |
 | 2026-11-27 | Planeador: apartar es opcional; plan opcional, sin avisos ni juicios; recomendación concreta («Recomiendo apartar ₡X para llegar a…») | En la vida real apartar para metas no es obligatorio | No |
+| 2026-11-27 | Diseño: moderna, serena y ordenada; lo esencial arriba y el detalle al tocar; animación moderada con transiciones entre pantallas | Responsabilidad con calma, no ansiedad | No |
+| 2026-11-27 | Paleta «Cacao y arena dorada» (60-30-10, acento al 70 %), sin colores vivos | Colores que transmiten paz con un punto de luz | No |
+| 2026-11-27 | Tema elegible en Perfil (Automático, Claro, Oscuro), guardado por persona | Cada quien lo usa a su gusto, en todos sus dispositivos | No |
+| 2026-11-27 | Serifa de libro para títulos y montos; «cerca del límite» en naranja tostado | Recomendadas, sin respuesta explícita | Sí |

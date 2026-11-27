@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,7 +47,12 @@ class MeController {
         this.security = security;
     }
 
-    record Me(UUID id, String username, String displayName, int passkeys, int recoveryCodesLeft) {}
+    /** {@code theme}: AUTO (sigue al teléfono), CLARO u OSCURO. */
+    record Me(UUID id, String username, String displayName, int passkeys, int recoveryCodesLeft, String theme) {}
+
+    enum Theme { AUTO, CLARO, OSCURO }
+
+    record ThemeRequest(@jakarta.validation.constraints.NotNull Theme theme) {}
 
     record Passkey(String id, String label, Instant created, Instant lastUsed) {}
 
@@ -56,11 +63,20 @@ class MeController {
         return jdbc.sql("""
                 SELECT u.id, u.username, u.display_name,
                        (SELECT count(*) FROM user_credentials c WHERE c.user_entity_user_id = user_handle(u.id))::int,
-                       auth_recovery_codes_left()
+                       auth_recovery_codes_left(), u.theme
                   FROM app_user u WHERE u.id = ?""")
             .param(me)
-            .query((rs, n) -> new Me(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getInt(5)))
+            .query((rs, n) -> new Me(rs.getObject(1, UUID.class), rs.getString(2), rs.getString(3), rs.getInt(4), rs.getInt(5),
+                rs.getString(6)))
             .single();
+    }
+
+    /** El tema elegido en Perfil; vale en todos los dispositivos de la persona. */
+    @PutMapping("/theme")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    void theme(@jakarta.validation.Valid @RequestBody ThemeRequest body) {
+        jdbc.sql("UPDATE app_user SET theme = ? WHERE id = ?").params(body.theme().name(), CurrentUser.require()).update();
     }
 
     @GetMapping("/passkeys")

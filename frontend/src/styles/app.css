@@ -1141,38 +1141,44 @@ details.more summary {
   min-height: 7.5rem;
 }
 
+/* El resumen del mes es la superficie de estructura (cacao, el 30 %): ordena la pantalla. Lo
+   que importa (lo ahorrado y lo que sobra) va en arena dorada, el punto de luz. */
 .money-parts {
   margin-top: var(--s4);
+  padding: var(--s4);
+  border-radius: var(--radius-card);
+  background: var(--structure);
+  color: var(--on-structure);
 }
 
-/* Una sola barra, como una regla de la libreta: cada tramo crece según su monto. */
+/* Una sola barra: cada tramo crece según su monto. */
 .money-bar {
   display: flex;
-  gap: 2px;
-  height: 10px;
-  border-radius: 3px;
+  gap: 3px;
+  height: 8px;
+  border-radius: 4px;
   overflow: hidden;
-  background: var(--paper-sunk);
 }
 
 .money-seg {
   flex: var(--grow) 1 0;
   min-width: 0;
+  border-radius: 4px;
 }
 
 .money-seg.saved,
 .money-key.saved {
-  background: var(--ink-soft);
+  background: var(--highlight);
 }
 
 .money-seg.committed,
 .money-key.committed {
-  background: var(--rule-strong);
+  background: color-mix(in oklch, var(--on-structure-soft) 45%, transparent);
 }
 
 .money-seg.leftover,
 .money-key.leftover {
-  background: var(--ok);
+  background: var(--on-structure);
 }
 
 .money-list {
@@ -1187,7 +1193,7 @@ details.more summary {
   align-items: center;
   gap: var(--s2);
   font-size: var(--t-sm);
-  color: var(--ink-soft);
+  color: var(--on-structure-soft);
 }
 
 .money-list dd {
@@ -1197,12 +1203,12 @@ details.more summary {
 
 .money-leftover dd {
   font-size: var(--t-lg);
-  color: var(--ok);
+  color: var(--highlight);
 }
 
-/* No alcanza: ocre, como «cerca del límite». Nunca rojo de alarma. */
+/* No alcanza: naranja tostado, como «cerca del límite». Nunca rojo de alarma. */
 .money-leftover dd.short {
-  color: var(--near);
+  color: var(--near-on-structure);
 }
 
 .money-key {
@@ -1216,7 +1222,7 @@ details.more summary {
   margin: var(--s2) 0 0;
   max-width: 62ch;
   font-size: var(--t-sm);
-  color: var(--ink-soft);
+  color: var(--on-structure-soft);
 }
 
 /* ---------- ¿Voy bien? ---------- */
@@ -1499,6 +1505,11 @@ details.more summary {
   border-color: transparent;
   color: var(--ink-soft);
   cursor: default;
+}
+
+/* ---------- Tema (V30) ---------- */
+.theme-picker .segmented {
+  margin-top: var(--s2);
 }
 
 /* ---------- Tipos de notificación (V27) ---------- */
