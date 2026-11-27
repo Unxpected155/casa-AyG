@@ -106,7 +106,13 @@ class PlaceController {
         }
     }
 
-    record RenewRequest(BigDecimal rate, BigDecimal contribution, Boolean tithe) {}
+    /** Lo que no venga queda como la vez anterior. */
+    record RenewRequest(BigDecimal rate, Integer termDays, Integer dayBasis, BigDecimal taxPct,
+                        BigDecimal contribution, BigDecimal withdrawal, UUID withdrawTo, Boolean tithe) {
+        CdpService.RenewTerms toTerms() {
+            return new CdpService.RenewTerms(rate, termDays, dayBasis, taxPct, contribution, withdrawal, withdrawTo);
+        }
+    }
 
     record DistributeRequest(@NotNull UUID from, @NotNull LocalDate date, String description,
                              @NotNull @Size(min = 1, max = PlaceService.MAX_BATCH) List<@Valid @NotNull DistributeItem> items) {}
@@ -135,13 +141,18 @@ class PlaceController {
     @GetMapping("/places/{id}/cdp/preview")
     CdpService.Renewal previewCdp(@PathVariable UUID spaceId, @PathVariable UUID id,
                                   @RequestParam(required = false) BigDecimal rate,
-                                  @RequestParam(required = false) BigDecimal contribution) {
-        return cdps.preview(spaceId, id, rate, contribution);
+                                  @RequestParam(required = false) Integer termDays,
+                                  @RequestParam(required = false) Integer dayBasis,
+                                  @RequestParam(required = false) BigDecimal taxPct,
+                                  @RequestParam(required = false) BigDecimal contribution,
+                                  @RequestParam(required = false) BigDecimal withdrawal) {
+        return cdps.preview(spaceId, id,
+            new CdpService.RenewTerms(rate, termDays, dayBasis, taxPct, contribution, withdrawal, null));
     }
 
     @PostMapping("/places/{id}/cdp/renew")
     CdpService.Renewal renewCdp(@PathVariable UUID spaceId, @PathVariable UUID id, @Valid @RequestBody RenewRequest body) {
-        return cdps.renew(spaceId, id, body.rate(), body.contribution(), Boolean.TRUE.equals(body.tithe()));
+        return cdps.renew(spaceId, id, body.toTerms(), Boolean.TRUE.equals(body.tithe()));
     }
 
     @GetMapping("/transfers")

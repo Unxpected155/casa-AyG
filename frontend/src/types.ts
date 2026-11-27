@@ -212,16 +212,30 @@ export interface CdpData {
   lastContribution: number | null;
 }
 
-/** Lo que pasa al renovar un CDP (calculado por el servidor, igual que el banco). */
+/** Las condiciones de un plazo del CDP. */
+export interface CdpTerms {
+  rate: number;
+  termDays: number;
+  dayBasis: number;
+  taxPct: number;
+}
+
+/**
+ * Lo que pasa al renovar un CDP (calculado por el servidor, igual que el banco). Los intereses
+ * salen de `earned` (el plazo que terminó); `next` es el plazo que empieza.
+ */
 export interface Renewal {
   principal: number;
-  rate: number;
+  earned: CdpTerms;
   grossInterest: number;
   tax: number;
   netInterest: number;
   tithe: number;
   contribution: number;
+  withdrawal: number;
+  withdrawTo: string | null;
   newPrincipal: number;
+  next: CdpTerms;
   maturesOn: string;
   nextMaturity: string;
   payoutPlace: string;
