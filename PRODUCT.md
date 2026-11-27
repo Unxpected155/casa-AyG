@@ -91,6 +91,10 @@ y con calma en la noche (revisar cómo va el mes).
 ### Facturas
 - Se leen del buzón de correo las facturas Y los tiquetes electrónicos. Nada se anota solo:
   la persona elige dónde va. La categoría se sugiere por lo que eligió antes en ese comercio.
+- Un tiquete es de quien diga su cédula, si la trae; si no, de la persona dueña de la variante
+  del correo de la casa a la que llegó (casa+usuario@...). Cada quien ve la suya en Facturas.
+- Un tiquete puede entrar sin la respuesta de Hacienda: se muestra «sin confirmar por Hacienda»
+  y se marca confirmado si la respuesta llega después. Una factura siempre necesita la respuesta.
 
 ### Planeador de metas (reemplaza al simulador actual)
 Responde, con los datos reales, dos preguntas:
@@ -163,3 +167,5 @@ y el dinero personal, facturas y tiquetes, historia, «¿Voy bien?», notificaci
 | 2026-11-27 | Push en horas de silencio: se guarda y sale a las 7 a. m. (sin repetir un tipo que ya salió ese día) | No perder avisos | No |
 | 2026-11-27 | Push del diezmo: días 1 y 16 a las 9 a. m. | El día después de cada quincena | No |
 | 2026-11-27 | Push de facturas: resumen a las 6 p. m.; presupuesto una vez al día a las 7 p. m.; recordatorio de cierre solo el día 1 | Uno al día por tipo, antes del silencio | Sí |
+| 2026-11-27 | Tiquetes: el dueño sale de la cédula o, si no la trae, de la variante del correo de la casa (casa+usuario@) | Los tiquetes casi nunca traen cédula | No |
+| 2026-11-27 | Tiquetes sin la respuesta de Hacienda entran marcados «sin confirmar»; las facturas, no | Que entren más tiquetes; la persona revisa antes de anotar | No |

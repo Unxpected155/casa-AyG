@@ -61,7 +61,9 @@ class GoogleGmailApi implements GmailApi {
     record Message(Part payload) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record Part(String filename, String mimeType, Body body, List<Part> parts) {}
+    record Part(String filename, String mimeType, Body body, List<Part> parts, List<Header> headers) {}
+
+    record Header(String name, String value) {}
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     record Body(String attachmentId, Integer size, String data) {}
@@ -179,11 +181,29 @@ class GoogleGmailApi implements GmailApi {
 
     @Override
     public List<Attachment> xmlAttachments(String accessToken, String messageId) {
+        return mail(accessToken, messageId).attachments();
+    }
+
+    @Override
+    public Mail mail(String accessToken, String messageId) {
         if (!messageId.matches("[A-Za-z0-9_-]{1,64}")) {
             throw new IllegalArgumentException("id");
         }
         Message m = http.get().uri(GMAIL + "/messages/" + messageId + "?format=full")
             .headers(h -> h.setBearerAuth(accessToken)).retrieve().body(Message.class);
+        List<String> recipients = new ArrayList<>();
+        if (m != null && m.payload() != null && m.payload().headers() != null) {
+            for (Header h : m.payload().headers()) {
+                String name = h.name() == null ? "" : h.name().toLowerCase(Locale.ROOT);
+                if ((name.equals("delivered-to") || name.equals("to") || name.equals("cc")) && h.value() != null
+                        && h.value().length() <= 2000) {
+                    java.util.regex.Matcher addr = EMAIL.matcher(h.value());
+                    while (addr.find() && recipients.size() < 20) {
+                        recipients.add(addr.group().toLowerCase(Locale.ROOT));
+                    }
+                }
+            }
+        }
         List<Part> xml = new ArrayList<>();
         if (m != null && m.payload() != null) {
             collect(m.payload(), xml, 0);
@@ -200,8 +220,11 @@ class GoogleGmailApi implements GmailApi {
                 out.add(new Attachment(p.filename(), Base64.getUrlDecoder().decode(data.getBytes(StandardCharsets.US_ASCII))));
             }
         }
-        return out;
+        return new Mail(List.copyOf(recipients), out);
     }
+
+    private static final java.util.regex.Pattern EMAIL =
+        java.util.regex.Pattern.compile("[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,253}");
 
     /** Adjuntos .xml (no muy grandes), recorriendo el árbol MIME con un límite de profundidad. */
     private static void collect(Part part, List<Part> out, int depth) {

@@ -77,6 +77,54 @@ class InvoiceVerifierTest {
         assertThat(v.merchant()).isEqualTo("Super <script> abc");
     }
 
+    // --- tiquetes (V28) ----------------------------------------------------------------------
+
+    @Test
+    void unTiqueteSinReceptorNiRespuestaPasaSinConfirmarPorHacienda() throws Exception {
+        VerifiedInvoice v = verifier.verify(TestPki.sign(InvoiceSamples.tiquete(901, "4500.00"), comercio), null);
+        assertThat(v.kind()).isEqualTo(VerifiedInvoice.Kind.TIQUETE);
+        assertThat(v.receptorId()).isNull();
+        assertThat(v.haciendaConfirmed()).isFalse();
+        assertThat(v.signatureVerified()).isTrue();
+        assertThat(v.total()).isEqualByComparingTo("4500.00");
+    }
+
+    @Test
+    void unTiqueteConRespuestaQuedaConfirmadoYLaRespuestaSeVerificaIgual() throws Exception {
+        byte[] tiquete = TestPki.sign(InvoiceSamples.tiquete(902, "4500.00"), comercio);
+        VerifiedInvoice v = verifier.verify(tiquete, TestPki.sign(InvoiceSamples.mensajeTiquete(902, "4500.00"), hacienda));
+        assertThat(v.haciendaConfirmed()).isTrue();
+        // Otra cifra en la respuesta, o una respuesta que no es de Hacienda: no pasa.
+        assertThatThrownBy(() -> verifier.verify(tiquete,
+                TestPki.sign(InvoiceSamples.mensajeTiquete(902, "45.00"), hacienda)))
+            .hasMessage("hacienda-total");
+        assertThatThrownBy(() -> verifier.verify(tiquete,
+                TestPki.sign(InvoiceSamples.mensajeTiquete(902, "4500.00"), otroComercio)))
+            .hasMessageStartingWith("hacienda");
+    }
+
+    @Test
+    void unaFacturaSinRespuestaNoPasaYUnTiqueteAlteradoTampoco() throws Exception {
+        assertThatThrownBy(() -> verifier.verify(TestPki.sign(factura(), comercio), null)).hasMessage("hacienda");
+        byte[] alterado = new String(TestPki.sign(InvoiceSamples.tiquete(903, "4500.00"), comercio),
+            StandardCharsets.UTF_8).replace("4500.00", "45.00").getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> verifier.verify(alterado, null)).hasMessage("firma");
+    }
+
+    @Test
+    void laVarianteDelCorreoDiceDeQuienEsElTiquete() {
+        assertThat(MailboxReader.aliasTag("casa.ayg+gabito@gmail.com", "casa.ayg@gmail.com")).contains("gabito");
+        // Gmail ignora puntos y mayúsculas en la parte local.
+        assertThat(MailboxReader.aliasTag("CasaAyG+alli@Gmail.com", "casa.ayg@gmail.com")).contains("alli");
+        assertThat(MailboxReader.aliasTag("casa.ayg@gmail.com", "casa.ayg@gmail.com")).isEmpty();
+        assertThat(MailboxReader.aliasTag("otra+gabito@gmail.com", "casa.ayg@gmail.com")).isEmpty();
+        assertThat(MailboxReader.aliasTag("casa.ayg+gabito@otro.com", "casa.ayg@gmail.com")).isEmpty();
+        assertThat(MailboxReader.aliasTag("casa.ayg+a@gmail.com", "casa.ayg@gmail.com")).isEmpty();
+        assertThat(MailboxReader.aliasTag("casa.ayg+gab'ito@gmail.com", "casa.ayg@gmail.com")).isEmpty();
+        // Fuera de Gmail los puntos sí cuentan.
+        assertThat(MailboxReader.aliasTag("casaayg+ana@example.com", "casa.ayg@example.com")).isEmpty();
+    }
+
     // --- falsificaciones --------------------------------------------------------------------
 
     @Test
@@ -131,10 +179,10 @@ class InvoiceVerifierTest {
     }
 
     @Test
-    void unTiqueteOUnXmlCualquieraSeRechaza() throws Exception {
-        String tiquete = factura().replace("FacturaElectronica", "TiqueteElectronico")
-            .replace("facturaElectronica", "tiqueteElectronico");
-        rejected(TestPki.sign(tiquete, comercio), TestPki.sign(mensaje(), hacienda), "tipo");
+    void unXmlCualquieraSeRechaza() throws Exception {
+        // Un tiquete con el esquema de factura (o al revés) tampoco: el nombre y el esquema van juntos.
+        String mezclado = factura().replace("FacturaElectronica", "TiqueteElectronico");
+        rejected(TestPki.sign(mezclado, comercio), TestPki.sign(mensaje(), hacienda), "esquema");
         String otroEsquema = factura().replace("https://cdn.comprobanteselectronicos.go.cr/", "https://evil.example/");
         rejected(TestPki.sign(otroEsquema, comercio), TestPki.sign(mensaje(), hacienda), "esquema");
     }

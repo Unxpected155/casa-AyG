@@ -50,7 +50,7 @@ import org.w3c.dom.NodeList;
  * Verifica una factura electrónica de Hacienda (ADR-006) junto con la respuesta de Hacienda.
  * Una factura pasa solo si TODO esto se cumple:
  * <ol>
- *   <li>Es FacturaElectronica o NotaCreditoElectronica, del esquema de Hacienda.</li>
+ *   <li>Es FacturaElectronica, NotaCreditoElectronica o TiqueteElectronico, del esquema de Hacienda.</li>
  *   <li>Tiene UNA firma válida, hija de la raíz, que firma el documento COMPLETO (sin
  *       "wrapping") y cuyo certificado es del emisor. Si además encadena a una autoridad de
  *       confianza, queda «verificada»; si no, pasa igual sin esa marca (modo práctico: la
@@ -60,6 +60,10 @@ import org.w3c.dom.NodeList;
  *       y receptor, por el mismo total, y dice ACEPTADO.</li>
  * </ol>
  * Que el receptor sea alguien de la casa lo decide quien llama (TaxIdService).
+ *
+ * Un tiquete (decisión del 2026-11-27) puede no traer receptor (casi nunca lo trae) y puede
+ * llegar sin la respuesta de Hacienda: entonces pasa con {@code haciendaConfirmed = false}, y la
+ * persona lo revisa antes de anotarlo. Si trae la respuesta, se verifica igual que una factura.
  */
 public final class InvoiceVerifier {
 
@@ -86,15 +90,25 @@ public final class InvoiceVerifier {
         this.clock = clock;
     }
 
+    /** @param haciendaXml la respuesta de Hacienda; solo un tiquete puede venir sin ella (null). */
     public VerifiedInvoice verify(byte[] invoiceXml, byte[] haciendaXml) throws InvoiceRejected {
         Document doc = SafeXml.parse(invoiceXml);
         Element root = doc.getDocumentElement();
         VerifiedInvoice.Kind kind = switch (String.valueOf(root.getLocalName())) {
             case "FacturaElectronica" -> VerifiedInvoice.Kind.FACTURA;
             case "NotaCreditoElectronica" -> VerifiedInvoice.Kind.NOTA_CREDITO;
+            case "TiqueteElectronico" -> VerifiedInvoice.Kind.TIQUETE;
             default -> throw new InvoiceRejected("tipo");
         };
-        requireNamespace(root, kind == VerifiedInvoice.Kind.FACTURA ? "facturaElectronica" : "notaCreditoElectronica");
+        requireNamespace(root, switch (kind) {
+            case FACTURA -> "facturaElectronica";
+            case NOTA_CREDITO -> "notaCreditoElectronica";
+            case TIQUETE -> "tiqueteElectronico";
+        });
+        boolean ticket = kind == VerifiedInvoice.Kind.TIQUETE;
+        if (haciendaXml == null && !ticket) {
+            throw new InvoiceRejected("hacienda");
+        }
 
         String clave = text(root, "Clave");
         String consecutivo = text(root, "NumeroConsecutivo");
@@ -115,11 +129,17 @@ public final class InvoiceVerifier {
         Element emisor = only(root, "Emisor");
         String emisorId = stripZeros(digits(text(only(emisor, "Identificacion"), "Numero")));
         Element receptor = optional(root, "Receptor");
-        if (receptor == null) {
+        if (receptor == null && !ticket) {
             throw new InvoiceRejected("sin-receptor");
         }
-        String receptorId = stripZeros(digits(text(only(receptor, "Identificacion"), "Numero")));
-        if (emisorId.isEmpty() || receptorId.isEmpty()) {
+        // Un tiquete puede traer receptor sin identificación (solo el nombre): cuenta como sin receptor.
+        Element receptorIdentificacion = receptor == null ? null : optional(receptor, "Identificacion");
+        if (receptor != null && receptorIdentificacion == null && !ticket) {
+            throw new InvoiceRejected("identificacion");
+        }
+        String receptorId = receptorIdentificacion == null ? null
+            : stripZeros(digits(text(receptorIdentificacion, "Numero")));
+        if (emisorId.isEmpty() || (receptorId != null && receptorId.isEmpty())) {
             throw new InvoiceRejected("identificacion");
         }
         // Clave: 506 + ddmmaa + cédula del emisor (12) + consecutivo (20) + situación + seguridad.
@@ -146,16 +166,17 @@ public final class InvoiceVerifier {
             throw new InvoiceRejected("firmante");
         }
 
-        Signed hacienda = verifyHacienda(haciendaXml, clave, emisorId, receptorId, total, issued);
+        Signed hacienda = haciendaXml == null ? null
+            : verifyHacienda(haciendaXml, clave, emisorId, receptorId, total, issued);
 
-        // Verificada = las dos firmas encadenan a una autoridad de confianza y la respuesta la
+        // Verificada = las firmas encadenan a una autoridad de confianza y, si hay respuesta, la
         // firmó Hacienda. Si no, igual pasa (la revisa la persona), con los datos públicos de
         // quién firmó para poder configurar las autoridades.
-        boolean verified = signed.trusted() && hacienda.trusted() && !haciendaId.isEmpty();
+        boolean verified = signed.trusted() && (hacienda == null || (hacienda.trusted() && !haciendaId.isEmpty()));
         String diagnostic = verified ? null
-            : "factura " + signerInfo(doc) + " | hacienda " + signerInfo(hacienda.doc());
+            : "comprobante " + signerInfo(doc) + (hacienda == null ? "" : " | hacienda " + signerInfo(hacienda.doc()));
         return new VerifiedInvoice(kind, clave, issued.atZone(CR).toLocalDate(), merchant, emisorId, receptorId,
-            currency, total.setScale(2, RoundingMode.HALF_UP), verified, diagnostic);
+            currency, total.setScale(2, RoundingMode.HALF_UP), verified, diagnostic, hacienda != null);
     }
 
     /** Una firma válida (el documento no se cambió) y si su certificado es de una autoridad de confianza. */
@@ -187,7 +208,8 @@ public final class InvoiceVerifier {
         if (!stripZeros(digits(text(root, "NumeroCedulaEmisor"))).equals(emisorId)) {
             throw new InvoiceRejected("hacienda-emisor");
         }
-        if (!stripZeros(digits(text(root, "NumeroCedulaReceptor"))).equals(receptorId)) {
+        // Sin receptor (un tiquete), la respuesta tampoco tiene a quién nombrar.
+        if (receptorId != null && !stripZeros(digits(text(root, "NumeroCedulaReceptor"))).equals(receptorId)) {
             throw new InvoiceRejected("hacienda-receptor");
         }
         if (amount(text(root, "TotalFactura")).compareTo(total) != 0) {
@@ -314,15 +336,19 @@ public final class InvoiceVerifier {
         }
     }
 
-    /** Qué es un adjunto, sin verificarlo: un comprobante o una respuesta de Hacienda, y su clave. */
-    public record Peek(boolean response, String clave) {}
+    /**
+     * Qué es un adjunto, sin verificarlo: un comprobante o una respuesta de Hacienda, su clave y
+     * si es un tiquete (que puede entrar sin respuesta).
+     */
+    public record Peek(boolean response, String clave, boolean ticket) {}
 
     public static java.util.Optional<Peek> peek(byte[] xml) {
         try {
             Element root = SafeXml.parse(xml).getDocumentElement();
             String name = String.valueOf(root.getLocalName());
             boolean response = name.equals("MensajeHacienda");
-            if (!response && !name.equals("FacturaElectronica") && !name.equals("NotaCreditoElectronica")) {
+            boolean ticket = name.equals("TiqueteElectronico");
+            if (!response && !ticket && !name.equals("FacturaElectronica") && !name.equals("NotaCreditoElectronica")) {
                 return java.util.Optional.empty();
             }
             String ns = root.getNamespaceURI();
@@ -330,7 +356,8 @@ public final class InvoiceVerifier {
                 return java.util.Optional.empty();
             }
             String clave = text(root, "Clave");
-            return clave.matches("506[0-9]{47}") ? java.util.Optional.of(new Peek(response, clave)) : java.util.Optional.empty();
+            return clave.matches("506[0-9]{47}") ? java.util.Optional.of(new Peek(response, clave, ticket))
+                : java.util.Optional.empty();
         } catch (InvoiceRejected e) {
             return java.util.Optional.empty();
         }
