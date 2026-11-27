@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, messageOf, withPasskeyConfirm } from "../api";
 import { Icon } from "../components/Icon";
 import { Notifications } from "../components/Notifications";
+import { ThemePicker } from "../components/ThemePicker";
 import { Shell } from "../components/Shell";
 import { TaxId } from "../components/TaxId";
 import { dateLabel } from "../format";
@@ -140,6 +141,7 @@ export function Account() {
         </form>
       </details>
 
+      <ThemePicker />
       <Notifications />
 
       <TaxId />

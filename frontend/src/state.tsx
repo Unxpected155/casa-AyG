@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { api, ApiError } from "./api";
 import { currentMonth, shiftMonth, type YearMonth } from "./format";
+import { applyTheme } from "./theme";
 import type { Category, Me, Place, Space } from "./types";
 
 export type Session =
@@ -55,6 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return (active.find((s) => s.kind === "FAMILIA") ?? active[0] ?? list[0])?.id ?? null;
       });
       setSession({ kind: "ready", me });
+      applyTheme(me.theme ?? "AUTO");
     } catch (error) {
       if (error instanceof ApiError && error.status === 403) setSession({ kind: "enrolling" });
       else setSession({ kind: "anonymous" });

@@ -10,6 +10,8 @@ export interface Me {
   displayName: string;
   passkeys: number;
   recoveryCodesLeft: number;
+  /** Tema elegido en Perfil: AUTO sigue al teléfono. */
+  theme: "AUTO" | "CLARO" | "OSCURO";
 }
 
 export interface Member {
