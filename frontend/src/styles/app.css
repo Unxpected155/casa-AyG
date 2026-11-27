@@ -1224,15 +1224,22 @@ details.more summary {
   margin-bottom: var(--s6);
 }
 
+/* Un poco de aire entre el renglón y sus rayas, para que el resaltado no las toque. */
 .health-row {
-  padding: 0;
+  padding: var(--s1) 0;
 }
 
-.health-button {
+/* El resaltado al tocar sale un poco hacia los lados (margen negativo) con esquinas suaves:
+   el texto queda alineado con el resto de la página y el fondo no lo pega a los bordes.
+   Doble clase: .row-button (más abajo en el archivo) pone padding 0 y ancho 100 %. */
+.row-button.health-button {
   display: flex;
   align-items: center;
   gap: var(--s3);
-  padding: var(--s3) 0;
+  width: calc(100% + 2 * var(--s3));
+  margin-inline: calc(-1 * var(--s3));
+  padding: var(--s3);
+  border-radius: var(--radius);
 }
 
 .health-body {
