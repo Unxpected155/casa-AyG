@@ -85,6 +85,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   }, [space, version]);
 
+  // Saldos en tiempo real: el servidor avisa cuando cambia algo de este espacio (lo anotó la
+  // otra persona, u otro teléfono tuyo) y las pantallas vuelven a pedir sus datos. El aviso no
+  // trae datos. Solo se escucha mientras la app está a la vista; al volver, se pone al día.
+  const sessionReady = session.kind === "ready";
+  const liveSpaceId = space?.id ?? null;
+  useEffect(() => {
+    if (!sessionReady || !liveSpaceId) return;
+    let source: EventSource | null = null;
+    let connectedBefore = false;
+    let failures = 0;
+    let debounce: number | undefined;
+    let retry: number | undefined;
+
+    // Varios avisos seguidos (un cierre de mes, por ejemplo) hacen una sola recarga.
+    const refresh = () => {
+      window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => setVersion((v) => v + 1), 300);
+    };
+    const close = () => {
+      source?.close();
+      source = null;
+      window.clearTimeout(retry);
+    };
+    const open = () => {
+      if (source || document.visibilityState !== "visible") return;
+      const es = new EventSource(`/api/spaces/${liveSpaceId}/events`);
+      source = es;
+      es.addEventListener("ready", () => {
+        failures = 0;
+        // Al reconectarse pudo haberse perdido algo: se recarga una vez.
+        if (connectedBefore) refresh();
+        connectedBefore = true;
+      });
+      es.addEventListener("change", refresh);
+      es.onerror = () => {
+        // Cerrado del todo (el servidor dijo que no, o se cayó): se reintenta con calma.
+        // Si no, el navegador ya está reintentando solo.
+        if (es.readyState !== EventSource.CLOSED) return;
+        source = null;
+        failures += 1;
+        retry = window.setTimeout(open, Math.min(60_000, 2_000 * 2 ** Math.min(failures, 5)));
+      };
+    };
+    const onVisibility = () => (document.visibilityState === "visible" ? open() : close());
+
+    open();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearTimeout(debounce);
+      close();
+    };
+  }, [sessionReady, liveSpaceId]);
+
   const value = useMemo<AppState>(() => {
     const names = new Map<string, string>();
     for (const s of spaces) for (const m of s.members) names.set(m.id, m.displayName);
