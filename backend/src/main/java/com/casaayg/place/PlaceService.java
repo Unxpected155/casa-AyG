@@ -43,14 +43,16 @@ public class PlaceService {
         this.changes = changes;
     }
 
-    public record NewPlace(PlaceName name, Kind kind, Money opening, LocalDate openingDate, UUID parentId) {}
+    /** {@code savings}: si es un lugar de ahorro (null = el de su tipo: los CDP sí, los demás no). */
+    public record NewPlace(PlaceName name, Kind kind, Money opening, LocalDate openingDate, UUID parentId,
+                           Boolean savings) {}
 
     public record PlaceChanges(PlaceName name, BigDecimal openingBalance, LocalDate openingDate, UUID parentId,
-                               boolean archived) {}
+                               boolean archived, Boolean savings) {}
 
     public record PlaceView(UUID id, String name, Kind kind, Money.Currency currency, BigDecimal openingBalance,
                             LocalDate openingDate, UUID parentId, boolean archived, BigDecimal balance, Cdp cdp,
-                            String goalName) {}
+                            String goalName, boolean savings) {}
 
     /** Datos de un CDP (null en los demás lugares; sus campos quedan null hasta configurarlo). */
     public record Cdp(BigDecimal rate, Integer termDays, Integer dayBasis, BigDecimal taxPct, LocalDate maturesOn,
@@ -66,7 +68,7 @@ public class PlaceService {
      * inicial. Lo anotado con fecha futura todavía no cuenta.
      */
     private static final String PLACE_SELECT = """
-        SELECT p.id, p.name, p.kind, p.currency, p.opening_balance, p.opening_date, p.parent_id, p.archived,
+        SELECT p.id, p.name, p.kind, p.currency, p.opening_balance, p.opening_date, p.parent_id, p.archived, p.savings,
                p.cdp_rate, p.cdp_term_days, p.cdp_day_basis, p.cdp_tax_pct, p.cdp_matures_on, p.cdp_payout_place,
                p.cdp_last_contribution,
                place_balance(p.id, current_date) AS balance,
@@ -89,10 +91,12 @@ public class PlaceService {
             requireValidParent(spaceId, null, place.kind(), place.opening().currency(), place.parentId());
         }
         UUID id = jdbc.sql("""
-                INSERT INTO place (space_id, created_by, name, kind, currency, opening_balance, opening_date, parent_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""")
+                INSERT INTO place (space_id, created_by, name, kind, currency, opening_balance, opening_date, parent_id,
+                                   savings)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""")
             .params(spaceId, CurrentUser.require(), place.name().value(), place.kind().name(),
-                place.opening().currency().name(), place.opening().amount(), place.openingDate(), place.parentId())
+                place.opening().currency().name(), place.opening().amount(), place.openingDate(), place.parentId(),
+                place.savings() != null ? place.savings() : place.kind() == Kind.CDP)
             .query(UUID.class).single();
         return find(spaceId, id);
     }
@@ -106,10 +110,11 @@ public class PlaceService {
         }
         Money opening = new Money(changes.openingBalance(), current.currency());
         jdbc.sql("""
-                UPDATE place SET name = ?, opening_balance = ?, opening_date = ?, parent_id = ?, archived = ?
+                UPDATE place SET name = ?, opening_balance = ?, opening_date = ?, parent_id = ?, archived = ?,
+                                 savings = ?
                  WHERE id = ? AND space_id = ?""")
             .params(changes.name().value(), opening.amount(), changes.openingDate(), changes.parentId(),
-                changes.archived(), id, spaceId)
+                changes.archived(), changes.savings() != null ? changes.savings() : current.savings(), id, spaceId)
             .update();
         return find(spaceId, id);
     }
@@ -231,7 +236,8 @@ public class PlaceService {
         return new PlaceView(rs.getObject("id", UUID.class), rs.getString("name"), kind,
             Money.Currency.valueOf(rs.getString("currency")), rs.getBigDecimal("opening_balance"),
             rs.getObject("opening_date", LocalDate.class), rs.getObject("parent_id", UUID.class),
-            rs.getBoolean("archived"), rs.getBigDecimal("balance"), cdp, rs.getString("goal_name"));
+            rs.getBoolean("archived"), rs.getBigDecimal("balance"), cdp, rs.getString("goal_name"),
+            rs.getBoolean("savings"));
     }
 
     private static TransferView mapTransfer(ResultSet rs, int n) throws SQLException {

@@ -151,6 +151,9 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
   const [opening, setOpening] = useState("");
   const [date, setDate] = useState(todayIso());
   const [parentId, setParentId] = useState("");
+  // Un CDP es de ahorro por defecto; los demás, solo si la persona lo marca.
+  const [savings, setSavings] = useState<boolean | null>(null);
+  const isSavings = savings ?? kind === "CDP";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const parents = parentOptions(places, currency);
@@ -165,7 +168,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
     try {
       await api.post(`/api/spaces/${space!.id}/places`, {
         name: name.trim(), kind, currency, openingBalance: amount, openingDate: date,
-        parentId: kind === "SOBRE" && parentId ? parentId : null,
+        parentId: kind === "SOBRE" && parentId ? parentId : null, savings: isSavings,
       });
       onDone(true);
     } catch (e) {
@@ -216,6 +219,7 @@ function NewPlace({ places, onDone }: { places: Place[]; onDone: (created: boole
           </select>
         </label>
       )}
+      <SavingsCheck checked={isSavings} onChange={setSavings} />
       {error && <p className="form-error" role="alert">{error}</p>}
       <div className="actions">
         <button type="button" className="button ghost" onClick={() => onDone(false)}>Cancelar</button>
@@ -237,6 +241,7 @@ function PlaceEditor({ place, places, onDone, onDistribute, onMove }: {
   const [opening, setOpening] = useState(amountToInput(place.openingBalance));
   const [date, setDate] = useState(place.openingDate);
   const [parentId, setParentId] = useState(place.parentId ?? "");
+  const [savings, setSavings] = useState(place.savings);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const parents = parentOptions(places, place.currency, place.id);
@@ -251,7 +256,7 @@ function PlaceEditor({ place, places, onDone, onDistribute, onMove }: {
     try {
       await api.put(`/api/spaces/${space!.id}/places/${place.id}`, {
         name: name.trim(), openingBalance: amount, openingDate: date,
-        parentId: place.kind === "SOBRE" && parentId ? parentId : null, archived,
+        parentId: place.kind === "SOBRE" && parentId ? parentId : null, archived, savings,
       });
       onDone();
     } catch (e) {
@@ -290,6 +295,7 @@ function PlaceEditor({ place, places, onDone, onDistribute, onMove }: {
           <input type="date" value={date} min="2000-01-01" onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
+      {!place.archived && <SavingsCheck checked={savings} onChange={setSavings} />}
       <p className="muted small">
         Si el saldo no cuadra con el banco, corrige el saldo inicial o la fecha: lo anotado antes de esa fecha no cuenta.
       </p>
@@ -389,5 +395,22 @@ function Distribute({ from, places, onDone }: { from: Place; places: Place[]; on
         <button type="submit" className="button primary" disabled={busy}>{busy ? "Repartiendo…" : "Repartir"}</button>
       </div>
     </form>
+  );
+}
+
+/** «Es de ahorro»: su saldo cuenta como Ahorrado y no entra en lo que te sobra. */
+function SavingsCheck({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="savings-check">
+      <label className="check">
+        <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <span>Es de ahorro</span>
+      </label>
+      <p className="muted small">
+        {checked
+          ? "Lo de aquí cuenta como ahorrado: no se suma a lo que te sobra para gastar."
+          : "Lo de aquí cuenta como disponible para gastar. Márcalo si es dinero que guardas con un propósito."}
+      </p>
+    </div>
   );
 }

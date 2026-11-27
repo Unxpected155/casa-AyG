@@ -1135,6 +1135,165 @@ details.more summary {
   margin-top: var(--s3);
 }
 
+/* ---------- Las tres partes del dinero: Ahorrado / Disponible / Te sobra ---------- */
+/* Reserva el alto mientras llegan los datos, para que la página no salte. */
+.money-parts-slot {
+  min-height: 7.5rem;
+}
+
+.money-parts {
+  margin-top: var(--s4);
+}
+
+/* Una sola barra, como una regla de la libreta: cada tramo crece según su monto. */
+.money-bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--paper-sunk);
+}
+
+.money-seg {
+  flex: var(--grow) 1 0;
+  min-width: 0;
+}
+
+.money-seg.saved,
+.money-key.saved {
+  background: var(--ink-soft);
+}
+
+.money-seg.committed,
+.money-key.committed {
+  background: var(--rule-strong);
+}
+
+.money-seg.leftover,
+.money-key.leftover {
+  background: var(--ok);
+}
+
+.money-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: var(--s3) var(--s4);
+  margin: var(--s3) 0 0;
+}
+
+.money-list dt {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.money-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.money-leftover dd {
+  font-size: var(--t-lg);
+  color: var(--ok);
+}
+
+/* No alcanza: ocre, como «cerca del límite». Nunca rojo de alarma. */
+.money-leftover dd.short {
+  color: var(--near);
+}
+
+.money-key {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.money-note {
+  margin: var(--s2) 0 0;
+  max-width: 62ch;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+/* ---------- ¿Voy bien? ---------- */
+.health {
+  margin-bottom: var(--s6);
+}
+
+.health-row {
+  padding: 0;
+}
+
+.health-button {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) 0;
+}
+
+.health-body {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.health-title {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+.health-text {
+  font-size: var(--t-md);
+}
+
+.health-detail {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+}
+
+.health-rule {
+  margin-top: var(--s1);
+}
+
+.health-status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--s1);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.health-status.ok {
+  color: var(--ok);
+}
+
+.health-status.near {
+  color: var(--near);
+}
+
+/* «Crearlo», «Crear una»: es una acción, va en el color de las acciones. */
+.health-status.neutral {
+  color: var(--accent-ink);
+}
+
+.savings-check {
+  display: grid;
+  gap: var(--s1);
+}
+
+.savings-check p {
+  margin: 0;
+}
+
 .place-row.nested .row-name {
   padding-left: var(--s5);
 }

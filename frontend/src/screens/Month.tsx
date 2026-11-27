@@ -11,7 +11,8 @@ import { GROUP_LABEL, money, pct } from "../format";
 import { countUp, gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { navigate } from "../router";
 import { useApp } from "../state";
-import { GROUPS, type Group, type MergeRequest, type Summary, type SummaryLine } from "../types";
+import { VoyBien } from "../components/VoyBien";
+import { GROUPS, type Group, type Health, type MergeRequest, type Summary, type SummaryLine } from "../types";
 
 /** Pantalla principal: el mes como una página de libreta. */
 export function Month() {
@@ -49,6 +50,20 @@ export function Month() {
   const [adding, setAdding] = useState(false);
   const [showIdle, setShowIdle] = useState(false);
   const ledger = useRef<HTMLDivElement>(null);
+  // «¿Voy bien?» y las tres partes del dinero: siempre a hoy, así que solo en el mes en curso.
+  const [health, setHealth] = useState<Health | null>(null);
+  const now = new Date();
+  const viewingNow = month.year === now.getFullYear() && month.month === now.getMonth() + 1;
+  useEffect(() => {
+    if (!space || !viewingNow) return;
+    let cancelled = false;
+    api.get<Health>(`/api/spaces/${space.id}/health`)
+      .then((h) => !cancelled && setHealth(h))
+      .catch(() => !cancelled && setHealth(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [space, viewingNow, version]);
 
   useEffect(() => {
     if (!space) return;
@@ -69,7 +84,7 @@ export function Month() {
     const total = ledger.current?.querySelector<HTMLElement>("[data-count]");
     if (total) countUp(total, Math.round(summary.expenses.crc), (n) => money(n, "CRC"));
     return whenMotionAllowed(() => {
-      gsap.from(".rule-fill", { scaleX: 0, duration: 0.6, ease: "expo.out", stagger: 0.025, clearProps: "transform" });
+      gsap.from(".group .rule-fill", { scaleX: 0, duration: 0.6, ease: "expo.out", stagger: 0.025, clearProps: "transform" });
     });
   }, { scope: ledger, dependencies: [summary] });
 
@@ -107,7 +122,8 @@ export function Month() {
           </p>
         ))}
 
-        {summary && isCurrentMonth && <Balance />}
+        {summary && isCurrentMonth && <Balance health={health} />}
+        {summary && isCurrentMonth && health && <VoyBien health={health} />}
 
         {summary && space?.kind === "FAMILIA" && (
           <button type="button" className="button ghost small history-link" onClick={() => navigate("/casa")}>

@@ -174,6 +174,28 @@ export interface Place {
   cdp: CdpData | null;
   /** La meta para la que está apartado este dinero (si alguna). */
   goalName: string | null;
+  /** Lugar de ahorro (V24): su saldo es «Ahorrado», no «Disponible». */
+  savings: boolean;
+}
+
+/** «¿Voy bien?» (GET /api/spaces/{id}/health). Montos en colones salvo los de cada deuda. */
+export interface Health {
+  today: string;
+  money: { saved: number; available: number; pending: number; leftover: number; missingRate: boolean };
+  savingsRate: { month: number | null; savedMonth: number; incomeMonth: number; average: number | null; averageMonths: number };
+  emergency: {
+    goalId: string; name: string; currency: Currency; saved: number;
+    monthlyExpenses: number | null; monthsCovered: number | null; targetMonths: number;
+  } | null;
+  debts: {
+    remainingCrc: number;
+    items: {
+      id: string; creditor: string; currency: Currency; remaining: number; monthlyAverage: number;
+      monthlyNeeded: number | null; dueDate: string | null; estimatedEnd: string | null;
+      status: "A_TIEMPO" | "ATRASADA" | "SIN_FECHA";
+    }[];
+  };
+  goals: { judged: number; onTime: number; behind: string[]; withoutDate: number };
 }
 
 export interface CdpData {
