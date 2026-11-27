@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { showMovements } from "./Movements";
 import { RecurringManager } from "../components/Recurring";
 import { api, messageOf } from "../api";
 import { Icon } from "../components/Icon";
@@ -337,6 +338,9 @@ function CategoryItem({ category, base, readOnly, onChange }: {
       </div>
       {!readOnly && !editing && open && (
           <div className="row-tools category-tools">
+            <button type="button" className="button ghost small" onClick={() => showMovements({ categoryId: category.id })}>
+              Ver movimientos
+            </button>
             <button type="button" className="button ghost small" onClick={() => setEditing(true)}>Renombrar</button>
             <button type="button" className="button ghost small" onClick={() => void update({ active: !category.active })}>
               {category.active ? "Desactivar" : "Activar"}

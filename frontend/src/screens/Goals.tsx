@@ -6,6 +6,7 @@ import { Shell } from "../components/Shell";
 import { amountChange, amountToInput, money, parseAmount, pct } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { useApp } from "../state";
+import { showMovements } from "./Movements";
 import type { Currency, Goal, GoalStatus } from "../types";
 
 const monthYear = new Intl.DateTimeFormat("es-CR", { month: "long", year: "numeric" });
@@ -134,7 +135,10 @@ function GoalRow({ goal: g, goals, open, readOnly, onToggle, onUp, onDown, onDon
   goal: Goal; goals: Goal[]; open: boolean; readOnly: boolean; onToggle: () => void;
   onUp?: () => void; onDown?: () => void; onDone: () => void;
 }) {
+  const { places } = useApp();
   const ratio = g.target > 0 ? Math.min(g.saved / g.target, 1) : 0;
+  // Dónde está el dinero de la meta: cada cuenta lleva a lo que entró y salió de ella este mes.
+  const homes = g.placeIds.map((id) => places.find((p) => p.id === id)).filter((p) => p !== undefined);
   return (
     <li className={`goal${g.status === "CUMPLIDA" ? " reached" : ""}${g.status === "PAUSADA" ? " paused" : ""}`}>
       <button type="button" className="goal-head row-button" onClick={onToggle} aria-expanded={open} disabled={readOnly}>
@@ -153,6 +157,15 @@ function GoalRow({ goal: g, goals, open, readOnly, onToggle, onUp, onDown, onDon
               role="meter" aria-label={`${g.name}: ${pct(g.percent)}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={g.percent} />
       </div>
       <p className="goal-plan">{planText(g)}</p>
+      {homes.length > 0 && (
+        <div className="goal-links">
+          {homes.map((p) => (
+            <button key={p.id} type="button" className="button ghost small" onClick={() => showMovements({ placeId: p.id })}>
+              Ver lo que entró a {p.name}
+            </button>
+          ))}
+        </div>
+      )}
       {g.target > 0 && g.status !== "CUMPLIDA" && g.status !== "ARCHIVADA" && <GoalSimulator goal={g} />}
       {g.kind === "EMERGENCIA" && g.monthlyExpenses > 0 && (
         <p className="muted small">{g.emergencyMonths} meses de tus gastos ({money(g.monthlyExpenses, g.currency)} al mes en promedio).</p>

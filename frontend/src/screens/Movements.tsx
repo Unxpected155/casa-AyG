@@ -6,6 +6,7 @@ import { Shell } from "../components/Shell";
 import { useUndo } from "../components/Undo";
 import { dayLabel, initials, money } from "../format";
 import { gsap, useGSAP, whenMotionAllowed } from "../motion";
+import { navigate } from "../router";
 import { useApp } from "../state";
 import { useDebts } from "../debts";
 import type { Transaction, TransactionPage, Transfer } from "../types";
@@ -18,6 +19,17 @@ interface Filters {
 }
 
 const NO_FILTERS: Filters = { q: "", categoryId: "", placeId: "", all: false };
+
+/** Abrir Movimientos ya filtrado (desde el Mes, el Plan o una meta). «Atrás» vuelve a donde estabas. */
+export function showMovements(filter: { categoryId?: string; placeId?: string }): void {
+  navigate("/movimientos", false, { filters: filter });
+}
+
+/** El filtro con que se llegó a esta pantalla, si se llegó desde otra con uno. */
+function arrivingFilters(): Filters | null {
+  const state = window.history.state as { filters?: Partial<Filters> } | null;
+  return state?.filters ? { ...NO_FILTERS, ...state.filters } : null;
+}
 
 const PAGE_SIZE = 50;
 
@@ -35,12 +47,14 @@ export function Movements() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [adding, setAdding] = useState(false);
-  const [filters, setFilters] = useState<Filters>(NO_FILTERS);
+  const [filters, setFilters] = useState<Filters>(() => arrivingFilters() ?? NO_FILTERS);
   const [query, setQuery] = useState(""); // lo que se escribe; se aplica con una pausa corta
   const [totals, setTotals] = useState<TransactionPage["totals"] | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const filtering = filters.q !== "" || filters.categoryId !== "" || filters.placeId !== "" || filters.all;
-  const [showFilters, setShowFilters] = useState(false);
+  // Si se llegó con un filtro, el panel se ve abierto: así se entiende por qué la lista es más corta
+  // y se puede quitar el filtro ahí mismo.
+  const [showFilters, setShowFilters] = useState(() => arrivingFilters() !== null);
   const activeFilters = [filters.categoryId, filters.placeId].filter(Boolean).length + (filters.all ? 1 : 0);
 
   useEffect(() => {

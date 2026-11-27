@@ -12,6 +12,7 @@ import { countUp, gsap, useGSAP, whenMotionAllowed } from "../motion";
 import { navigate } from "../router";
 import { useApp } from "../state";
 import { VoyBien } from "../components/VoyBien";
+import { showMovements } from "./Movements";
 import { GROUPS, type Group, type Health, type MergeRequest, type Summary, type SummaryLine } from "../types";
 
 /** Pantalla principal: el mes como una página de libreta. */
@@ -313,33 +314,32 @@ function CategoryRow({ line, income }: { line: SummaryLine; income: boolean }) {
     : "ok";
   const text = income ? null : statusText(line);
 
+  // Toda la fila lleva a los movimientos de esa categoría en este mes («¿en qué se me fue?»).
+  // La línea es decorativa dentro del botón: el porcentaje va dicho en su nombre accesible.
   return (
-    <li className="row">
-      <div className="row-main">
-        <span className="row-name">{line.name}</span>
-        <span className="row-amounts">
-          <span className="figure">{spent}</span>
-          {line.plannedCrc > 0 && <span className="planned figure"> / {money(line.plannedCrc, "CRC")}</span>}
+    <li className="row category-row">
+      <button type="button" className="row-button category-link" onClick={() => showMovements({ categoryId: line.categoryId })}
+              aria-label={`${line.name}: ${spent}${line.plannedCrc > 0 ? ` de ${money(line.plannedCrc, "CRC")}, ${pct(ratio * 100)} de lo planeado` : ""}${text ? `, ${text}` : ""}. Ver sus movimientos`}>
+        <span className="category-body">
+          <span className="row-main">
+            <span className="row-name">{line.name}</span>
+            <span className="row-amounts">
+              <span className="figure">{spent}</span>
+              {line.plannedCrc > 0 && <span className="planned figure"> / {money(line.plannedCrc, "CRC")}</span>}
+            </span>
+          </span>
+          {line.plannedCrc > 0 && (
+            <span className="row-rule" aria-hidden="true">
+              <span className={`rule-fill ${tone}`} style={{ "--fill": fill } as CSSProperties} />
+            </span>
+          )}
+          {text && (
+            <span className={`row-status ${tone}`}>
+              <Icon name={line.status === "AL_LIMITE" || savedEnough ? "check" : "alert"} size={14} /> {text}
+            </span>
+          )}
         </span>
-      </div>
-      {line.plannedCrc > 0 && (
-        <div className="row-rule">
-          <span
-            className={`rule-fill ${tone}`}
-            style={{ "--fill": fill } as CSSProperties}
-            role="meter"
-            aria-label={`${line.name}: ${pct(ratio * 100)} de lo planeado`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(ratio * 100)}
-          />
-        </div>
-      )}
-      {text && (
-        <span className={`row-status ${tone}`}>
-          <Icon name={line.status === "AL_LIMITE" || savedEnough ? "check" : "alert"} size={14} /> {text}
-        </span>
-      )}
+      </button>
     </li>
   );
 }
