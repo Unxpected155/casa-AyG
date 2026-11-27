@@ -63,7 +63,11 @@ y con calma en la noche (revisar cómo va el mes).
 ### CDP
 - La persona define todos los datos al crear Y al renovar: plazo, tasa, impuesto, base de
   días, capital y aporte. Al renovar se ofrecen los de la vez anterior, ya llenos.
-- Al renovar se puede retirar parte del capital o sumarle.
+- Al renovar se puede retirar parte del capital o sumarle. Lo que se suma sale de la cuenta de
+  los intereses; lo que se retira va a la cuenta que la persona elija.
+- El interés del plazo que terminó se calcula con los datos de ese plazo; los que se escriben
+  al renovar valen para el plazo que empieza.
+- Al renovar, el CDP no puede quedar en cero: para cerrarlo se saca el dinero y se archiva.
 - La app calcula intereses e impuesto con esos datos, nunca con valores fijos.
 
 ### Deudas
@@ -143,6 +147,9 @@ y el dinero personal, facturas y tiquetes, historia, «¿Voy bien?», notificaci
 | 2026-11-26 | Fondo de emergencia: 3 meses por defecto, con el promedio de los meses cerrados con datos, en colones | Dato real, no inflado | No |
 | 2026-11-26 | Diezmo apagado por defecto, monto visible y destello único; pendiente acumulado; incluye intereses del CDP | No olvidar darlo, sin molestar | No |
 | 2026-11-26 | El CDP se define completo al renovar, con retiro o aporte | Cada renovación es distinta | No |
+| 2026-11-26 | El interés del plazo que terminó sale de los datos de ese plazo; los nuevos valen para el siguiente | Que cuadre con el comprobante del banco | No |
+| 2026-11-26 | El retiro del CDP va a la cuenta que la persona elija | Puede no ser la cuenta de los intereses | No |
+| 2026-11-26 | Al renovar el CDP no queda en cero; para cerrarlo se archiva | Evitar cerrar un CDP por un toque equivocado | No |
 | 2026-11-26 | Deudas: necesario contra promedio si hay fecha; estimado si no | Saber si se llega a tiempo | No |
 | 2026-11-26 | Dinero personal decidido por los dos al cerrar el mes; sugerencia igual para ambos; montos ajustables y distintos | No es un derecho fijo | No |
 | 2026-11-26 | Agregar tiquetes electrónicos al buzón | Quien no está inscrito en Hacienda recibe tiquetes | No |

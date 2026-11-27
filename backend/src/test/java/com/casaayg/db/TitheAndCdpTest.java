@@ -238,6 +238,78 @@ class TitheAndCdpTest extends WebTestSupport {
         as(b, post(base(b) + "/places/" + cdp + "/cdp/renew").content("{}")).andExpect(status().isNotFound());
     }
 
+    @Test
+    void losDatosNuevosValenParaElPlazoQueEmpiezaYLosInteresesSalenDeLosAnteriores() throws Exception {
+        UUID bcr = place(a, "BCR", "BANCO", "500000", TODAY.minusDays(30));
+        UUID cdp = place(a, "CDP ahorro", "CDP", "2250000", TODAY.minusDays(30));
+        configure(a, cdp, bcr, TODAY).andExpect(status().isOk());
+        String terms = "{\"rate\":\"3.5\",\"termDays\":60,\"dayBasis\":365,\"taxPct\":\"8\"";
+
+        // La vista previa ya muestra el plazo nuevo, pero el interés ganado no cambia.
+        Map<String, Object> preview = json(as(a, get(base(a) + "/places/" + cdp
+                + "/cdp/preview?rate=3.5&termDays=60&dayBasis=365&taxPct=8"))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        assertThat(num(preview, "grossInterest")).isEqualByComparingTo("5343.75");
+        assertThat(num(preview, "tax")).isEqualByComparingTo("801.55");
+        assertThat(preview).containsEntry("nextMaturity", TODAY.plusDays(60).toString());
+
+        as(a, post(base(a) + "/places/" + cdp + "/cdp/renew").content(terms + "}")).andExpect(status().isOk());
+        assertThat(balance(a, bcr)).isEqualByComparingTo("304542.20");
+        Map<String, Object> data = cdpData(cdp);
+        assertThat(num(data, "rate")).isEqualByComparingTo("3.5");
+        assertThat(data).containsEntry("termDays", 60).containsEntry("dayBasis", 365)
+            .containsEntry("maturesOn", TODAY.plusDays(60).toString());
+        assertThat(num(data, "taxPct")).isEqualByComparingTo("8");
+
+        // El plazo siguiente sí usa los datos nuevos: 2 450 000 × 3,5 % × 60 / 365.
+        Map<String, Object> next = json(as(a, get(base(a) + "/places/" + cdp + "/cdp/preview"))
+            .andReturn().getResponse().getContentAsString());
+        assertThat(num(next, "grossInterest")).isEqualByComparingTo("14095.89");
+
+        // Datos fuera de rango no pasan.
+        as(a, get(base(a) + "/places/" + cdp + "/cdp/preview?dayBasis=300")).andExpect(status().isBadRequest());
+        as(a, get(base(a) + "/places/" + cdp + "/cdp/preview?termDays=0")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void alRenovarSePuedeRetirarParteDelCapitalALaCuentaQueSeElija() throws Exception {
+        UUID bcr = place(a, "BCR", "BANCO", "500000", TODAY.minusDays(30));
+        UUID bac = place(a, "BAC", "BANCO", "0", TODAY.minusDays(30));
+        UUID dolares = place(a, "Dólares", "BANCO", "0", TODAY.minusDays(30), "USD");
+        UUID cdp = place(a, "CDP ahorro", "CDP", "2250000", TODAY.minusDays(30));
+        configure(a, cdp, bcr, TODAY).andExpect(status().isOk());
+        String renew = base(a) + "/places/" + cdp + "/cdp/renew";
+
+        // Sin cuenta, a otra moneda, sumando y retirando a la vez, o dejándolo en cero: no.
+        as(a, post(renew).content("{\"withdrawal\":\"250000\"}")).andExpect(status().isBadRequest());
+        as(a, post(renew).content("{\"withdrawal\":\"250000\",\"withdrawTo\":\"" + dolares + "\"}"))
+            .andExpect(status().isConflict());
+        as(a, post(renew).content("{\"withdrawal\":\"250000\",\"contribution\":\"1000\",\"withdrawTo\":\""
+            + bac + "\"}")).andExpect(status().isBadRequest());
+        as(a, post(renew).content("{\"withdrawal\":\"2250000\",\"withdrawTo\":\"" + bac + "\"}"))
+            .andExpect(status().isConflict());
+        assertThat(balance(a, cdp)).isEqualByComparingTo("2250000");
+
+        Map<String, Object> r = json(as(a, post(renew)
+                .content("{\"withdrawal\":\"250000\",\"withdrawTo\":\"" + bac + "\"}"))
+            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+        // Con retiro, el aporte de la vez anterior no se suma.
+        assertThat(num(r, "contribution")).isEqualByComparingTo("0");
+        assertThat(num(r, "newPrincipal")).isEqualByComparingTo("2000000");
+        assertThat(balance(a, cdp)).isEqualByComparingTo("2000000");
+        assertThat(balance(a, bac)).isEqualByComparingTo("250000");
+        assertThat(balance(a, bcr)).isEqualByComparingTo("504542.20"); // solo los intereses netos
+        // La sugerencia de aporte queda para la próxima vez.
+        assertThat(num(cdpData(cdp), "lastContribution")).isEqualByComparingTo("200000");
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> cdpData(UUID cdp) throws Exception {
+        Map<String, Object> place = places(a).stream().filter(p -> cdp.toString().equals(p.get("id"))).findFirst()
+            .orElseThrow();
+        return (Map<String, Object>) place.get("cdp");
+    }
+
     // --- utilidades ----------------------------------------------------------------------
 
     private ResultActions as(TestData.AppUser user, MockHttpServletRequestBuilder request) throws Exception {

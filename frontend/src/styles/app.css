@@ -1582,6 +1582,38 @@ details.more summary {
   width: 100%;
 }
 
+/* Cada bloque de la renovación con su título pequeño; una línea fina los separa. */
+.renew-block {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s3) 0 0;
+  border: 0;
+  border-top: 1px solid var(--rule);
+}
+
+.renew-step {
+  padding: 0;
+  margin-bottom: var(--s1);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.renew-block .segmented {
+  justify-self: start;
+}
+
+.renew-note,
+.renew-result {
+  margin: 0;
+  font-size: var(--t-sm);
+}
+
+.renew-result strong {
+  font-size: var(--t-md);
+}
+
 .renew-sheet {
   display: grid;
   grid-template-columns: 1fr auto;

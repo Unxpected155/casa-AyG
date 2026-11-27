@@ -27,6 +27,12 @@ import com.casaayg.transaction.TransactionService.TransactionData;
  *   interés neto  = bruto − impuesto (cae en la cuenta de pago).
  * El capital vuelve y se reinvierte junto con el aporte: eso se anota solo como el aporte
  * movido de la cuenta al CDP. El diezmo, si se pide, es el 10 % del bruto.
+ *
+ * Al renovar (decisión del 2026-11-26): el interés del plazo que terminó se calcula con los
+ * datos que tenía el CDP en ese plazo; la tasa, el plazo, el impuesto y la base que se escriben
+ * al renovar valen para el plazo que empieza. El capital se puede subir (aporte, desde la
+ * cuenta de pago) o bajar (retiro, a la cuenta que se elija), sin dejar el CDP en cero:
+ * para cerrarlo se saca el dinero y se archiva.
  */
 @Service
 public class CdpService {
@@ -49,9 +55,24 @@ public class CdpService {
     public record CdpSettings(BigDecimal rate, int termDays, int dayBasis, BigDecimal taxPct, LocalDate maturesOn,
                               UUID payoutPlace, BigDecimal lastContribution) {}
 
-    public record Renewal(BigDecimal principal, BigDecimal rate, BigDecimal grossInterest, BigDecimal tax,
-                          BigDecimal netInterest, BigDecimal tithe, BigDecimal contribution, BigDecimal newPrincipal,
-                          LocalDate maturesOn, LocalDate nextMaturity, UUID payoutPlace, Money.Currency currency) {}
+    /**
+     * Lo que se escribe al renovar. Lo que venga null toma el valor de la vez anterior
+     * (el aporte, el último aporte; el retiro, cero).
+     */
+    public record RenewTerms(BigDecimal rate, Integer termDays, Integer dayBasis, BigDecimal taxPct,
+                             BigDecimal contribution, BigDecimal withdrawal, UUID withdrawTo) {}
+
+    /** Las condiciones de un plazo. */
+    public record Terms(BigDecimal rate, int termDays, int dayBasis, BigDecimal taxPct) {}
+
+    /**
+     * {@code earned}: las condiciones del plazo que terminó (con ellas salen los intereses);
+     * {@code next}: las del plazo que empieza.
+     */
+    public record Renewal(BigDecimal principal, Terms earned, BigDecimal grossInterest, BigDecimal tax,
+                          BigDecimal netInterest, BigDecimal tithe, BigDecimal contribution, BigDecimal withdrawal,
+                          UUID withdrawTo, BigDecimal newPrincipal, Terms next, LocalDate maturesOn,
+                          LocalDate nextMaturity, UUID payoutPlace, Money.Currency currency) {}
 
     @Transactional
     public PlaceView configure(UUID spaceId, UUID placeId, CdpSettings s) {
@@ -77,23 +98,35 @@ public class CdpService {
 
     /** Lo que pasaría al renovar hoy, sin anotar nada. */
     @Transactional(readOnly = true)
-    public Renewal preview(UUID spaceId, UUID placeId, BigDecimal rate, BigDecimal contribution) {
+    public Renewal preview(UUID spaceId, UUID placeId, RenewTerms terms) {
         spaces.requireMember(spaceId);
-        return compute(requireConfigured(spaceId, placeId), rate, contribution);
+        return compute(requireConfigured(spaceId, placeId), terms);
     }
 
     /**
-     * Renueva un CDP vencido: intereses netos (con su diezmo) a la cuenta de pago y el aporte de la
-     * cuenta al CDP, todo en una transacción. Solo se puede una vez por vencimiento.
+     * Renueva un CDP vencido: intereses netos (con su diezmo) a la cuenta de pago, el aporte de la
+     * cuenta al CDP o el retiro del CDP a la cuenta elegida, y las condiciones del plazo nuevo,
+     * todo en una transacción. Solo se puede una vez por vencimiento.
      */
     @Transactional
-    public Renewal renew(UUID spaceId, UUID placeId, BigDecimal rate, BigDecimal contribution, boolean tithe) {
+    public Renewal renew(UUID spaceId, UUID placeId, RenewTerms terms, boolean tithe) {
         spaces.requireWritable(spaceId);
         PlaceView cdp = requireConfigured(spaceId, placeId);
         if (cdp.cdp().maturesOn().isAfter(LocalDate.now())) {
             throw new ConflictException("Este CDP todavía no vence.");
         }
-        Renewal r = compute(cdp, rate, contribution);
+        Renewal r = compute(cdp, terms);
+        if (r.withdrawal().signum() > 0) {
+            if (r.withdrawTo() == null) {
+                throw new IllegalArgumentException("falta la cuenta a la que va el retiro");
+            }
+            if (r.withdrawTo().equals(placeId)) {
+                throw new IllegalArgumentException("el retiro no puede ir al mismo CDP");
+            }
+            if (places.requirePlace(spaceId, r.withdrawTo(), false) != cdp.currency()) {
+                throw new ConflictException("La cuenta del retiro tiene que ser de la misma moneda que el CDP.");
+            }
+        }
         UUID interests = transactions.ensureCategory(spaceId, "Intereses", "INGRESO");
         transactions.create(spaceId, new TransactionData(interests, r.maturesOn(),
             new Description("Intereses " + cdp.name()),
@@ -102,30 +135,70 @@ public class CdpService {
             places.transfer(spaceId, new NewTransfer(r.payoutPlace(), placeId, r.maturesOn(), r.contribution(),
                 "Aporte al " + cdp.name()));
         }
+        if (r.withdrawal().signum() > 0) {
+            places.transfer(spaceId, new NewTransfer(placeId, r.withdrawTo(), r.maturesOn(), r.withdrawal(),
+                "Retiro del " + cdp.name()));
+        }
+        // El aporte guardado es la sugerencia de la próxima vez: un retiro no la borra.
+        Terms n = r.next();
         jdbc.sql("""
-                UPDATE place SET cdp_matures_on = ?, cdp_rate = ?, cdp_last_contribution = ?
+                UPDATE place SET cdp_matures_on = ?, cdp_rate = ?, cdp_term_days = ?, cdp_day_basis = ?,
+                                 cdp_tax_pct = ?, cdp_last_contribution = coalesce(?, cdp_last_contribution)
                  WHERE id = ? AND space_id = ?""")
-            .params(r.nextMaturity(), r.rate(), r.contribution(), placeId, spaceId)
+            .params(r.nextMaturity(), n.rate(), n.termDays(), n.dayBasis(), n.taxPct(),
+                r.withdrawal().signum() > 0 ? null : r.contribution(), placeId, spaceId)
             .update();
         return r;
     }
 
-    static Renewal compute(PlaceView cdp, BigDecimal rateOverride, BigDecimal contributionOverride) {
+    static Renewal compute(PlaceView cdp, RenewTerms t) {
         Cdp c = cdp.cdp();
-        BigDecimal rate = rateOverride != null ? rateOverride : c.rate();
-        if (rate.signum() <= 0 || rate.compareTo(HUNDRED) >= 0) {
-            throw new IllegalArgumentException("tasa fuera de rango");
-        }
-        BigDecimal contribution = contributionOverride != null ? contributionOverride
-            : c.lastContribution() != null ? c.lastContribution() : BigDecimal.ZERO;
+        Terms earned = new Terms(c.rate(), c.termDays(), c.dayBasis(), c.taxPct());
+        Terms next = checkTerms(new Terms(
+            t.rate() != null ? t.rate() : c.rate(),
+            t.termDays() != null ? t.termDays() : c.termDays(),
+            t.dayBasis() != null ? t.dayBasis() : c.dayBasis(),
+            t.taxPct() != null ? t.taxPct() : c.taxPct()));
+        BigDecimal withdrawal = new Money(t.withdrawal() != null ? t.withdrawal() : BigDecimal.ZERO,
+            cdp.currency()).amount();
+        BigDecimal contribution = t.contribution() != null ? t.contribution()
+            : withdrawal.signum() > 0 || c.lastContribution() == null ? BigDecimal.ZERO : c.lastContribution();
         contribution = new Money(contribution, cdp.currency()).amount();
+        if (contribution.signum() > 0 && withdrawal.signum() > 0) {
+            throw new IllegalArgumentException("o se suma o se retira, no las dos");
+        }
         BigDecimal principal = cdp.balance().max(BigDecimal.ZERO);
-        BigDecimal gross = grossInterest(principal, rate, c.termDays(), c.dayBasis());
-        BigDecimal tax = tax(gross, c.taxPct());
+        BigDecimal newPrincipal = principal.add(contribution).subtract(withdrawal);
+        if (newPrincipal.signum() <= 0) {
+            throw new ConflictException(
+                "El CDP no puede quedar en cero. Para cerrarlo, saca el dinero con una transferencia y archívalo.");
+        }
+        BigDecimal gross = grossInterest(principal, earned.rate(), earned.termDays(), earned.dayBasis());
+        BigDecimal tax = tax(gross, earned.taxPct());
         BigDecimal net = gross.subtract(tax);
         BigDecimal tithe = gross.multiply(TransactionService.TITHE_RATE).setScale(2, RoundingMode.HALF_UP);
-        return new Renewal(principal, rate, gross, tax, net, tithe, contribution, principal.add(contribution),
-            c.maturesOn(), c.maturesOn().plusDays(c.termDays()), c.payoutPlace(), cdp.currency());
+        return new Renewal(principal, earned, gross, tax, net, tithe, contribution, withdrawal, t.withdrawTo(),
+            newPrincipal, next, c.maturesOn(), c.maturesOn().plusDays(next.termDays()), c.payoutPlace(),
+            cdp.currency());
+    }
+
+    /** Los mismos límites que al configurar el CDP. */
+    static Terms checkTerms(Terms t) {
+        if (t.rate() == null || t.rate().signum() <= 0 || t.rate().compareTo(HUNDRED) >= 0
+                || t.rate().stripTrailingZeros().scale() > 4) {
+            throw new IllegalArgumentException("tasa fuera de rango");
+        }
+        if (t.termDays() < 1 || t.termDays() > 3660) {
+            throw new IllegalArgumentException("plazo fuera de rango");
+        }
+        if (t.dayBasis() != 360 && t.dayBasis() != 365) {
+            throw new IllegalArgumentException("base de días 360 o 365");
+        }
+        if (t.taxPct() == null || t.taxPct().signum() < 0 || t.taxPct().compareTo(HUNDRED) >= 0
+                || t.taxPct().stripTrailingZeros().scale() > 2) {
+            throw new IllegalArgumentException("impuesto fuera de rango");
+        }
+        return t;
     }
 
     static BigDecimal grossInterest(BigDecimal principal, BigDecimal ratePct, int termDays, int dayBasis) {
@@ -151,7 +224,8 @@ public class CdpService {
     private PlaceView requireConfigured(UUID spaceId, UUID placeId) {
         PlaceView cdp = requireCdp(spaceId, placeId);
         Cdp c = cdp.cdp();
-        if (c == null || c.rate() == null || c.maturesOn() == null || c.payoutPlace() == null) {
+        if (c == null || c.rate() == null || c.termDays() == null || c.dayBasis() == null || c.taxPct() == null
+                || c.maturesOn() == null || c.payoutPlace() == null) {
             throw new ConflictException("Primero configura la tasa, el vencimiento y la cuenta de pago del CDP.");
         }
         return cdp;
