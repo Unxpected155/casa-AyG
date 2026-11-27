@@ -48,8 +48,10 @@ export interface Transaction {
   grossAmount: number | null;
   /** Si es un diezmo: el ingreso del que salió. */
   titheOf: string | null;
-  /** Si es un ingreso con diezmo: el gasto del diezmo. */
+  /** Si es un ingreso con diezmo anotado antes de V25: el gasto del diezmo. */
   titheId: string | null;
+  /** Ingreso que debe diezmo (V25): suma a «Diezmo por dar». */
+  titheOwed: boolean;
   /** El pago fijo que se pagó con este movimiento. */
   recurringId: string | null;
   /** Lo anotó el cierre del mes de la casa: no se edita a mano (se reabre el mes). */
@@ -196,6 +198,8 @@ export interface Health {
     }[];
   };
   goals: { judged: number; onTime: number; behind: string[]; withoutDate: number };
+  /** Diezmo por moneda: lo debido, lo dado y lo que falta dar (se arrastra de mes a mes). */
+  tithe: { currency: Currency; owed: number; given: number; pending: number }[];
 }
 
 export interface CdpData {

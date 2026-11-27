@@ -53,7 +53,7 @@ public class TransactionService {
     /**
      * Datos validados de un movimiento (los arma el controlador con domain primitives).
      * {@code gross}: monto bruto de un ingreso (base del diezmo); null = el mismo monto.
-     * {@code tithe}: anotar también el diezmo de este ingreso.
+     * {@code tithe}: este ingreso debe diezmo (V25: queda en «Diezmo por dar»; no se anota el gasto solo).
      * {@code recurringId}: el pago fijo que se está pagando (solo al anotar).
      * {@code debtId}: la deuda que se está abonando (solo al anotar; luego no cambia).
      */
@@ -87,7 +87,7 @@ public class TransactionService {
                                   BigDecimal amount, Money.Currency currency, String paymentMethod,
                                   String source, UUID createdBy, boolean beforeMerge, UUID placeId,
                                   BigDecimal grossAmount, UUID titheOf, UUID titheId, UUID recurringId,
-                                  boolean fromClose, UUID debtId) {}
+                                  boolean fromClose, UUID debtId, boolean titheOwed) {}
 
     /**
      * Lo que se sugiere al anotar: la categoría que se usó antes con esa descripción, el último
@@ -116,7 +116,8 @@ public class TransactionService {
         id, category_id, tx_date, description, amount, currency, payment_method, source,
         created_by, origin_space_id IS NOT NULL AS before_merge, place_id, gross_amount, tithe_of,
         (SELECT d.id FROM transaction d WHERE d.tithe_of = transaction.id) AS tithe_id, recurring_id,
-        EXISTS (SELECT 1 FROM month_close_item i WHERE i.tx_id = transaction.id) AS from_close, debt_id""";
+        EXISTS (SELECT 1 FROM month_close_item i WHERE i.tx_id = transaction.id) AS from_close, debt_id,
+        tithe_owed""";
 
     @Transactional(readOnly = true)
     public Page list(UUID spaceId, YearMonth month, int page, int size) {
@@ -222,15 +223,13 @@ public class TransactionService {
         UUID id = jdbc.sql("""
                 INSERT INTO transaction (space_id, created_by, category_id, tx_date, description, amount,
                                          currency, payment_method, source, dedup_hash, place_id, gross_amount,
-                                         recurring_id, debt_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""")
+                                         recurring_id, debt_id, tithe_owed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id""")
             .params(spaceId, CurrentUser.require(), data.categoryId(), data.date(), data.description().value(),
                 data.money().amount(), data.money().currency().name(), data.paymentMethod(), source, dedupHash,
-                data.placeId(), income ? data.gross() : null, data.recurringId(), data.debtId())
+                data.placeId(), income ? data.gross() : null, data.recurringId(), data.debtId(),
+                income && data.tithe())
             .query(UUID.class).single();
-        if (data.tithe()) {
-            insertTithe(spaceId, id, data);
-        }
         return find(spaceId, id);
     }
 
@@ -255,20 +254,20 @@ public class TransactionService {
         requirePlaceChosen(data);
         int rows = jdbc.sql("""
                 UPDATE transaction SET category_id = ?, tx_date = ?, description = ?, amount = ?, currency = ?,
-                                       payment_method = ?, place_id = ?, gross_amount = ?, updated_at = now()
+                                       payment_method = ?, place_id = ?, gross_amount = ?, tithe_owed = ?,
+                                       updated_at = now()
                  WHERE id = ? AND space_id = ?""")
             .params(data.categoryId(), data.date(), data.description().value(), data.money().amount(),
                 data.money().currency().name(), data.paymentMethod(), data.placeId(), income ? data.gross() : null,
-                id, spaceId)
+                income && data.tithe(), id, spaceId)
             .update();
         if (rows == 0) {
             throw new NotFoundException();
         }
-        // El diezmo sigue a su ingreso: se ajusta, se agrega o se quita según la casilla.
+        // Ingresos de antes de V25, con su gasto de diezmo ligado: ese gasto sigue a su ingreso
+        // (se ajusta o se quita según la casilla). A los nuevos no se les anota nada: queda pendiente.
         UUID tithe = find(spaceId, id).titheId();
-        if (data.tithe() && tithe == null) {
-            insertTithe(spaceId, id, data);
-        } else if (data.tithe()) {
+        if (data.tithe() && tithe != null) {
             jdbc.sql("""
                     UPDATE transaction SET tx_date = ?, amount = ?, currency = ?, place_id = ?, updated_at = now()
                      WHERE id = ? AND space_id = ?""")
@@ -401,20 +400,6 @@ public class TransactionService {
         return data.titheBase().multiply(TITHE_RATE).setScale(2, RoundingMode.HALF_UP);
     }
 
-    /** El gasto del diezmo: mismo día, lugar y moneda que su ingreso, en la categoría Diezmo. */
-    private void insertTithe(UUID spaceId, UUID incomeId, TransactionData data) {
-        UUID category = ensureCategory(spaceId, TITHE_CATEGORY, "NECESIDAD");
-        String text = "Diezmo: " + data.description().value();
-        jdbc.sql("""
-                INSERT INTO transaction (space_id, created_by, category_id, tx_date, description, amount,
-                                         currency, source, place_id, tithe_of)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'MANUAL', ?, ?)""")
-            .params(spaceId, CurrentUser.require(), category, data.date(),
-                text.length() > 200 ? text.substring(0, 200) : text,
-                titheAmount(data), data.money().currency().name(), data.placeId(), incomeId)
-            .update();
-    }
-
     /** La categoría con ese nombre (sin importar mayúsculas), o una nueva si alguien la borró. */
     public UUID ensureCategory(UUID spaceId, String name, String group) {
         return jdbc.sql("SELECT id FROM category WHERE space_id = ? AND lower(name) = lower(?)")
@@ -432,6 +417,6 @@ public class TransactionService {
             rs.getString("source"), rs.getObject("created_by", UUID.class), rs.getBoolean("before_merge"),
             rs.getObject("place_id", UUID.class), rs.getBigDecimal("gross_amount"), rs.getObject("tithe_of", UUID.class),
             rs.getObject("tithe_id", UUID.class), rs.getObject("recurring_id", UUID.class), rs.getBoolean("from_close"),
-            rs.getObject("debt_id", UUID.class));
+            rs.getObject("debt_id", UUID.class), rs.getBoolean("tithe_owed"));
     }
 }

@@ -23,7 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-/** V7: diezmo ligado a cada ingreso y renovación del CDP con los números de un comprobante real. */
+/** Diezmo por dar (V25, antes V7) y renovación del CDP con los números de un comprobante real. */
 class TitheAndCdpTest extends WebTestSupport {
 
     static final LocalDate TODAY = LocalDate.now();
@@ -32,6 +32,7 @@ class TitheAndCdpTest extends WebTestSupport {
     TestData.AppUser b;
     UUID salario;
     UUID supermercado;
+    UUID diezmo;
 
     @BeforeEach
     void seed() throws Exception {
@@ -40,6 +41,7 @@ class TitheAndCdpTest extends WebTestSupport {
             b = TestData.adminCreateUser(su, "B");
             salario = TestData.categoryNamed(su, a.personalSpace(), "Salario");
             supermercado = TestData.categoryNamed(su, a.personalSpace(), "Supermercado");
+            diezmo = TestData.categoryNamed(su, a.personalSpace(), "Diezmo");
             // Los usuarios nuevos ya traen Diezmo e Intereses.
             assertThat(TestData.categoryNamed(su, a.personalSpace(), "Diezmo")).isNotNull();
             assertThat(TestData.categoryNamed(su, a.personalSpace(), "Intereses")).isNotNull();
@@ -49,45 +51,113 @@ class TitheAndCdpTest extends WebTestSupport {
     // --- Diezmo --------------------------------------------------------------------------
 
     @Test
-    void elIngresoConDiezmoAnotaElGastoDel10PorCientoDelBrutoYLoSigue() throws Exception {
+    void elIngresoConDiezmoDejaPendienteEl10PorCientoDelBrutoSinAnotarElGasto() throws Exception {
         UUID bcr = place(a, "BCR", "BANCO", "100000", TODAY.minusDays(5));
         Map<String, Object> body = tx(salario, "900000", bcr, "Salario de noviembre");
         body.put("grossAmount", "1000000");
         body.put("tithe", true);
-        UUID income = uuid(json(as(a, post(base(a) + "/transactions").content(toJson(body)))
-            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id"));
+        Map<String, Object> created = json(as(a, post(base(a) + "/transactions").content(toJson(body)))
+            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+        UUID income = uuid(created.get("id"));
 
-        Map<String, Object> tithe = titheOf(income);
-        assertThat(new BigDecimal(String.valueOf(tithe.get("amount")))).isEqualByComparingTo("100000");
-        assertThat(tithe).containsEntry("placeId", bcr.toString()).containsEntry("date", TODAY.toString());
-        assertThat(balance(a, bcr)).isEqualByComparingTo("900000"); // 100 000 + 900 000 − 100 000
+        // V25: no se anota el gasto; el diezmo queda por dar.
+        assertThat(created).containsEntry("titheOwed", true);
+        assertThat(titheOf(income)).isNull();
+        assertThat(balance(a, bcr)).isEqualByComparingTo("1000000"); // 100 000 + 900 000
+        assertThat(pending("CRC")).isEqualByComparingTo("100000");
 
-        // Cambia el bruto: el diezmo se ajusta solo.
+        // Cambia el bruto: lo pendiente se ajusta.
         body.put("grossAmount", "1100000");
         as(a, put(base(a) + "/transactions/" + income).content(toJson(body))).andExpect(status().isOk());
-        assertThat(new BigDecimal(String.valueOf(titheOf(income).get("amount")))).isEqualByComparingTo("110000");
+        assertThat(pending("CRC")).isEqualByComparingTo("110000");
 
-        // Desmarcar la casilla quita el diezmo; volver a marcarla lo agrega.
+        // Dar parte del diezmo (un gasto en «Diezmo») lo baja.
+        as(a, post(base(a) + "/transactions").content(toJson(tx(diezmo, "60000", bcr, "Diezmo"))))
+            .andExpect(status().isCreated());
+        assertThat(pending("CRC")).isEqualByComparingTo("50000");
+
+        // Desmarcar la casilla: ese ingreso ya no debe diezmo.
+        body.put("tithe", false);
+        as(a, put(base(a) + "/transactions/" + income).content(toJson(body))).andExpect(status().isOk());
+        assertThat(pending("CRC")).isNull();
+    }
+
+    @Test
+    void loPendienteSeArrastraYUnDiezmoDadoAntesNoLoTapa() throws Exception {
+        UUID bcr = place(a, "BCR", "BANCO", "500000", TODAY.minusMonths(3));
+        // Un diezmo dado antes del primer ingreso marcado (de antes de usar la app) no cuenta.
+        Map<String, Object> viejo = tx(diezmo, "30000", bcr, "Diezmo viejo");
+        viejo.put("date", TODAY.minusMonths(2).toString());
+        as(a, post(base(a) + "/transactions").content(toJson(viejo))).andExpect(status().isCreated());
+
+        // Ingreso del mes pasado con diezmo, sin darlo: sigue pendiente este mes.
+        Map<String, Object> pasado = tx(salario, "200000", bcr, "Salario de octubre");
+        pasado.put("date", TODAY.minusMonths(1).toString());
+        pasado.put("tithe", true);
+        as(a, post(base(a) + "/transactions").content(toJson(pasado))).andExpect(status().isCreated());
+        // Y uno de este mes.
+        Map<String, Object> ahora = tx(salario, "300000", bcr, "Salario de noviembre");
+        ahora.put("tithe", true);
+        as(a, post(base(a) + "/transactions").content(toJson(ahora))).andExpect(status().isCreated());
+        assertThat(pending("CRC")).isEqualByComparingTo("50000"); // 20 000 + 30 000
+
+        // Dar de más no deja saldo a favor.
+        as(a, post(base(a) + "/transactions").content(toJson(tx(diezmo, "80000", bcr, "Diezmo"))))
+            .andExpect(status().isCreated());
+        assertThat(pending("CRC")).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void losIngresosDeAntesConSuDiezmoAnotadoQuedanAlDia() throws Exception {
+        UUID bcr = place(a, "BCR", "BANCO", "0", TODAY.minusDays(5));
+        UUID income = UUID.randomUUID();
+        try (Connection su = asSuperuser()) {
+            // Como lo dejaba V7: el ingreso y su gasto de diezmo ligado, ya migrados (tithe_owed).
+            try (var ps = su.prepareStatement("""
+                    INSERT INTO transaction (id, space_id, created_by, category_id, tx_date, description, amount,
+                                             currency, place_id, gross_amount, tithe_owed)
+                    VALUES (?, ?, ?, ?, ?, 'Salario', 900000, 'CRC', ?, 1000000, true)""")) {
+                ps.setObject(1, income);
+                ps.setObject(2, a.personalSpace());
+                ps.setObject(3, a.id());
+                ps.setObject(4, salario);
+                ps.setObject(5, TODAY);
+                ps.setObject(6, bcr);
+                ps.executeUpdate();
+            }
+            try (var ps = su.prepareStatement("""
+                    INSERT INTO transaction (space_id, created_by, category_id, tx_date, description, amount,
+                                             currency, place_id, tithe_of)
+                    VALUES (?, ?, ?, ?, 'Diezmo: Salario', 100000, 'CRC', ?, ?)""")) {
+                ps.setObject(1, a.personalSpace());
+                ps.setObject(2, a.id());
+                ps.setObject(3, diezmo);
+                ps.setObject(4, TODAY);
+                ps.setObject(5, bcr);
+                ps.setObject(6, income);
+                ps.executeUpdate();
+            }
+        }
+        assertThat(pending("CRC")).isEqualByComparingTo("0");
+
+        // Editarlo sigue ajustando su gasto ligado (y quitarle el diezmo lo borra).
+        Map<String, Object> body = tx(salario, "900000", bcr, "Salario");
+        body.put("grossAmount", "1200000");
+        body.put("tithe", true);
+        as(a, put(base(a) + "/transactions/" + income).content(toJson(body))).andExpect(status().isOk());
+        assertThat(new BigDecimal(String.valueOf(titheOf(income).get("amount")))).isEqualByComparingTo("120000");
+        assertThat(pending("CRC")).isEqualByComparingTo("0");
         body.put("tithe", false);
         as(a, put(base(a) + "/transactions/" + income).content(toJson(body))).andExpect(status().isOk());
         assertThat(titheOf(income)).isNull();
-        body.put("tithe", true);
-        as(a, put(base(a) + "/transactions/" + income).content(toJson(body))).andExpect(status().isOk());
-        assertThat(titheOf(income)).isNotNull();
-
-        // Borrar el ingreso borra su diezmo.
-        as(a, delete(base(a) + "/transactions/" + income)).andExpect(status().isNoContent());
-        assertThat(transactions(a)).isEmpty();
-        assertThat(balance(a, bcr)).isEqualByComparingTo("100000");
     }
 
     @Test
     void sinBrutoElDiezmoSaleDelMontoYSoloLosIngresosLlevanDiezmo() throws Exception {
         Map<String, Object> body = tx(salario, "50000", cuenta(), "Venta de bicicleta");
         body.put("tithe", true);
-        UUID income = uuid(json(as(a, post(base(a) + "/transactions").content(toJson(body)))
-            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id"));
-        assertThat(new BigDecimal(String.valueOf(titheOf(income).get("amount")))).isEqualByComparingTo("5000");
+        as(a, post(base(a) + "/transactions").content(toJson(body))).andExpect(status().isCreated());
+        assertThat(pending("CRC")).isEqualByComparingTo("5000");
 
         Map<String, Object> expense = tx(supermercado, "1000", cuenta(), "Pan");
         expense.put("tithe", true);
@@ -125,7 +195,9 @@ class TitheAndCdpTest extends WebTestSupport {
 
         as(a, post(base(a) + "/places/" + cdp + "/cdp/renew").content("{\"tithe\":true}"))
             .andExpect(status().isOk());
-        assertThat(balance(a, bcr)).isEqualByComparingTo("304007.82"); // 500 000 + 4 542,20 − 534,38 − 200 000
+        // El diezmo de los intereses no sale solo de la cuenta: queda por dar (V25).
+        assertThat(balance(a, bcr)).isEqualByComparingTo("304542.20"); // 500 000 + 4 542,20 − 200 000
+        assertThat(pending("CRC")).isEqualByComparingTo("534.38");
         assertThat(balance(a, cdp)).isEqualByComparingTo("2450000");
 
         // El vencimiento pasó al siguiente plazo: no se puede renovar dos veces.
@@ -215,6 +287,15 @@ class TitheAndCdpTest extends WebTestSupport {
         String body = as(user, get(base(user) + "/transactions?year=" + TODAY.getYear() + "&month=" + TODAY.getMonthValue()))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return (List<Map<String, Object>>) json(body).get("items");
+    }
+
+    /** Lo que falta dar en esa moneda («¿Voy bien?»), o null si no hay nada que deba diezmo. */
+    private BigDecimal pending(String currency) throws Exception {
+        Map<String, Object> health = json(as(a, get(base(a) + "/health")).andExpect(status().isOk()).andReturn()
+            .getResponse().getContentAsString());
+        return ((List<?>) health.get("tithe")).stream().map(t -> (Map<?, ?>) t)
+            .filter(t -> currency.equals(t.get("currency"))).findFirst()
+            .map(t -> new BigDecimal(String.valueOf(t.get("pending")))).orElse(null);
     }
 
     private Map<String, Object> titheOf(UUID income) throws Exception {
